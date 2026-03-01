@@ -1,0 +1,24 @@
+{
+  "framework_name": "GURPSAI-Core",
+  "framework_version": "0.2.0",
+  "managed_roots": [
+    ".agents",
+    ".planning",
+    "scripts"
+  ],
+  "managed_files": [
+    "AGENTS.md",
+    "SYSTEM.md",
+    "gemini.md",
+    "master_philosophy.md",
+    "README.md",
+    ".framework/framework.manifest.json"
+  ],
+  "protected_paths": [
+    "00_System_Rules.md",
+    "state.md",
+    "01_World_Bible",
+    "02_Characters",
+    "03_Story"
+  ]
+}

@@ -1,0 +1,138 @@
+﻿{
+    "framework_name":  "GURPSAI-Core",
+    "framework_version":  "1.1.0",
+    "source_core_path":  "C:\\Users\\VikA\\Documents\\RPG\\GurpsAI",
+    "installed_at_utc":  "2026-03-01T15:52:42.1581181Z",
+    "files":  {
+                  "master_philosophy.md":  {
+                                               "last_applied_hash":  "400885647a4963d1df33ff0802130c0738070ea15d72ac8d9acfe7357a59052c",
+                                               "last_core_hash":  "400885647a4963d1df33ff0802130c0738070ea15d72ac8d9acfe7357a59052c",
+                                               "updated_at_utc":  "2026-03-01T15:52:42.1505826Z"
+                                           },
+                  ".agents\\agents\\Narrator.md":  {
+                                                       "last_applied_hash":  "dfa88b83db640e3c84a4b5d2c80c9bc667fac6c6d24bbb0cb7c3b53a79eb1fc4",
+                                                       "last_core_hash":  "dfa88b83db640e3c84a4b5d2c80c9bc667fac6c6d24bbb0cb7c3b53a79eb1fc4",
+                                                       "updated_at_utc":  "2026-03-01T15:52:42.0861763Z"
+                                                   },
+                  ".agents\\workflows\\new_episode.md":  {
+                                                             "last_applied_hash":  "dbc772cd75da638f5e19954613e1ff53c93fc047c4b7ded444df3d05e14a77ff",
+                                                             "last_core_hash":  "dbc772cd75da638f5e19954613e1ff53c93fc047c4b7ded444df3d05e14a77ff",
+                                                             "updated_at_utc":  "2026-03-01T15:52:42.1168287Z"
+                                                         },
+                  ".agents\\workflows\\start_session.md":  {
+                                                               "last_applied_hash":  "eb16ff5a9d7c46098b4546137907ead2c838c04eb0360da8d3e9a406ed5b879b",
+                                                               "last_core_hash":  "eb16ff5a9d7c46098b4546137907ead2c838c04eb0360da8d3e9a406ed5b879b",
+                                                               "updated_at_utc":  "2026-03-01T15:52:42.1233426Z"
+                                                           },
+                  "gemini.md":  {
+                                    "last_applied_hash":  "5b56e55135e32c3dee90f9e7bbb1a35e91bec76c6ada9cbe59fb315d5460e2f5",
+                                    "last_core_hash":  "5b56e55135e32c3dee90f9e7bbb1a35e91bec76c6ada9cbe59fb315d5460e2f5",
+                                    "updated_at_utc":  "2026-03-01T15:52:42.1475825Z"
+                                },
+                  "SYSTEM.md":  {
+                                    "last_applied_hash":  "a7511e9aa5d688b3b74f06a0627b1c7a4345bcfbaa37ee5075e65dec2f05d8eb",
+                                    "last_core_hash":  "a7511e9aa5d688b3b74f06a0627b1c7a4345bcfbaa37ee5075e65dec2f05d8eb",
+                                    "updated_at_utc":  "2026-03-01T15:52:42.1550939Z"
+                                },
+                  ".agents\\workflows\\catch_up.md":  {
+                                                          "last_applied_hash":  "035dd68a09512e51e8f13b07cb5a0257183813dd88b79e5fea2c67d6fabfaf14",
+                                                          "last_core_hash":  "035dd68a09512e51e8f13b07cb5a0257183813dd88b79e5fea2c67d6fabfaf14",
+                                                          "updated_at_utc":  "2026-03-01T15:52:42.1007096Z"
+                                                      },
+                  ".planning\\MAP.md":  {
+                                            "last_applied_hash":  "6b9d5863e88198335f9dfbb970acc0ac74a824fdfd702f354655494610baa5c8",
+                                            "last_core_hash":  "6b9d5863e88198335f9dfbb970acc0ac74a824fdfd702f354655494610baa5c8",
+                                            "updated_at_utc":  "2026-03-01T15:52:42.1425595Z"
+                                        },
+                  ".agents\\workflows\\prep_session.md":  {
+                                                              "last_applied_hash":  "9aabc5d704fccac91693ac069e6d83a909e12c94df10a5079eb0890a64663338",
+                                                              "last_core_hash":  "9aabc5d704fccac91693ac069e6d83a909e12c94df10a5079eb0890a64663338",
+                                                              "updated_at_utc":  "2026-03-01T15:52:42.1203444Z"
+                                                          },
+                  ".planning\\_templates\\NPC_Template.md":  {
+                                                                 "last_applied_hash":  "fa333870564678ef798436cc87f110a6a9d39503497047167e342ecf7a61a908",
+                                                                 "last_core_hash":  "fa333870564678ef798436cc87f110a6a9d39503497047167e342ecf7a61a908",
+                                                                 "updated_at_utc":  "2026-03-01T15:52:42.1400479Z"
+                                                             },
+                  ".agents\\workflows\\INDEX.md":  {
+                                                       "last_applied_hash":  "f8211fcb4239713befc0d3756b56bb24f0cb3c21e1a4ba1cb111b1a5a4944fd8",
+                                                       "last_core_hash":  "f8211fcb4239713befc0d3756b56bb24f0cb3c21e1a4ba1cb111b1a5a4944fd8",
+                                                       "updated_at_utc":  "2026-03-01T15:52:42.1088107Z"
+                                                   },
+                  "README.md":  {
+                                    "last_applied_hash":  "6a933f40304def726374b60ad3779f3c18770a616c868eb25a0a048229b3a54f",
+                                    "last_core_hash":  "6a933f40304def726374b60ad3779f3c18770a616c868eb25a0a048229b3a54f",
+                                    "updated_at_utc":  "2026-03-01T15:52:42.1530947Z"
+                                },
+                  ".agents\\workflows\\conclude_session.md":  {
+                                                                  "last_applied_hash":  "76feb0b9fc615405f67386adc57e1507f410e40e5fbc6276972969d38650d1a4",
+                                                                  "last_core_hash":  "76feb0b9fc615405f67386adc57e1507f410e40e5fbc6276972969d38650d1a4",
+                                                                  "updated_at_utc":  "2026-03-01T15:52:42.1032339Z"
+                                                              },
+                  ".planning\\_templates\\Episode_Overview_Template.md":  {
+                                                                              "last_applied_hash":  "8e0816b195d846d2c0dc7aa10a449ff2a620149364ddcd0978f82279eba2176e",
+                                                                              "last_core_hash":  "8e0816b195d846d2c0dc7aa10a449ff2a620149364ddcd0978f82279eba2176e",
+                                                                              "updated_at_utc":  "2026-03-01T15:52:42.1344445Z"
+                                                                          },
+                  ".agents\\agents\\RulesLawyer.md":  {
+                                                          "last_applied_hash":  "0ae113f0fff56cdb20dbde79c8f9beb6d0cb3414062a01473b6551c61ac42cde",
+                                                          "last_core_hash":  "0ae113f0fff56cdb20dbde79c8f9beb6d0cb3414062a01473b6551c61ac42cde",
+                                                          "updated_at_utc":  "2026-03-01T15:52:42.0906886Z"
+                                                      },
+                  ".agents\\workflows\\brainstorm.md":  {
+                                                            "last_applied_hash":  "10fc15a367a6eff0f95521725f973d47a3e9d61601d3f8cb88ceb534a3b454c6",
+                                                            "last_core_hash":  "10fc15a367a6eff0f95521725f973d47a3e9d61601d3f8cb88ceb534a3b454c6",
+                                                            "updated_at_utc":  "2026-03-01T15:52:42.0987095Z"
+                                                        },
+                  ".agents\\agents\\WorldBuilder.md":  {
+                                                           "last_applied_hash":  "d5c77539ba4520d1cd3a55368b509e9761d8a4356354bb6695af4c6d31f31648",
+                                                           "last_core_hash":  "d5c77539ba4520d1cd3a55368b509e9761d8a4356354bb6695af4c6d31f31648",
+                                                           "updated_at_utc":  "2026-03-01T15:52:42.0957093Z"
+                                                       },
+                  ".agents\\workflows\\update_framework.md":  {
+                                                                  "last_applied_hash":  "626f33d4f51053b3a2bf82306b4d2bcf4a78461c59811fc971b658a8d0403c7d",
+                                                                  "last_core_hash":  "626f33d4f51053b3a2bf82306b4d2bcf4a78461c59811fc971b658a8d0403c7d",
+                                                                  "updated_at_utc":  "2026-03-01T15:52:42.1258555Z"
+                                                              },
+                  ".planning\\_templates\\Chapter_Template.md":  {
+                                                                     "last_applied_hash":  "e424dd9dc91993b136897c8794f9519acb030930262ebb2b2bba24444465010a",
+                                                                     "last_core_hash":  "e424dd9dc91993b136897c8794f9519acb030930262ebb2b2bba24444465010a",
+                                                                     "updated_at_utc":  "2026-03-01T15:52:42.1283916Z"
+                                                                 },
+                  ".planning\\_templates\\Encounter_Template.md":  {
+                                                                       "last_applied_hash":  "7d75d9f44ec982124d8785b82606ffea4be759514f4fe478f4d5e5c514fbd488",
+                                                                       "last_core_hash":  "7d75d9f44ec982124d8785b82606ffea4be759514f4fe478f4d5e5c514fbd488",
+                                                                       "updated_at_utc":  "2026-03-01T15:52:42.1319033Z"
+                                                                   },
+                  ".agents\\workflows\\create_npc.md":  {
+                                                            "last_applied_hash":  "bb8550f3575af62c5d501249dc31735b48de2c15d9389dce41bc89d48322b1fe",
+                                                            "last_core_hash":  "bb8550f3575af62c5d501249dc31735b48de2c15d9389dce41bc89d48322b1fe",
+                                                            "updated_at_utc":  "2026-03-01T15:52:42.1062347Z"
+                                                        },
+                  "AGENTS.md":  {
+                                    "last_applied_hash":  "fa5f22012cbbfe601406d01db5e09a5bb498d87353170f6aa7088c89c580822f",
+                                    "last_core_hash":  "fa5f22012cbbfe601406d01db5e09a5bb498d87353170f6aa7088c89c580822f",
+                                    "updated_at_utc":  "2026-03-01T15:52:42.1450720Z"
+                                },
+                  ".agents\\agents\\SessionPlanner.md":  {
+                                                             "last_applied_hash":  "27267c36b5ca2d4cd13a6c2b0127e57245ff1503294fde8f8d32127c08edfd51",
+                                                             "last_core_hash":  "27267c36b5ca2d4cd13a6c2b0127e57245ff1503294fde8f8d32127c08edfd51",
+                                                             "updated_at_utc":  "2026-03-01T15:52:42.0937098Z"
+                                                         },
+                  ".agents\\workflows\\new_campaign.md":  {
+                                                              "last_applied_hash":  "3cdc5d95b7ba9b846cf0dd0583775e601b4a0b4fff3085f266e9f0a977602756",
+                                                              "last_core_hash":  "3cdc5d95b7ba9b846cf0dd0583775e601b4a0b4fff3085f266e9f0a977602756",
+                                                              "updated_at_utc":  "2026-03-01T15:52:42.1113197Z"
+                                                          },
+                  ".planning\\_templates\\Location_Template.md":  {
+                                                                      "last_applied_hash":  "7e3ee5147111abbf4a42c461474d959e4adc5480cf72fc0c33ffcf22f5661806",
+                                                                      "last_core_hash":  "7e3ee5147111abbf4a42c461474d959e4adc5480cf72fc0c33ffcf22f5661806",
+                                                                      "updated_at_utc":  "2026-03-01T15:52:42.1374660Z"
+                                                                  },
+                  ".agents\\workflows\\new_chapter.md":  {
+                                                             "last_applied_hash":  "5ccd984a56d05d604cc81245b8113bd9a3b8a992438aecc3b1ef20c4fc5bf2cf",
+                                                             "last_core_hash":  "5ccd984a56d05d604cc81245b8113bd9a3b8a992438aecc3b1ef20c4fc5bf2cf",
+                                                             "updated_at_utc":  "2026-03-01T15:52:42.1148286Z"
+                                                         }
+              }
+}
