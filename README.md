@@ -51,6 +51,8 @@ Available workflows in `.agents/workflows/`:
 - `update_framework`
 - `update_core`
 - `actualize`
+- `configure_core_source`
+- `update_campaign`
 
 ## Universal Invocation
 You can invoke workflows in either form:
@@ -90,15 +92,23 @@ For global operation across many campaigns:
 
 1. Maintain this core in a dedicated Git repo.
 2. Publish changes as tags/releases (for example `v1.2.0`).
-3. In each running campaign, execute:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\update-core.ps1 -RepoUrl "<CORE_REPO_URL>" -Ref "v1.2.0" -DryRun`
-   or local source:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\update-core.ps1 -CorePath "<PATH_TO_UPDATED_CORE>" -DryRun`
-4. Apply the update after review:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\update-core.ps1 -RepoUrl "<CORE_REPO_URL>" -Ref "v1.2.0"`
-5. Validate campaign integrity:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\actualize-campaign.ps1`
+3. In each running campaign, set source once:
+   `powershell -ExecutionPolicy Bypass -File .\scripts\set-core-source.ps1 -RepoUrl "<CORE_REPO_URL>" -DefaultRef "main" -UseLatestTag`
+4. On each update cycle, dry run:
+   `powershell -ExecutionPolicy Bypass -File .\scripts\update-campaign.ps1 -DryRun`
+5. Apply:
+   `powershell -ExecutionPolicy Bypass -File .\scripts\update-campaign.ps1`
+6. If conflicts must be overwritten:
+   `powershell -ExecutionPolicy Bypass -File .\scripts\update-campaign.ps1 -Force`
 
 This gives you two explicit phases:
 - `Update Core` = technical/framework sync
 - `Actualize` = campaign integrity check and remediation guidance
+
+## Script Shortcuts
+- Configure default Git source once:
+  `scripts/set-core-source.ps1`
+- Update only technical core:
+  `scripts/update-core.ps1`
+- Full pipeline (core + actualization):
+  `scripts/update-campaign.ps1`

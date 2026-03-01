@@ -1,6 +1,6 @@
 {
   "framework_name": "GURPSAI-Core",
-  "framework_version": "0.2.0",
+  "framework_version": "0.3.0",
   "managed_roots": [
     ".agents",
     ".planning",

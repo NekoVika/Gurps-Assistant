@@ -10,14 +10,16 @@ Update the technical framework from a global core repository release/tag/branch.
 
 ## Execution Steps
 
-1. **Collect Inputs:**
-   Ask for one source mode:
-   - Core repository URL + target ref (tag/branch), default `main`
-   - Or local core path
+1. **Select Source Mode:**
+   Prefer configured mode (if `.framework/core-source.json` exists). Otherwise choose one:
+   - Core repository URL + target ref (tag/branch), or latest tag
+   - Local core path
 
 2. **Preview Update:**
    Run one:
+   `powershell -ExecutionPolicy Bypass -File .\scripts\update-core.ps1 -DryRun`
    `powershell -ExecutionPolicy Bypass -File .\scripts\update-core.ps1 -RepoUrl "<REPO_URL>" -Ref "<REF>" -DryRun`
+   `powershell -ExecutionPolicy Bypass -File .\scripts\update-core.ps1 -RepoUrl "<REPO_URL>" -LatestTag -DryRun`
    `powershell -ExecutionPolicy Bypass -File .\scripts\update-core.ps1 -CorePath "<CORE_PATH>" -DryRun`
 
 3. **Apply Update:**

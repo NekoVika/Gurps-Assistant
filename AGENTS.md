@@ -30,6 +30,8 @@ Supported workflows:
 - `update_framework`
 - `update_core`
 - `actualize`
+- `configure_core_source`
+- `update_campaign`
 
 ## Persona Invocation
 If the user asks for a persona, load the corresponding file from `.agents/agents/` first:

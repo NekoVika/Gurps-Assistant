@@ -19,3 +19,5 @@ Use this index to map user intent to workflow files.
 - `update_framework` -> `.agents/workflows/update_framework.md`
 - `update_core` -> `.agents/workflows/update_core.md`
 - `actualize` -> `.agents/workflows/actualize.md`
+- `configure_core_source` -> `.agents/workflows/configure_core_source.md`
+- `update_campaign` -> `.agents/workflows/update_campaign.md`
