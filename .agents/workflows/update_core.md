@@ -11,7 +11,7 @@ Update the technical framework from a global core repository release/tag/branch.
 ## Execution Steps
 
 1. **Select Source Mode:**
-   Prefer configured mode (if `.framework/core-source.json` exists). Otherwise choose one:
+   Prefer configured mode (if `%USERPROFILE%\.gurps-assistant\core-source.json` or `GURPSAI_HOME` config exists). Otherwise choose one:
    - Core repository URL + target ref (tag/branch), or latest tag
    - Local core path
 

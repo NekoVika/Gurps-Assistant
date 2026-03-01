@@ -1,7 +1,6 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
-    [string]$RepoUrl,
+    [string]$RepoUrl = "https://github.com/NekoVika/Gurps-Assistant.git",
     [string]$DefaultRef = "main",
     [switch]$UseLatestTag
 )
@@ -9,13 +8,41 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$repoRoot = (Get-Location).Path
-$frameworkDir = Join-Path $repoRoot ".framework"
-$configPath = Join-Path $frameworkDir "core-source.json"
-
-if (-not (Test-Path -LiteralPath $frameworkDir)) {
-    New-Item -ItemType Directory -Path $frameworkDir -Force | Out-Null
+function Ensure-Dir {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    }
 }
+
+function Resolve-GlobalHome {
+    param([string]$RepoRoot)
+    $candidates = New-Object System.Collections.Generic.List[string]
+    if (-not [string]::IsNullOrWhiteSpace($env:GURPSAI_HOME)) {
+        $candidates.Add($env:GURPSAI_HOME)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+        $candidates.Add((Join-Path $env:USERPROFILE ".gurps-assistant"))
+    }
+    $candidates.Add((Join-Path $RepoRoot ".app-global"))
+
+    foreach ($candidate in $candidates) {
+        try {
+            Ensure-Dir -Path $candidate
+            $probe = Join-Path $candidate (".write-test-{0}-{1}" -f $PID, [Guid]::NewGuid().ToString("N"))
+            Set-Content -LiteralPath $probe -Value "ok" -Encoding ASCII
+            Remove-Item -LiteralPath $probe -Force
+            return $candidate
+        } catch {
+            continue
+        }
+    }
+    throw "Could not find a writable global home. Set GURPSAI_HOME to a writable directory."
+}
+
+$repoRoot = (Get-Location).Path
+$globalHome = Resolve-GlobalHome -RepoRoot $repoRoot
+$configPath = Join-Path $globalHome "core-source.json"
 
 $config = [ordered]@{
     repo_url = $RepoUrl
@@ -28,6 +55,7 @@ $config | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $configPath -Encodi
 
 Write-Host "Core source configuration saved:"
 Write-Host "  File: $configPath"
+Write-Host "  Global home: $globalHome"
 Write-Host "  Repo: $RepoUrl"
 Write-Host "  Default ref: $DefaultRef"
 Write-Host "  Use latest tag: $([bool]$UseLatestTag)"

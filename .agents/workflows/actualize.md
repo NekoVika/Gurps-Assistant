@@ -6,7 +6,7 @@ description: Actualize Campaign After Core Update
 **Command Trigger:** `/actualize`
 
 ## Objective
-Validate that campaign structure and active state remain consistent after a core/framework update.
+Validate that campaign structure, active state, and legacy copy-mode compatibility remain consistent after a core/framework update.
 
 ## Execution Steps
 
@@ -17,7 +17,7 @@ Validate that campaign structure and active state remain consistent after a core
    Open the generated report in `.framework/reports/actualize-<timestamp>.md`.
 
 3. **Fix Blocking Issues:**
-   Resolve all `ERROR` findings first (missing folders/files, broken state references, broken workflow index links).
+   Resolve all `ERROR` findings first (missing folders/files, broken state references, broken workflow index links, missing required personas/templates/workflows, missing workflow invocation patterns in `AGENTS.md`).
 
 4. **Handle Warnings:**
    Resolve `WARN` findings if they affect your current session flow.

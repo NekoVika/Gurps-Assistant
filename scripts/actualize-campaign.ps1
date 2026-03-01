@@ -57,6 +57,38 @@ $requiredDirs = @(
     "03_Story"
 )
 
+$requiredPersonas = @(
+    "Narrator",
+    "RulesLawyer",
+    "WorldBuilder",
+    "SessionPlanner"
+)
+
+$requiredTemplates = @(
+    "Encounter_Template.md",
+    "Location_Template.md",
+    "NPC_Template.md",
+    "Episode_Overview_Template.md",
+    "Chapter_Template.md"
+)
+
+$requiredWorkflows = @(
+    "new_campaign",
+    "catch_up",
+    "new_episode",
+    "new_chapter",
+    "prep_session",
+    "start_session",
+    "conclude_session",
+    "create_npc",
+    "brainstorm",
+    "update_framework",
+    "update_core",
+    "actualize",
+    "configure_core_source",
+    "update_campaign"
+)
+
 foreach ($f in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $root $f) -PathType Leaf)) {
         Add-Issue -List $issues -Severity "ERROR" -Code "MISSING_FILE" -Message "Missing required file: $f"
@@ -66,6 +98,41 @@ foreach ($f in $requiredFiles) {
 foreach ($d in $requiredDirs) {
     if (-not (Test-Path -LiteralPath (Join-Path $root $d) -PathType Container)) {
         Add-Issue -List $issues -Severity "ERROR" -Code "MISSING_DIR" -Message "Missing required directory: $d"
+    }
+}
+
+$agentsRoot = Join-Path $root ".agents/agents"
+foreach ($persona in $requiredPersonas) {
+    $personaPath = Join-Path $agentsRoot ("{0}.md" -f $persona)
+    if (-not (Test-Path -LiteralPath $personaPath -PathType Leaf)) {
+        Add-Issue -List $issues -Severity "ERROR" -Code "MISSING_PERSONA" -Message "Missing required persona file: .agents/agents/$persona.md"
+    }
+}
+
+$templatesRoot = Join-Path $root ".planning/_templates"
+foreach ($template in $requiredTemplates) {
+    $templatePath = Join-Path $templatesRoot $template
+    if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) {
+        Add-Issue -List $issues -Severity "ERROR" -Code "MISSING_TEMPLATE" -Message "Missing required template: .planning/_templates/$template"
+    }
+}
+
+$workflowRoot = Join-Path $root ".agents/workflows"
+foreach ($workflow in $requiredWorkflows) {
+    $wfPath = Join-Path $workflowRoot ("{0}.md" -f $workflow)
+    if (-not (Test-Path -LiteralPath $wfPath -PathType Leaf)) {
+        Add-Issue -List $issues -Severity "ERROR" -Code "MISSING_WORKFLOW" -Message "Missing required workflow file: .agents/workflows/$workflow.md"
+    }
+}
+
+$agentsPath = Join-Path $root "AGENTS.md"
+if (Test-Path -LiteralPath $agentsPath -PathType Leaf) {
+    $agentsText = Get-Content -LiteralPath $agentsPath -Raw
+    if ($agentsText -notmatch "(?is)Slash command style.*?/new_campaign") {
+        Add-Issue -List $issues -Severity "ERROR" -Code "AGENTS_TRIGGER_SLASH_MISSING" -Message "AGENTS.md must document slash workflow invocation (for example /new_campaign)."
+    }
+    if ($agentsText -notmatch "(?is)Natural language style.*?run new_campaign workflow") {
+        Add-Issue -List $issues -Severity "ERROR" -Code "AGENTS_TRIGGER_NL_MISSING" -Message "AGENTS.md must document natural-language workflow invocation (for example run new_campaign workflow)."
     }
 }
 
@@ -108,6 +175,7 @@ if (Test-Path -LiteralPath $statePath -PathType Leaf) {
 $indexPath = Join-Path $root ".agents/workflows/INDEX.md"
 if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
     $lines = Get-Content -LiteralPath $indexPath
+    $indexText = ($lines -join "`n")
     foreach ($line in $lines) {
         $m = [Regex]::Match($line, "->\s*`?(.+?\.md)`?$")
         if ($m.Success) {
@@ -118,11 +186,33 @@ if (Test-Path -LiteralPath $indexPath -PathType Leaf) {
             }
         }
     }
+
+    foreach ($workflow in $requiredWorkflows) {
+        $expectedLink = ".agents/workflows/$workflow.md"
+        if ($indexText -notmatch [Regex]::Escape($expectedLink)) {
+            Add-Issue -List $issues -Severity "ERROR" -Code "WORKFLOW_INDEX_MISSING_ENTRY" -Message "Workflow index is missing mapping for: $workflow"
+        }
+    }
 }
 
 $frameworkStatePath = Join-Path $root ".framework/install-state.json"
 if (-not (Test-Path -LiteralPath $frameworkStatePath -PathType Leaf)) {
     Add-Issue -List $issues -Severity "WARN" -Code "NO_INSTALL_STATE" -Message "No .framework/install-state.json found. Run an update/sync first."
+}
+
+$gmScriptPath = Join-Path $root "scripts/gm.ps1"
+if (Test-Path -LiteralPath $gmScriptPath -PathType Leaf) {
+    try {
+        $workflowOutput = & powershell -ExecutionPolicy Bypass -File $gmScriptPath workflows 2>&1
+        $workflowExit = $LASTEXITCODE
+        if ($workflowExit -ne 0) {
+            Add-Issue -List $issues -Severity "WARN" -Code "GM_WORKFLOWS_COMMAND_FAILED" -Message "scripts/gm.ps1 workflows exited with code $workflowExit"
+        } elseif (($workflowOutput | Out-String) -notmatch "(?i)new_campaign") {
+            Add-Issue -List $issues -Severity "WARN" -Code "GM_WORKFLOWS_OUTPUT_UNEXPECTED" -Message "scripts/gm.ps1 workflows output did not include new_campaign."
+        }
+    } catch {
+        Add-Issue -List $issues -Severity "WARN" -Code "GM_WORKFLOWS_EXCEPTION" -Message ("Failed to run scripts/gm.ps1 workflows: {0}" -f $_.Exception.Message)
+    }
 }
 
 $reportDir = Join-Path $root ".framework/reports"

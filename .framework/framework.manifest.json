@@ -1,10 +1,9 @@
 {
   "framework_name": "GURPSAI-Core",
-  "framework_version": "0.3.0",
+  "framework_version": "1.2.0",
   "managed_roots": [
     ".agents",
-    ".planning",
-    "scripts"
+    ".planning"
   ],
   "managed_files": [
     "AGENTS.md",
@@ -12,7 +11,15 @@
     "gemini.md",
     "master_philosophy.md",
     "README.md",
-    ".framework/framework.manifest.json"
+    ".framework/framework.manifest.json",
+    "scripts/ai.ps1",
+    "scripts/ai-agent.ps1",
+    "scripts/actualize-campaign.ps1",
+    "scripts/framework-sync.ps1",
+    "scripts/gm.ps1",
+    "scripts/set-core-source.ps1",
+    "scripts/update-campaign.ps1",
+    "scripts/update-core.ps1"
   ],
   "protected_paths": [
     "00_System_Rules.md",

@@ -10,12 +10,40 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$defaultRepoUrl = "https://github.com/NekoVika/Gurps-Assistant.git"
+$defaultRef = "main"
+$defaultLatestTag = $true
 
 function Ensure-Dir {
     param([string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) {
         New-Item -ItemType Directory -Path $Path -Force | Out-Null
     }
+}
+
+function Resolve-GlobalHome {
+    param([string]$RepoRoot)
+    $candidates = New-Object System.Collections.Generic.List[string]
+    if (-not [string]::IsNullOrWhiteSpace($env:GURPSAI_HOME)) {
+        $candidates.Add($env:GURPSAI_HOME)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
+        $candidates.Add((Join-Path $env:USERPROFILE ".gurps-assistant"))
+    }
+    $candidates.Add((Join-Path $RepoRoot ".app-global"))
+
+    foreach ($candidate in $candidates) {
+        try {
+            Ensure-Dir -Path $candidate
+            $probe = Join-Path $candidate (".write-test-{0}-{1}" -f $PID, [Guid]::NewGuid().ToString("N"))
+            Set-Content -LiteralPath $probe -Value "ok" -Encoding ASCII
+            Remove-Item -LiteralPath $probe -Force
+            return $candidate
+        } catch {
+            continue
+        }
+    }
+    throw "Could not find a writable global home. Set GURPSAI_HOME to a writable directory."
 }
 
 function Invoke-Git {
@@ -42,9 +70,12 @@ function Invoke-Git {
 }
 
 $repoRoot = (Get-Location).Path
-$configPath = Join-Path $repoRoot ".framework/core-source.json"
+$globalHome = Resolve-GlobalHome -RepoRoot $repoRoot
+$configPath = Join-Path $globalHome "core-source.json"
+$legacyConfigPath = Join-Path $repoRoot ".framework/core-source.json"
 $hasRepo = -not [string]::IsNullOrWhiteSpace($RepoUrl)
 $hasCorePath = -not [string]::IsNullOrWhiteSpace($CorePath)
+$sourceConfigUsed = $null
 
 if ($hasRepo -and $hasCorePath) {
     throw "Provide exactly one source: either -RepoUrl or -CorePath."
@@ -52,24 +83,48 @@ if ($hasRepo -and $hasCorePath) {
 
 # If no explicit source is provided, use saved core-source config.
 if (-not $hasRepo -and -not $hasCorePath) {
-    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
-        throw "No source provided and no config found at '$configPath'. Run scripts/set-core-source.ps1 first, or pass -RepoUrl/-CorePath."
-    }
+    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+        $cfg = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+        if (-not [string]::IsNullOrWhiteSpace($cfg.repo_url)) {
+            $RepoUrl = [string]$cfg.repo_url
+            $hasRepo = $true
+        }
 
-    $cfg = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
-    if (-not [string]::IsNullOrWhiteSpace($cfg.repo_url)) {
-        $RepoUrl = [string]$cfg.repo_url
+        if ($PSBoundParameters.ContainsKey("Ref") -eq $false -and -not [string]::IsNullOrWhiteSpace($cfg.default_ref)) {
+            $Ref = [string]$cfg.default_ref
+        }
+        if ($PSBoundParameters.ContainsKey("LatestTag") -eq $false -and $cfg.use_latest_tag -eq $true) {
+            $LatestTag = $true
+        }
+        $sourceConfigUsed = $configPath
+        Write-Host "Using configured core source from: $configPath"
+    } elseif (Test-Path -LiteralPath $legacyConfigPath -PathType Leaf) {
+        $cfg = Get-Content -LiteralPath $legacyConfigPath -Raw | ConvertFrom-Json
+        if (-not [string]::IsNullOrWhiteSpace($cfg.repo_url)) {
+            $RepoUrl = [string]$cfg.repo_url
+            $hasRepo = $true
+        }
+
+        if ($PSBoundParameters.ContainsKey("Ref") -eq $false -and -not [string]::IsNullOrWhiteSpace($cfg.default_ref)) {
+            $Ref = [string]$cfg.default_ref
+        }
+        if ($PSBoundParameters.ContainsKey("LatestTag") -eq $false -and $cfg.use_latest_tag -eq $true) {
+            $LatestTag = $true
+        }
+        $sourceConfigUsed = $legacyConfigPath
+        Write-Host "Using legacy campaign config from: $legacyConfigPath"
+        Write-Host "Tip: run scripts/set-core-source.ps1 once to move config to global home."
+    } else {
+        $RepoUrl = $defaultRepoUrl
         $hasRepo = $true
+        if ($PSBoundParameters.ContainsKey("Ref") -eq $false) {
+            $Ref = $defaultRef
+        }
+        if ($PSBoundParameters.ContainsKey("LatestTag") -eq $false -and $defaultLatestTag) {
+            $LatestTag = $true
+        }
+        Write-Host "Using built-in default core source."
     }
-
-    if ($PSBoundParameters.ContainsKey("Ref") -eq $false -and -not [string]::IsNullOrWhiteSpace($cfg.default_ref)) {
-        $Ref = [string]$cfg.default_ref
-    }
-    if ($PSBoundParameters.ContainsKey("LatestTag") -eq $false -and $cfg.use_latest_tag -eq $true) {
-        $LatestTag = $true
-    }
-
-    Write-Host "Using configured core source from .framework/core-source.json"
 }
 
 $coreSourcePath = $null
@@ -81,7 +136,7 @@ if ($hasCorePath) {
         throw "git is required for -RepoUrl mode, but was not found in PATH."
     }
 
-    $cacheRoot = Join-Path $repoRoot ".framework/cache"
+    $cacheRoot = Join-Path $globalHome "cache"
     Ensure-Dir -Path $cacheRoot
 
     $repoHash = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($RepoUrl))
@@ -148,4 +203,8 @@ if ($hasRepo) {
     Write-Host "  LatestTag: $([bool]$LatestTag)"
 }
 Write-Host "  Source: $coreSourcePath"
+Write-Host "  Global home: $globalHome"
+if (-not [string]::IsNullOrWhiteSpace($sourceConfigUsed)) {
+    Write-Host "  Source config: $sourceConfigUsed"
+}
 exit 0

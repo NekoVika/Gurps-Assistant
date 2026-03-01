@@ -1,0 +1,10 @@
+.app-global/
+_app_test/
+
+.framework/cache/
+.framework/backups/
+.framework/reports/
+.framework/install-state.json
+
+.env
+.env.*

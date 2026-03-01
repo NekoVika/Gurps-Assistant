@@ -1,6 +1,6 @@
-﻿{
-    "repo_url":  ".",
-    "default_ref":  "main",
-    "use_latest_tag":  false,
-    "updated_at_utc":  "2026-03-01T18:40:55.7687287Z"
+{
+  "repo_url": "https://github.com/NekoVika/Gurps-Assistant.git",
+  "default_ref": "main",
+  "use_latest_tag": true,
+  "updated_at_utc": "2026-03-01T00:00:00Z"
 }
