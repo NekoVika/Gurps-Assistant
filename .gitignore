@@ -17,3 +17,6 @@ dist/
 
 Legacy/
 !Legacy/README.md
+ 
+Campaign/**
+!Campaign/**/.keep

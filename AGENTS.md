@@ -44,6 +44,10 @@ If the user asks for a persona, load the corresponding file from `.agents/agents
 - Keep `state.md` updated after major workflow completions.
 - Log major lore/NPC changes in `Recent Events`.
 - Preserve existing campaign data; append rather than overwrite unless asked.
+-
+- If `state.md` or `00_System_Rules.md` is missing in `Campaign/`, create them from templates:
+-   `.planning/_templates/State_Template.md` → `Campaign/state.md`
+-   `.planning/_templates/00_System_Rules_Template.md` → `Campaign/00_System_Rules.md`
 
 ## Portability Rules
 - Treat `.agents/` and `.planning/` as assistant-agnostic project data.

@@ -678,8 +678,16 @@ def app_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
             ensure_dir(target)
         for d in ("01_World_Bible", "02_Characters", "03_Story"):
             ensure_dir(target / d)
-        for seed in ("00_System_Rules.md", "state.md"):
-            src, dst = repo_root / "Campaign" / seed, target / seed
+        templates_dir = repo_root / ".planning" / "_templates"
+        seeds = [
+            ("00_System_Rules_Template.md", "00_System_Rules.md"),
+            ("State_Template.md", "state.md"),
+        ]
+        for tmpl, dest in seeds:
+            dst = target / dest
+            cand1 = templates_dir / tmpl
+            cand2 = repo_root / "Campaign" / dest
+            src = cand1 if cand1.is_file() else cand2
             if src.is_file() and not dst.exists():
                 shutil.copy2(src, dst)
         sync_code = framework_sync(target.resolve(), repo_root, False, False)

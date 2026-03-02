@@ -10,6 +10,10 @@ Read:
 - `.planning/MAP.md`
 - `00_System_Rules.md`
 
+If `state.md` or `00_System_Rules.md` is missing in `Campaign/`, create them using templates:
+- `.planning/_templates/State_Template.md` → `Campaign/state.md`
+- `.planning/_templates/00_System_Rules_Template.md` → `Campaign/00_System_Rules.md`
+
 ## 3. Ignored Directories
 - The `Legacy/` directory contains unformatted, ongoing campaign notes. **ALL agents and workflows MUST completely ignore the `Legacy/` directory**, EXCEPT when explicitly executing the `.agents/workflows/catch_up.md` workflow.
 
