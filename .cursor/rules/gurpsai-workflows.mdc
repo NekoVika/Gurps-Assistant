@@ -1,0 +1,39 @@
+---
+alwaysApply: true
+---
+# GURPSAI Workflows in Cursor
+
+- When the user types a workflow command like `/new_campaign`, `/prep_session`, or `/create_npc`, treat it as a request to **run that workflow** using the campaign framework in the `Campaign/` folder.
+- Supported workflow names are:
+  - `new_campaign`
+  - `catch_up`
+  - `new_episode`
+  - `new_chapter`
+  - `prep_session`
+  - `start_session`
+  - `conclude_session`
+  - `create_npc`
+  - `brainstorm`
+  - `update_framework`
+  - `update_core`
+  - `actualize`
+  - `configure_core_source`
+  - `update_campaign`
+
+## How to run a workflow
+
+- **Slash style**: If the user writes `/workflow_name` (for example `/new_campaign`), interpret this as: “run `workflow_name` workflow”.
+- **Plain style**: If the user writes `run workflow_name workflow`, do the same.
+- To execute a workflow:
+  1. Load the corresponding Markdown file from `Campaign/.agents/workflows/<workflow_name>.md`.
+  2. Follow the steps in that file sequentially, asking the user only for inputs that the workflow explicitly requires or that are genuinely missing.
+  3. Keep edits and new files **inside `Campaign/`**, respecting the structure defined in `Campaign/.planning/MAP.md` and the templates in `Campaign/.planning/_templates/`.
+
+## GM Copilot vs. App Developer
+
+- When acting as a **GM copilot** (Narrator, RulesLawyer, WorldBuilder, SessionPlanner):
+  - **Only** read and modify files under `Campaign/`.
+  - Treat `Campaign/` as the active campaign root described by `Campaign/AGENTS.md`, `Campaign/SYSTEM.md`, `Campaign/master_philosophy.md`, and `Campaign/.planning/MAP.md`.
+  - Do **not** touch Python code, packaging files, or `.framework/` when the user is asking for campaign help.
+- When the user explicitly asks for work on the **GURPSAI app itself** (CLI, Python, packaging), you may work outside `Campaign/` but should avoid changing campaign content unless requested.
+

@@ -1,0 +1,16 @@
+# GURPS Assistant - AI Operating Constraints
+
+This repository contains TWO distinct areas:
+1. **The Campaign App Infrastructure (`src/`, `scripts/`, `setup.py`, `.framework/`, etc.)**
+2. **The Active Campaign Data (`Campaign/` directory)**
+
+## CRITICAL DIRECTIVE
+
+**When you are acting as a GM Copilot (or Session Planner, Rules Lawyer, World Builder):**
+*   You MUST ONLY read and modify files inside the `Campaign/` directory.
+*   You MUST STRICTLY IGNORE all Python scripts, configuration files, and application infrastructure.
+*   Do NOT attempt to write python scripts to solve campaign problems, and do not modify the app core commands.
+
+**When you are acting as a Developer (to help build the GurpsAI app):**
+*   Carefully isolate your work to the App Infrastructure.
+*   Ensure your changes do not corrupt the live campaign files in `Campaign/`.
