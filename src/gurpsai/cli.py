@@ -545,11 +545,37 @@ def update_core(
 
 
 def show_app_help() -> None:
-    print("Gurps Assistant Application Commands")
+    print("GURPS AI Assistant - CLI Interface")
+    print("Usage: gurpsai <command> [options]")
+    print("       python -m gurpsai <command> [options]")
     print("")
-    print("Usage:")
-    print("  gurpsai <command> [options]")
-    print("  (or: python -m gurpsai <command> [options])")
+    print("Global Commands:")
+    print("  init                Initialize global app state")
+    print("  install             Install gurpsai launcher to PATH and init home")
+    print("")
+    print("Campaign Management:")
+    print("  new -Name NAME      Create a new campaign directory from core templates")
+    print("  load -Name NAME     Set an existing campaign as the active one")
+    print("  register -Path PATH Register a campaign directory with the system")
+    print("  list                List all registered campaigns")
+    print("  current             Show the active campaign and its path")
+    print("")
+    print("Campaign Operations:")
+    print("  update              Sync framework files and actualize (on active/named)")
+    print("  actualize           Run health check and repair on campaign files")
+    print("  workflows           List all available workflows in the core")
+    print("  workflow -Name NAME Print help/status for a specific workflow")
+    print("")
+    print("Advanced Modes:")
+    print("  gm <subcommand>     Access GM/System tools (sync, update-core, etc.)")
+    print("  ai <subcommand>     Access AI provider configuration and testing")
+    print("")
+    print("Options:")
+    print("  -h, -Help           Show detailed help for any command")
+    print("  -Name <name>        Specify campaign name for commands")
+    print("  -Path <path>        Specify directory path for commands")
+    print("")
+    print("Run 'gurpsai <command> -Help' for details on specific commands.")
 
 
 def resolve_campaign_for_app(state: Dict[str, Any], name: Optional[str], path_opt: Optional[str]) -> pathlib.Path:
@@ -566,11 +592,48 @@ def resolve_campaign_for_app(state: Dict[str, Any], name: Optional[str], path_op
 
 
 def app_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
-    pos, opts = parse_options(args, ["Name", "Path", "Ref"], ["LatestTag", "DryRun", "Force"])
+    pos, opts = parse_options(args, ["Name", "Path", "Ref"], ["LatestTag", "DryRun", "Force", "H", "Help"])
     cmd = pos[0].lower() if pos else "help"
+    
+    # Handle 'gurpsai help <cmd>' or 'gurpsai <cmd> -Help'
+    show_help = opts.get("H") or opts.get("Help")
+    if cmd == "help":
+        if len(pos) > 1:
+            cmd = pos[1].lower()
+            show_help = True
+        else:
+            show_app_help()
+            return 0
+
     global_home = resolve_global_home(repo_root)
     state_path = global_home / "state.json"
     state = load_app_state(state_path, repo_root)
+
+    if show_help:
+        if cmd == "new":
+            print("Usage: gurpsai new -Name <name> [-Path <path>]")
+            print("Creates a new GURPS campaign folder using core templates.")
+            print("If -Path is omitted, it defaults to ~/Documents/GurpsCampaigns/<name>.")
+        elif cmd == "load":
+            print("Usage: gurpsai load [-Name <name>] [-Path <path>]")
+            print("Sets the active campaign. If -Path is used, also registers it.")
+        elif cmd == "register":
+            print("Usage: gurpsai register -Path <path> [-Name <name>]")
+            print("Registers an existing campaign directory with the global state.")
+        elif cmd == "update":
+            print("Usage: gurpsai update [-Name <name>] [-Ref <ref>] [-LatestTag] [-DryRun] [-Force]")
+            print("Phased update: 1. Syncs core framework files, 2. Runs actualize check.")
+        elif cmd == "actualize":
+            print("Usage: gurpsai actualize [-Name <name>]")
+            print("Runs a health check on the campaign structure, verifying required files and templates.")
+        elif cmd == "ai":
+            return ai_mode(["help"], repo_root)
+        elif cmd == "gm":
+            return gm_mode(["help"], repo_root)
+        else:
+            print(f"No specific help for '{cmd}'.")
+            show_app_help()
+        return 0
 
     if cmd == "help":
         show_app_help()
@@ -838,7 +901,20 @@ def ai_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
         write_json(cfg_path, cfg)
 
     if cmd == "help":
-        print("AI provider CLI for GURPSAI")
+        print("AI Provider Configuration & Tools")
+        print("Usage: gurpsai ai <subcommand> [options]")
+        print("")
+        print("Subcommands:")
+        print("  providers           List all providers, their status, and models")
+        print("  configure           Set provider options (Model, ApiKeyEnv, Endpoint)")
+        print("  set-default         Set the default AI provider")
+        print("  show-config         Display local path to ai-config.json")
+        print("")
+        print("Options (for configure):")
+        print("  -Provider <name>    chatgpt, gemini, or deepseek")
+        print("  -Model <model>      Override default model (e.g., gpt-4o)")
+        print("  -SetDefault         Set as default provider after configuring")
+        print("  -Disable            Disable this provider")
         return 0
     if cmd == "providers":
         print("AI Providers")
@@ -912,7 +988,22 @@ def gm_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
     sub = args[1] if len(args) > 1 else ""
     rest = list(args[2:]) if len(args) > 2 else []
     if cmd == "help":
-        print("GM command router")
+        print("GM & System Framework Tools")
+        print("Usage: gurpsai gm <subcommand> [options]")
+        print("")
+        print("Core Framework:")
+        print("  update-core         Fetch latest core files from repo to global cache")
+        print("  update              Update core AND then sync to active campaign")
+        print("  sync                Directly sync files from a local CorePath to campaign")
+        print("  actualize           Run health check on current campaign structure")
+        print("")
+        print("Configuration:")
+        print("  configure-source    Set the global Git repo URL for core updates")
+        print("  ai                  Access AI configuration sub-cli")
+        print("")
+        print("Automation:")
+        print("  workflows           List all available workflow files")
+        print("  workflow <name>     Check status of a specific workflow")
         return 0
     if cmd == "configure-source":
         return set_core_source_mode(([sub] if sub else []) + rest, repo_root)
