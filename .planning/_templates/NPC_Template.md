@@ -8,6 +8,7 @@
 *   **Appearance:** [1-2 sentences]
 *   **Personality & Quirks:** [Key traits, e.g., "Always coughs before lying", "Deeply superstitious."]
 *   **Motivation:** [What do they want?]
+*   **Speech Snippet:** [One or two lines the NPC might say]
 
 ## GURPS 4e Statistics
 **Point Total:** [XX]
@@ -32,6 +33,9 @@
 *   **[Weapon Name]:** Damage [X]; Reach [X]; Acc [X]; Notes [X]
 *   **[Armor]:** DR [X] (Location)
 
+## Tactics & Combat Style
+*   [Preferred range, common maneuvers, target priorities, retreat habits]
+
 | Hit Location (Roll) | DR | Notes |
 | :--- | :--- | :--- |
 | Eye (3-4) | 0 | |
@@ -48,3 +52,10 @@
 | Vitals (17-18) | 0 | |
 
 *   **[Equipment]:** (Weight, Cost)
+
+## PC Hooks
+*   [How this NPC interacts with specific PCs’ traits, goals, or disadvantages]
+
+## Assumptions & Open Questions
+*   **Assumptions:** [Choices taken when GM deferred; confirm later]
+*   **Open Questions:** [Items to clarify with GM before play]
