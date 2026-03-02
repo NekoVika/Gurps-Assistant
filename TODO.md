@@ -3,6 +3,7 @@
 This roadmap is divided into two sections: App Development and Core AI Development. Each milestone includes goals, scope, deliverables, acceptance criteria, and suggested KPIs to keep progress measurable.
 
 ## App Development
+Status: ON HOLD — defer CLI/app milestones to focus on AI GM work. Updates ship via git.
 
 ### M1 — Foundation Hardening
 - Goals: Implement .env loading; add logging with levels; expand CLI help.
