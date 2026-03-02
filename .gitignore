@@ -20,3 +20,4 @@ Legacy/
  
 Campaign/**
 !Campaign/**/.keep
+!Campaign/Legacy/README.md

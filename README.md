@@ -2,6 +2,8 @@
 
 This is a structured AI-assisted environment for running GURPS 4th Edition campaigns with reusable personas, workflows, and a consistent folder architecture.
 
+Status: Active development on develop focuses on AI GM personas/workflows and campaign framework. CLI/app work is paused on develop and continues on the feature/cli branch.
+
 ## Project Purpose
 The system is a co-pilot for GMs. It offloads rules crunching, tracking, and organization so the GM can focus on pacing, improvisation, and player-facing narrative.
 
@@ -14,6 +16,25 @@ The system is a co-pilot for GMs. It offloads rules crunching, tracking, and org
 For full design principles, see `master_philosophy.md`.
 
 ## Directory Structure
+
+Repo layout (develop):
+```text
+/GurpsAI/
+|-- .agents/                # Personas and workflows (authoritative source)
+|-- .planning/              # Folder map and templates (authoritative source)
+|-- .framework/             # Core metadata/state (non-sensitive)
+|-- scripts/
+|   `-- python/
+|       `-- gurpsai.py      # Legacy shim; depends on CLI (not functional on develop)
+|-- AGENTS.md               # Codex-compatible instructions
+|-- SYSTEM.md               # Assistant-neutral canonical instructions
+|-- master_philosophy.md    # Core principles
+|-- README.md               # This file
+|-- TODO.md                 # Roadmap; App section on hold
+|-- gemini.md               # Gemini compatibility shim
+|-- .gitignore
+`-- (no src/ CLI on develop)
+```
 ```text
 /Campaign_Root/
 |-- .agents/                 # Personas and workflows
@@ -22,7 +43,7 @@ For full design principles, see `master_philosophy.md`.
 |-- 01_World_Bible/          # Lore, factions, locations
 |-- 02_Characters/           # PCs, NPCs, bestiary
 |-- 03_Story/                # Episodes, chapters, encounters
-|-- Legacy/                  # (Ignored) Raw, messy notes for Catch-Up
+|-- Legacy/                  # Raw, messy notes; ignored by agents except Catch-Up
 |-- AGENTS.md                # Codex-compatible instructions
 |-- SYSTEM.md                # Assistant-neutral canonical instructions
 |-- gemini.md                # Gemini compatibility shim
@@ -31,6 +52,10 @@ For full design principles, see `master_philosophy.md`.
 ```
 
 Detailed taxonomy: `.planning/MAP.md`.
+
+Notes:
+- Legacy/ must live inside the campaign root path.
+- Agents and workflows ignore Legacy/ entirely, except when explicitly running the Catch-Up workflow.
 
 ## Personas
 - Narrator: Scene text, dialogue, atmosphere.
@@ -64,14 +89,9 @@ You can invoke personas directly:
 - `RulesLawyer, build a 100-point city guard`
 - `Narrator, describe this ruined shrine`
 
-Note for Codex:
-- Codex may not show a slash-command menu from `.agents/workflows`.
-- Use natural language workflow requests or run the terminal router:
-  `gurpsai gm help`
-- List available workflow commands:
-  `gurpsai gm workflows`
-- Print runnable prompt for one workflow:
-  `gurpsai gm workflow create_npc`
+Note:
+- Codex may not show a slash-command menu from `.agents/workflows`. Natural language invocation is always supported.
+- Terminal CLI commands are not available on develop. See “CLI Availability” below for the feature branch that contains the CLI.
 
 ## Getting Started
 1. Read `state.md`.
@@ -88,111 +108,21 @@ To verify this contract after framework changes:
 - `gurpsai actualize-campaign`
 - The report now validates required personas, templates, workflow files, workflow index coverage, and AGENTS invocation patterns.
 
-## Install As CLI App
-After cloning the core repo, install the Python package and global launcher:
+## CLI Availability
+The Python CLI is not present on develop to keep AI GM work front-and-center.
 
-1. From repo root run:
-   `python -m pip install -e .`
-2. (Optional global launcher/config bootstrap) run:
-   `gurpsai install`
-3. Open a new terminal.
-4. Run:
-   `gurpsai help`
+- Active CLI development lives on branch: `feature/cli`.
+- On that branch you can install and use the CLI:
+  - `python -m pip install -e .`
+  - `gurpsai help`
+- The legacy script `scripts/python/gurpsai.py` is a shim that depends on the CLI sources; it is non-functional on develop.
 
-Runtime note:
-- Core command logic runs from Python package entry (`src/gurpsai/cli.py`).
-- Legacy script path `scripts/python/gurpsai.py` remains as a compatibility shim.
-- Python is required; no legacy PowerShell fallback is used for framework operations.
+## Application Mode (Paused on develop)
+The global app/manager commands are paused on develop. When working on CLI/app features, switch to `feature/cli`.
 
-Global app home (default):
-- `%USERPROFILE%\.gurps-assistant\`
-- Override with `GURPSAI_HOME`
+## Terminal AI Providers
+Provider routing via CLI is part of the paused app surface on develop. Use personas/workflows within your IDE or chat. Provider adapter work continues as part of Core AI development; CLI surfaces will return when merged from `feature/cli`.
 
-## Application Mode (Global Campaign Manager)
-Instead of copy/paste for every new campaign, use the app command layer:
-
-1. Initialize global state:
-   `gurpsai init`
-2. Create a new campaign:
-   `gurpsai new -Name "MyCampaign"`
-3. Register existing campaign:
-   `gurpsai register -Name "Legacy" -Path "D:\RPG\LegacyCampaign"`
-4. Load campaign:
-   `gurpsai load -Name "MyCampaign"`
-5. Update active campaign from configured global source:
-   `gurpsai update -DryRun`
-   `gurpsai update`
-
-Global state file:
-- `%USERPROFILE%\.gurps-assistant\state.json` (fallback: `<core>/.app-global/state.json`)
-Global core source config:
-- `%USERPROFILE%\.gurps-assistant\core-source.json`
-Global core cache:
-- `%USERPROFILE%\.gurps-assistant\cache\`
-
-## Terminal AI Providers (No IDE Required)
-Use provider routing from terminal:
-
-1. Show providers:
-   `gurpsai ai providers`
-2. Configure ChatGPT/OpenAI:
-   `gurpsai ai configure -Provider chatgpt -ApiKeyEnv OPENAI_API_KEY -Model gpt-5 -SetDefault`
-3. Configure Gemini:
-   `gurpsai ai configure -Provider gemini -ApiKeyEnv GEMINI_API_KEY -Model gemini-2.5-pro`
-4. Configure DeepSeek:
-   `gurpsai ai configure -Provider deepseek -ApiKeyEnv DEEPSEEK_API_KEY -Model deepseek-chat`
-5. Note:
-   `chat` / `workflow` / `agent` runtime execution is not yet ported to Python-only mode.
-
-Global AI provider config:
-- `%USERPROFILE%\.gurps-assistant\ai-config.json`
-
-Security model:
-- API keys are not stored in project files.
-- Config stores only environment variable names (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`).
-- Optional `.env` support:
-  - Global file: `%USERPROFILE%\.gurps-assistant\.env`
-  - Local file (also loaded): `<current_working_directory>\.env`
-  - Existing process environment variables take priority.
-  - Local `.env` fills missing vars; it does not overwrite already-set values.
-
-## Global Repo + Releases Model
-For global operation across many campaigns:
-
-1. Maintain this core in a dedicated Git repo.
-2. Publish changes as tags/releases (for example `v1.2.0`).
-3. Default source is preconfigured in `%USERPROFILE%\.gurps-assistant\core-source.json`:
-   - Repo: `https://github.com/NekoVika/Gurps-Assistant.git`
-   - Ref: `main`
-   - Mode: latest tag
-4. On each update cycle, run the two-step update flow:
-   - Core only (dry run): `gurpsai update-core -DryRun`
-   - Core only (apply): `gurpsai update-core`
-   - Then actualize the selected campaign: `gurpsai actualize-campaign`
-5. Optional convenience shortcut for the full pipeline:
-   - `gurpsai update-campaign -DryRun`
-   - `gurpsai update-campaign`
-   - `gurpsai update-campaign -Force` (only if you explicitly want the core to win)
-7. Optional override for a custom source:
-   `gurpsai set-core-source -RepoUrl "<CORE_REPO_URL>" -DefaultRef "main" -UseLatestTag`
-
-This gives you two explicit phases:
-- `Update Core` = technical/framework sync
-- `Actualize` = campaign integrity check and remediation guidance
-
-## CLI Shortcuts
-- Python runtime entrypoint:
-  `python -m gurpsai`
-  `gurpsai`
-- Legacy compatibility script:
-  `scripts/python/gurpsai.py`
-- Unified command router:
-  `gurpsai gm`
-  - Workflow list: `gurpsai gm workflows`
-  - Workflow prompt: `gurpsai gm workflow <name>`
-- Configure default Git source once:
-  `gurpsai set-core-source`
-- Update only technical core:
-  `gurpsai update-core`
-- Full pipeline (core + actualization):
-  `gurpsai update-campaign`
+## Updates Distribution
+- End users pull updates via Git. No packaged app releases are provided on develop.
+- When CLI/app surfaces resume, instructions will be reintroduced from `feature/cli` and merged accordingly.
