@@ -22,6 +22,7 @@ For full design principles, see `master_philosophy.md`.
 |-- 01_World_Bible/          # Lore, factions, locations
 |-- 02_Characters/           # PCs, NPCs, bestiary
 |-- 03_Story/                # Episodes, chapters, encounters
+|-- Legacy/                  # (Ignored) Raw, messy notes for Catch-Up
 |-- AGENTS.md                # Codex-compatible instructions
 |-- SYSTEM.md                # Assistant-neutral canonical instructions
 |-- gemini.md                # Gemini compatibility shim

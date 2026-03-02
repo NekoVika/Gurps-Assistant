@@ -10,7 +10,10 @@ Read:
 - `.planning/MAP.md`
 - `00_System_Rules.md`
 
-## 3. State Management
+## 3. Ignored Directories
+- The `Legacy/` directory contains unformatted, ongoing campaign notes. **ALL agents and workflows MUST completely ignore the `Legacy/` directory**, EXCEPT when explicitly executing the `.agents/workflows/catch_up.md` workflow.
+
+## 4. State Management
 Update `state.md` when:
 - `new_campaign` completes (Current Campaign section)
 - `prep_session` completes (anticipated next scene)

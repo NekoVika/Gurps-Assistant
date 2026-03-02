@@ -11,7 +11,7 @@ To take an existing, ongoing GURPS campaignâ€”often contained in messy text
 ## Execution Steps
 
 1.  **Ingest Raw Materials:**
-    Ask the GM to paste or upload their existing campaign documents, lore dumps, NPC lists, or session summaries. Acknowledge receipt of the data.
+    Instruct the GM to place their messy, unstructured campaign notes, documents, lore dumps, or session summaries directly into the `Legacy/` folder at the root of the campaign. The workflow will read, ingest, and process all contents found strictly within this `Legacy/` folder. Acknowledge receipt of the data once it is placed there.
 
 2.  **Define System Rules (RulesLawyer Mode):**
     Ask the GM to quickly define the mechanical boundaries so we can construct `00_System_Rules.md`.
