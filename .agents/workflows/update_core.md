@@ -17,10 +17,10 @@ Update the technical framework from a global core repository release/tag/branch.
 
 2. **Preview Update:**
    Run one:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\update-core.ps1 -DryRun`
-   `powershell -ExecutionPolicy Bypass -File .\scripts\update-core.ps1 -RepoUrl "<REPO_URL>" -Ref "<REF>" -DryRun`
-   `powershell -ExecutionPolicy Bypass -File .\scripts\update-core.ps1 -RepoUrl "<REPO_URL>" -LatestTag -DryRun`
-   `powershell -ExecutionPolicy Bypass -File .\scripts\update-core.ps1 -CorePath "<CORE_PATH>" -DryRun`
+   `gurpsai update-core -DryRun`
+   `gurpsai update-core -RepoUrl "<REPO_URL>" -Ref "<REF>" -DryRun`
+   `gurpsai update-core -RepoUrl "<REPO_URL>" -LatestTag -DryRun`
+   `gurpsai update-core -CorePath "<CORE_PATH>" -DryRun`
 
 3. **Apply Update:**
    If approved, run the same command without `-DryRun`.

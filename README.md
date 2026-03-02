@@ -66,11 +66,11 @@ You can invoke personas directly:
 Note for Codex:
 - Codex may not show a slash-command menu from `.agents/workflows`.
 - Use natural language workflow requests or run the terminal router:
-  `powershell -ExecutionPolicy Bypass -File .\scripts\gm.ps1 help`
+  `gurpsai gm help`
 - List available workflow commands:
-  `powershell -ExecutionPolicy Bypass -File .\scripts\gm.ps1 workflows`
+  `gurpsai gm workflows`
 - Print runnable prompt for one workflow:
-  `powershell -ExecutionPolicy Bypass -File .\scripts\gm.ps1 workflow create_npc`
+  `gurpsai gm workflow create_npc`
 
 ## Getting Started
 1. Read `state.md`.
@@ -84,7 +84,7 @@ The original workflow remains a supported path:
 - Do not require global app state to use core personas/workflows/templates.
 
 To verify this contract after framework changes:
-- `powershell -ExecutionPolicy Bypass -File .\scripts\actualize-campaign.ps1`
+- `gurpsai actualize-campaign`
 - The report now validates required personas, templates, workflow files, workflow index coverage, and AGENTS invocation patterns.
 
 ## Install As CLI App
@@ -92,18 +92,16 @@ After cloning the core repo, install the Python package and global launcher:
 
 1. From repo root run:
    `python -m pip install -e .`
-2. (Optional, Windows launcher setup) run:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1`
+2. (Optional global launcher/config bootstrap) run:
+   `gurpsai install`
 3. Open a new terminal.
 4. Run:
    `gurpsai help`
 
 Runtime note:
-- PowerShell entry scripts in `scripts/*.ps1` now act as compatibility wrappers.
 - Core command logic runs from Python package entry (`src/gurpsai/cli.py`).
 - Legacy script path `scripts/python/gurpsai.py` remains as a compatibility shim.
-- If Python is unavailable, wrappers fall back to `scripts/legacy/*.ps1`.
-- Advanced AI runtime commands (`chat`, `workflow`, `agent`) currently delegate to legacy PowerShell for full parity.
+- Python is required; no legacy PowerShell fallback is used for framework operations.
 
 Global app home (default):
 - `%USERPROFILE%\.gurps-assistant\`
@@ -142,12 +140,8 @@ Use provider routing from terminal:
    `gurpsai ai configure -Provider gemini -ApiKeyEnv GEMINI_API_KEY -Model gemini-2.5-pro`
 4. Configure DeepSeek:
    `gurpsai ai configure -Provider deepseek -ApiKeyEnv DEEPSEEK_API_KEY -Model deepseek-chat`
-5. Ask direct question:
-   `gurpsai ai chat -Prompt "Generate three hooks for next chapter."`
-6. Execute workflow prompt through configured AI:
-   `gurpsai ai workflow -WorkflowName prep_session -CampaignPath "D:\RPG\MyCampaign" -Prompt "Focus on stealth and social scenes."`
-7. Run tool-loop agent (file-aware terminal mode):
-   `gurpsai ai agent -CampaignPath "D:\RPG\MyCampaign" -Task "Update state.md with latest session recap" -DryRun`
+5. Note:
+   `chat` / `workflow` / `agent` runtime execution is not yet ported to Python-only mode.
 
 Global AI provider config:
 - `%USERPROFILE%\.gurps-assistant\ai-config.json`
@@ -161,12 +155,6 @@ Security model:
   - Existing process environment variables take priority.
   - Local `.env` fills missing vars; it does not overwrite already-set values.
 
-Agent mode:
-- Command: `gurpsai ai agent -Task "<work>" [-CampaignPath <path>] [-Provider <name>] [-Model <name>] [-MaxSteps 20] [-DryRun] [-RequireApproval]`
-- Writes run artifacts to `.framework/agent-runs/<run-id>/`:
-  - `meta.json`, `events.jsonl`, `final.md`, optional `patch.diff`, `errors.log`
-- Tool set (v1): `get_state`, `list_files`, `read_file`, `search`, `write_file`, `apply_patch`
-
 ## Global Repo + Releases Model
 For global operation across many campaigns:
 
@@ -177,43 +165,31 @@ For global operation across many campaigns:
    - Ref: `main`
    - Mode: latest tag
 4. On each update cycle, dry run:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\update-campaign.ps1 -DryRun`
+   `gurpsai update-campaign -DryRun`
 5. Apply:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\update-campaign.ps1`
+   `gurpsai update-campaign`
 6. If conflicts must be overwritten:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\update-campaign.ps1 -Force`
+   `gurpsai update-campaign -Force`
 7. Optional override for a custom source:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\set-core-source.ps1 -RepoUrl "<CORE_REPO_URL>" -DefaultRef "main" -UseLatestTag`
+   `gurpsai set-core-source -RepoUrl "<CORE_REPO_URL>" -DefaultRef "main" -UseLatestTag`
 
 This gives you two explicit phases:
 - `Update Core` = technical/framework sync
 - `Actualize` = campaign integrity check and remediation guidance
 
-## Script Shortcuts
+## CLI Shortcuts
 - Python runtime entrypoint:
   `python -m gurpsai`
   `gurpsai`
 - Legacy compatibility script:
   `scripts/python/gurpsai.py`
-- Global app command layer:
-  `scripts/install.ps1`
-  `scripts/app.ps1`
-  Command after install: `gurpsai`
-- Installer-safe campaign runtime scripts:
-  `scripts/ai.ps1`
-  `scripts/update-core.ps1`
-  `scripts/update-campaign.ps1`
-  `scripts/framework-sync.ps1`
-  `scripts/actualize-campaign.ps1`
-  `scripts/set-core-source.ps1`
-  `scripts/gm.ps1`
-- Unified command router (recommended for GMs):
-  `scripts/gm.ps1`
-  - Workflow list: `scripts/gm.ps1 workflows`
-  - Workflow prompt: `scripts/gm.ps1 workflow <name>`
+- Unified command router:
+  `gurpsai gm`
+  - Workflow list: `gurpsai gm workflows`
+  - Workflow prompt: `gurpsai gm workflow <name>`
 - Configure default Git source once:
-  `scripts/set-core-source.ps1`
+  `gurpsai set-core-source`
 - Update only technical core:
-  `scripts/update-core.ps1`
+  `gurpsai update-core`
 - Full pipeline (core + actualization):
-  `scripts/update-campaign.ps1`
+  `gurpsai update-campaign`

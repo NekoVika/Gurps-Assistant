@@ -4,7 +4,6 @@
   "managed_roots": [
     ".agents",
     ".planning",
-    "scripts/legacy",
     "scripts/python",
     "src"
   ],
@@ -16,15 +15,7 @@
     "README.md",
     "setup.py",
     "pyproject.toml",
-    ".framework/framework.manifest.json",
-    "scripts/ai.ps1",
-    "scripts/ai-agent.ps1",
-    "scripts/actualize-campaign.ps1",
-    "scripts/framework-sync.ps1",
-    "scripts/gm.ps1",
-    "scripts/set-core-source.ps1",
-    "scripts/update-campaign.ps1",
-    "scripts/update-core.ps1"
+    ".framework/framework.manifest.json"
   ],
   "protected_paths": [
     "00_System_Rules.md",

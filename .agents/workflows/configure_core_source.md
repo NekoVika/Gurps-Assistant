@@ -18,7 +18,7 @@ Optionally override the preconfigured global core Git source for this campaign.
 
 2. **Save Configuration:**
    Run:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\set-core-source.ps1 -RepoUrl "<REPO_URL>" -DefaultRef "<REF>" [-UseLatestTag]`
+   `gurpsai set-core-source -RepoUrl "<REPO_URL>" -DefaultRef "<REF>" [-UseLatestTag]`
 
 3. **Confirm:**
    Report that `%USERPROFILE%\.gurps-assistant\core-source.json` (or `GURPSAI_HOME`) was created/updated.

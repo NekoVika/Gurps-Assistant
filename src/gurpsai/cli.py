@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """Python command layer for GURPSAI.
 
-This is a migration bridge:
-- core app/update/sync/install logic runs in Python
-- advanced AI commands still delegate to legacy PowerShell scripts
+Core app/update/sync/install logic runs in Python.
 """
 
 from __future__ import annotations
@@ -73,16 +71,6 @@ def run_git(args: Sequence[str], cwd: Optional[pathlib.Path] = None) -> str:
     if p.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed:\n{p.stderr}")
     return p.stdout
-
-
-def run_powershell(script: pathlib.Path, script_args: Sequence[str], cwd: Optional[pathlib.Path] = None) -> int:
-    ps = shutil.which("powershell") or shutil.which("pwsh") or "powershell"
-    p = subprocess.run(
-        [ps, "-ExecutionPolicy", "Bypass", "-File", str(script), *script_args],
-        cwd=str(cwd) if cwd else None,
-        check=False,
-    )
-    return p.returncode
 
 
 def can_write(path: pathlib.Path) -> bool:
@@ -190,6 +178,26 @@ def relpath_from(base: pathlib.Path, target: pathlib.Path) -> str:
     return str(target.resolve().relative_to(base.resolve()))
 
 
+def is_ignored_managed_path(rel: str) -> bool:
+    normalized = rel.replace("\\", "/")
+    parts = pathlib.PurePosixPath(normalized).parts
+    if not parts:
+        return True
+
+    if any(p in {"__pycache__", ".pytest_cache", ".mypy_cache"} for p in parts):
+        return True
+    if any(p.endswith(".egg-info") for p in parts):
+        return True
+
+    leaf = parts[-1].lower()
+    if leaf.endswith((".pyc", ".pyo", ".pyd")):
+        return True
+
+    if parts[0] in {"build", "dist"}:
+        return True
+    return False
+
+
 def framework_sync(repo_root: pathlib.Path, core_path: pathlib.Path, dry_run: bool, force: bool) -> int:
     manifest_path = core_path.resolve() / ".framework" / "framework.manifest.json"
     if not manifest_path.is_file():
@@ -220,11 +228,15 @@ def framework_sync(repo_root: pathlib.Path, core_path: pathlib.Path, dry_run: bo
             continue
         for fp in root_path.rglob("*"):
             if fp.is_file():
-                managed.append(relpath_from(core_path, fp))
+                rel = relpath_from(core_path, fp)
+                if not is_ignored_managed_path(rel):
+                    managed.append(rel)
     for file_name in manifest.get("managed_files", []):
         p = core_path / str(file_name)
         if p.is_file():
-            managed.append(str(file_name))
+            rel = str(file_name)
+            if not is_ignored_managed_path(rel):
+                managed.append(rel)
     managed = sorted(set(managed))
 
     created = updated = unchanged = skipped = conflicts = 0
@@ -454,7 +466,7 @@ def load_source_config(global_home: pathlib.Path, repo_root: pathlib.Path) -> Di
         return read_json(primary, {})
     if legacy.is_file():
         print(f"Using legacy campaign config from: {legacy}")
-        print("Tip: run scripts/set-core-source.ps1 once to move config to global home.")
+        print("Tip: run `gurpsai set-core-source -UseLatestTag` to move config to global home.")
         return read_json(legacy, {})
     print("Using built-in default core source.")
     return {"repo_url": DEFAULT_CORE_REPO, "default_ref": DEFAULT_CORE_REF, "use_latest_tag": True}
@@ -537,7 +549,7 @@ def show_app_help() -> None:
     print("")
     print("Usage:")
     print("  gurpsai <command> [options]")
-    print("  (or: scripts/app.ps1 <command> [options])")
+    print("  (or: python -m gurpsai <command> [options])")
 
 
 def resolve_campaign_for_app(state: Dict[str, Any], name: Optional[str], path_opt: Optional[str]) -> pathlib.Path:
@@ -670,9 +682,8 @@ def app_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
         return 0
     if cmd == "update":
         campaign = resolve_campaign_for_app(state, opts.get("Name"), opts.get("Path"))
-        script = campaign / "scripts" / "update-campaign.ps1"
-        if not script.is_file():
-            print("Campaign does not have update scripts yet. Bootstrapping from core...")
+        if not (campaign / ".agents").is_dir():
+            print("Campaign does not have framework files yet. Bootstrapping from core...")
             bcode = framework_sync(campaign, repo_root, False, False)
             if bcode != 0:
                 return bcode
@@ -685,16 +696,15 @@ def app_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
             pass_args += ["-Ref", str(opts["Ref"])]
         if opts.get("LatestTag"):
             pass_args.append("-LatestTag")
-        return run_powershell(campaign / "scripts" / "update-campaign.ps1", pass_args, cwd=campaign)
+        return update_campaign_mode(pass_args, campaign)
     if cmd == "actualize":
         campaign = resolve_campaign_for_app(state, opts.get("Name"), opts.get("Path"))
-        script = campaign / "scripts" / "actualize-campaign.ps1"
-        if not script.is_file():
-            print("Campaign does not have update scripts yet. Bootstrapping from core...")
+        if not (campaign / ".agents").is_dir():
+            print("Campaign does not have framework files yet. Bootstrapping from core...")
             bcode = framework_sync(campaign, repo_root, False, False)
             if bcode != 0:
                 return bcode
-        return run_powershell(script, [], cwd=campaign)
+        return actualize_campaign_mode([], campaign)
     raise RuntimeError(f"Unknown command: {cmd}")
 
 
@@ -891,10 +901,10 @@ def ai_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
         print(f"Config: {cfg_path}")
         return 0
 
-    legacy = repo_root / "scripts" / "legacy" / "ai.ps1"
-    if not legacy.is_file():
-        raise RuntimeError(f"Legacy AI script is missing: {legacy}")
-    return run_powershell(legacy, list(args), cwd=repo_root)
+    raise RuntimeError(
+        f"AI subcommand '{cmd}' is not yet implemented in Python runtime. "
+        "Supported commands: help, providers, show-config, configure, set-default."
+    )
 
 
 def gm_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
@@ -928,13 +938,13 @@ def gm_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
         return 0
     if cmd == "workflow":
         if not sub:
-            raise RuntimeError("Missing workflow name. Example: scripts/gm.ps1 workflow create_npc")
+            raise RuntimeError("Missing workflow name. Example: gurpsai gm workflow create_npc")
         if not (repo_root / ".agents" / "workflows" / f"{sub}.md").is_file():
-            raise RuntimeError(f"Unknown workflow '{sub}'. Run scripts/gm.ps1 workflows")
+            raise RuntimeError(f"Unknown workflow '{sub}'. Run gurpsai gm workflows")
         print(f"run {sub} workflow")
         return 0
     print(f"Unknown command: {cmd}")
-    print("Run scripts/gm.ps1 help")
+    print("Run gurpsai gm help")
     return 1
 
 
@@ -944,28 +954,24 @@ def install_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
     home = resolve_global_home(repo_root)
     bin_dir = home / "bin"
     ensure_dir(bin_dir)
-    launcher_ps1 = bin_dir / "gurpsai.ps1"
     launcher_cmd = bin_dir / "gurpsai.cmd"
-    esc_root = str(repo_root).replace("'", "''")
-    launcher_ps1.write_text(
-        "$ErrorActionPreference = \"Stop\"\n"
-        f"$coreRoot = '{esc_root}'\n"
-        "$app = Join-Path $coreRoot 'scripts/app.ps1'\n"
-        "$ai = Join-Path $coreRoot 'scripts/ai.ps1'\n"
-        "if ($args.Count -gt 0 -and $args[0].ToLowerInvariant() -eq 'ai') {\n"
-        "  $aiArgs = @()\n"
-        "  if ($args.Count -gt 1) { $aiArgs = $args[1..($args.Count - 1)] }\n"
-        "  & powershell -ExecutionPolicy Bypass -File $ai @aiArgs\n"
-        "  exit $LASTEXITCODE\n"
-        "}\n"
-        "& powershell -ExecutionPolicy Bypass -File $app @args\n"
-        "exit $LASTEXITCODE\n",
-        encoding="utf-8",
-    )
+    script_path = repo_root / "scripts" / "python" / "gurpsai.py"
     launcher_cmd.write_text(
         "@echo off\n"
         "setlocal\n"
-        "powershell -NoProfile -ExecutionPolicy Bypass -File \"%~dp0gurpsai.ps1\" %*\n"
+        f"set \"_SCRIPT={script_path}\"\n"
+        "set \"_PY=%GURPSAI_PYTHON%\"\n"
+        "if not \"%_PY%\"==\"\" goto run\n"
+        "where python >nul 2>nul\n"
+        "if %ERRORLEVEL%==0 set \"_PY=python\"\n"
+        "if not \"%_PY%\"==\"\" goto run\n"
+        "where python3 >nul 2>nul\n"
+        "if %ERRORLEVEL%==0 set \"_PY=python3\"\n"
+        "if not \"%_PY%\"==\"\" goto run\n"
+        "echo Python is required but was not found. Set GURPSAI_PYTHON or install python/python3 in PATH.\n"
+        "exit /b 1\n"
+        ":run\n"
+        "\"%_PY%\" \"%_SCRIPT%\" %*\n"
         "exit /b %ERRORLEVEL%\n",
         encoding="ascii",
     )
@@ -980,18 +986,25 @@ def install_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
 
     path_changed = False
     if not skip_path and os.name == "nt":
-        current_user_path = os.environ.get("Path", "")
-        entries = [e.strip().rstrip("\\/").lower() for e in current_user_path.split(";") if e.strip()]
-        if str(bin_dir).rstrip("\\/").lower() not in entries:
-            cmd = [
-                "powershell",
-                "-NoProfile",
-                "-Command",
-                f"$p=[Environment]::GetEnvironmentVariable('Path','User'); if([string]::IsNullOrWhiteSpace($p)){{$p=''}}; [Environment]::SetEnvironmentVariable('Path', ($p.TrimEnd(';') + ';{bin_dir}'), 'User')",
-            ]
-            updated = run_command(cmd)
-            if updated.returncode == 0:
-                path_changed = True
+        try:
+            import winreg
+
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_READ | winreg.KEY_SET_VALUE) as key:
+                try:
+                    current_user_path, reg_type = winreg.QueryValueEx(key, "Path")
+                except FileNotFoundError:
+                    current_user_path, reg_type = "", winreg.REG_EXPAND_SZ
+                entries = [e.strip().rstrip("\\/").lower() for e in str(current_user_path).split(";") if e.strip()]
+                if str(bin_dir).rstrip("\\/").lower() not in entries:
+                    updated_path = str(current_user_path).strip().strip(";")
+                    if updated_path:
+                        updated_path = f"{updated_path};{bin_dir}"
+                    else:
+                        updated_path = str(bin_dir)
+                    winreg.SetValueEx(key, "Path", 0, reg_type, updated_path)
+                    path_changed = True
+        except OSError:
+            path_changed = False
 
     print("")
     print("GURPSAI install complete.")

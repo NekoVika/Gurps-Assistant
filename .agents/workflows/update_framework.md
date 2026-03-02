@@ -15,15 +15,15 @@ To safely apply updates from the shared GURPSAI core into the current campaign f
 
 2. **Preview Changes (Dry Run):**
    Run:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\framework-sync.ps1 -CorePath "<CORE_PATH>" -DryRun`
+   `gurpsai framework-sync -CorePath "<CORE_PATH>" -DryRun`
 
 3. **Apply Update:**
    If the GM approves the dry-run output, run:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\framework-sync.ps1 -CorePath "<CORE_PATH>"`
+   `gurpsai framework-sync -CorePath "<CORE_PATH>"`
 
 4. **Conflict Handling:**
    If conflicts are reported, show the list and ask whether to keep local edits or force overwrite:
-   `powershell -ExecutionPolicy Bypass -File .\scripts\framework-sync.ps1 -CorePath "<CORE_PATH>" -Force`
+   `gurpsai framework-sync -CorePath "<CORE_PATH>" -Force`
    Explain that forced overwrite creates backups in `.framework/backups/<timestamp>/`.
 
 5. **Report Result:**

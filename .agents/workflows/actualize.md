@@ -11,7 +11,7 @@ Validate that campaign structure, active state, and legacy copy-mode compatibili
 ## Execution Steps
 
 1. **Run Actualization Check:**
-   `powershell -ExecutionPolicy Bypass -File .\scripts\actualize-campaign.ps1`
+   `gurpsai actualize-campaign`
 
 2. **Review Findings:**
    Open the generated report in `.framework/reports/actualize-<timestamp>.md`.
