@@ -29,6 +29,9 @@ To generate the necessary scaffolding for a major new story arc within an active
     - Populate the remaining sections by reorganizing or quoting only the GM’s content. Do not invent or compress. If a section is not covered by the GM’s brief, leave the placeholder and a short TODO note rather than fabricating details.
     - When the GM provides extensive material, include it in full; prefer structure and headings over shortening.
 
+5.  **Create Locations (If Requested):**
+    If the GM requests new Locations during episode planning, create them under `01_World_Bible/Locations/` using `.planning/_templates/Location_Template.md`. Do not place locations inside Episode or Chapter folders. Add links to these locations in the Episode overview (and later in relevant Chapters).
+
 5.  **Update Campaign Overview:**
     Modify the `03_Story/Campaign_Overview.md` file to add a link to the new Episode in the Episode Index.
 

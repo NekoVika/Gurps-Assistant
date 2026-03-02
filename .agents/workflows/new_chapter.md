@@ -26,11 +26,14 @@ To create a localized structural block for the next phase of the adventure withi
     Create a new folder (e.g., `Chapter_01`) inside the *Target* `Episode_XX` folder.
     Inside the new Chapter folder, create two sub-folders: `Encounters/` and `Battle_Maps/`.
 
-5.  **Update Episode Overview:**
+5.  **Create Locations (If Requested):**
+    If the GM asks to create a Location during this flow, create a new file under `01_World_Bible/Locations/` using `.planning/_templates/Location_Template.md`. Do not place locations inside Chapter folders. After creation, add a reference link to the Location under “Locations & Map Needs” in this Chapter and, if helpful, in the Episode overview.
+
+6.  **Update Episode Overview:**
     Add a link to this new Chapter in the *Target* `Episode_Overview.md` file and include the GM’s chapter summary preserving all details. Lightly edit grammar/formatting and optionally polish wording without changing meaning or omitting content. If the GM has not provided wording, leave a placeholder and a TODO rather than inventing text.
 
-6.  **Update Global State (Conditional):**
+7.  **Update Global State (Conditional):**
     If the GM is creating a chapter for the *current active* Episode, modify `state.md` to set the "Current Chapter" to this newly created chapter. If they are prepping ahead, leave `state.md` alone.
 
-7.  **Provide Encounter Template:**
+8.  **Provide Encounter Template:**
     Create a blank encounter file (e.g., `01_Encounter.md`) inside the `Encounters/` folder using the `.planning/_templates/Encounter_Template.md`, or ask if they want to run `/prep_session` to automatically fill it out.

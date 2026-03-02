@@ -18,7 +18,7 @@
 *   **Clocks/Timers:** [Deadlines, pursuit clocks, dwindling resources]
 
 ## 4. Locations & Map Needs
-*   **[Location]:** [Notes]; **Map Needed:** [Yes/No] (Battle_Maps/)
+*   **[Location]:** [Notes]; **Link:** `../../01_World_Bible/Locations/[Location_File].md`; **Map Needed:** [Yes/No] (Battle_Maps/)
 
 ## 5. Notable NPCs (Role/Link/Motivation)
 *   [Role]: [Link to NPC] – [Motivation/Notes]

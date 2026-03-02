@@ -28,7 +28,7 @@ Update `state.md` when:
 - Persona call: load the matching file in `.agents/agents/` before answering in that mode.
 
 ## 5. Location Consolidation
-When creating/updating locations, prefer single parent files with hierarchical headers over many fragmented files.
+When creating/updating locations, prefer single parent files with hierarchical headers over many fragmented files. Always place new Location files under `01_World_Bible/Locations/` using the Location template, and link to them from Episodes/Chapters as needed. Do not create Location files inside Episode or Chapter folders.
 
 ## 6. Character-Centric Design
 During planning or narrative generation, consult `02_Characters/PCs/` and incorporate PC traits, strengths, and weaknesses.
