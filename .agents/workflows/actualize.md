@@ -6,7 +6,7 @@ description: Actualize Campaign After Core Update
 **Command Trigger:** `/actualize`
 
 ## Objective
-Validate that campaign structure, active state, and legacy copy-mode compatibility remain consistent after a core/framework update.
+Validate that campaign structure, active state, and legacy copy-mode compatibility remain consistent after a core/framework update. This is **Step 2** of the update flow, after `/update_core` has finished.
 
 ## Execution Steps
 

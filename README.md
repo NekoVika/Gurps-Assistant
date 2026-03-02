@@ -1,4 +1,4 @@
-﻿# GURPS GM Assistant System
+# GURPS GM Assistant System
 
 This is a structured AI-assisted environment for running GURPS 4th Edition campaigns with reusable personas, workflows, and a consistent folder architecture.
 
@@ -165,12 +165,14 @@ For global operation across many campaigns:
    - Repo: `https://github.com/NekoVika/Gurps-Assistant.git`
    - Ref: `main`
    - Mode: latest tag
-4. On each update cycle, dry run:
-   `gurpsai update-campaign -DryRun`
-5. Apply:
-   `gurpsai update-campaign`
-6. If conflicts must be overwritten:
-   `gurpsai update-campaign -Force`
+4. On each update cycle, run the two-step update flow:
+   - Core only (dry run): `gurpsai update-core -DryRun`
+   - Core only (apply): `gurpsai update-core`
+   - Then actualize the selected campaign: `gurpsai actualize-campaign`
+5. Optional convenience shortcut for the full pipeline:
+   - `gurpsai update-campaign -DryRun`
+   - `gurpsai update-campaign`
+   - `gurpsai update-campaign -Force` (only if you explicitly want the core to win)
 7. Optional override for a custom source:
    `gurpsai set-core-source -RepoUrl "<CORE_REPO_URL>" -DefaultRef "main" -UseLatestTag`
 

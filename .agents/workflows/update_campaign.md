@@ -6,7 +6,7 @@ description: One-Command Core Update + Actualize
 **Command Trigger:** `/update_campaign`
 
 ## Objective
-Run the full update pipeline in one command: sync technical core, then validate campaign consistency.
+Provide a **convenience wrapper** that runs the full update pipeline in one command: first sync the technical core, then validate campaign consistency. This is a shortcut for manually running `/update_core` followed by `/actualize`.
 
 ## Execution Steps
 

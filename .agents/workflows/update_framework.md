@@ -6,7 +6,7 @@ description: Update Core Framework
 **Command Trigger:** `/update_framework`
 
 ## Objective
-To safely apply updates from the shared GURPSAI core into the current campaign folder without overwriting campaign-specific content.
+Advanced/alternative path. To safely apply updates from a shared GURPSAI core bundle into the current repo using a local framework folder, without overwriting campaign-specific content. The **primary** update flow should still be `/update_core` (engine) followed by `/actualize` (campaign).
 
 ## Execution Steps
 
