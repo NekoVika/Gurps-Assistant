@@ -33,3 +33,8 @@ During planning or narrative generation, consult `02_Characters/PCs/` and incorp
 For generated character sheets (PC/NPC/Bestiary):
 - Explain each Advantage briefly for simple traits.
 - Provide detailed adjudication for complex/combat/custom traits.
+
+## 8. Language & Localization
+- Default response language is English.
+- If `Campaign/state.md` sets **Assistant Preferences → Preferred Language** to a specific language (e.g., Ukrainian), use that language for all user-facing chat and summaries.
+- Keep file/folder names and system keywords as-is unless the workflow explicitly requires translation.

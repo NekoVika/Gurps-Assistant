@@ -49,3 +49,8 @@ If the user asks for a persona, load the corresponding file from `.agents/agents
 - Treat `.agents/` and `.planning/` as assistant-agnostic project data.
 - Do not rely on IDE-only features or hidden slash-command runtimes.
 - If a workflow references a missing path, reconcile it with `.planning/MAP.md`.
+
+## Language Preference
+- Default to English for responses.
+- If `Campaign/state.md` sets **Assistant Preferences → Preferred Language**, generate all user-facing chat in that language (e.g., Ukrainian).
+- Do not rename files or paths for localization unless a workflow explicitly instructs to do so.

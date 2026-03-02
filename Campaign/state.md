@@ -9,6 +9,9 @@
 *   **Current Chapter:** [None]
 *   **Last Completed Workflow:** System Setup
 
+## Assistant Preferences
+*   **Preferred Language:** English
+
 ## Active Plotlines / Quests
 *   [None]
 
