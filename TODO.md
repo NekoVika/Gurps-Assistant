@@ -93,6 +93,49 @@ This roadmap is divided into two sections: App Development and Core AI Developme
 - Acceptance: Logs safe by default; opt-in recorded; size caps enforced.
 - KPIs: Zero secret leaks; actionable performance insights↑.
 
+### M7 — Rules Index & Citation Validator
+- Goals: Establish a minimal, offline citation discipline to back answers with verifiable book/page references and enforce Allowed Books from `00_System_Rules.md`.
+- Scope:
+  - Define metadata-only schemas (no rules text) for a book code map and a rules index.
+  - Specify accepted citation grammar (short/long forms, ranges) and normalization rules.
+  - Define PASS/WARN/FAIL outcomes, hit-rate thresholds, and campaign policy integration.
+  - Outline non-invasive CLI surfaces for compile/validate (future), without implementation.
+- Deliverables:
+  - Book code map schema: code, title, aliases, page_min, page_max.
+  - Rules index schema: id, name, book code, pages (list or ranges), aliases, tags.
+  - Compiled runtime shape: a single `index.json` bundling books, rules, and `page_to_rules` for fast lookup.
+  - Regex set for citation extraction and normalization rules (dash/space variants, alias resolution).
+  - Validator decision matrix and report format (machine-readable JSON + human summary).
+- Acceptance:
+  - No copyrighted rules text is stored; only names and page numbers.
+  - Allowed books are honored via parsing of `Allowed Books / Supplements` in `00_System_Rules.md` or explicit override.
+  - Status policy: FAIL on invalid/disallowed books or out-of-range pages; WARN when citations exist but known-page hit-rate < 0.6; PASS otherwise with ≥1 citation in mechanics-heavy outputs.
+  - Citation grammar accepted: `B369`, `B 369`, `B368-370`, `Basic Set p. 369`, `Martial Arts pp. 100–101`.
+  - Thresholds and behavior are deterministic and offline-only.
+\- KPIs: Valid-citation rate↑; known-page hit-rate↑; disallowed/invalid citations↓; average time to add a new section entry↓.
+  
+Spec (concise):
+- Files (conventions, not implemented):
+  - `.framework/rules/books.yml` → metadata for book codes and alias mapping.
+  - `.framework/rules/index.yml` → named sections with page coverage.
+  - `.framework/rules/index.json` → compiled bundle for runtime checks.
+- Citation parsing:
+  - Short: `\b([A-Z]{1,3})\s?(\d{1,4})(?:\s*[-–]\s*(\d{1,4}))?\b`
+  - Long: `\b([A-Za-z][A-Za-z ]{2,40})\s+p+\.?\s*(\d{1,4})(?:\s*[-–]\s*(\d{1,4}))?`
+  - Normalize: map aliases/title→code; expand ranges; enforce page_min/max per book.
+- Decision policy:
+  - Metrics: total, valid, known, unknown, invalid_books, disallowed_books, out_of_range, rule_hit_rate.
+  - PASS: citations present, no hard errors, hit-rate ≥ 0.6.
+  - WARN: citations present, no hard errors, hit-rate < 0.6 or zero citations for non-mechanical outputs.
+  - FAIL: any invalid/disallowed/out-of-range or zero citations when mechanics heuristics trigger.
+- Mechanics heuristics (toggleable): if text contains maneuver names or numeric rules patterns (e.g., “-2 per…”, “1d per…”, “Fright Check”), require ≥1 valid citation.
+- Mode strictness:
+  - `start_session`: strict (require at least one known page).
+  - `prep/lore`: lenient (citations optional; WARN only if mechanics-heavy).
+- Future CLI (outline only):
+  - `gurpsai rules compile` → compile YAML to JSON; validate schema and ranges.
+  - `gurpsai ai validate-citations --from00|--allow B,MA --text <file>|--stdin` → produce PASS/WARN/FAIL and JSON findings.
+
 ## Timeline & Dependencies
 
 - Phase 1 (Weeks 1–2): App M1, Core M1, Core M2, App M2.

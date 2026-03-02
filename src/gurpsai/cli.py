@@ -344,32 +344,46 @@ def actualize_campaign(root: pathlib.Path) -> int:
     def issue(sev: str, code: str, msg: str) -> None:
         issues.append((sev, code, msg))
 
-    required_files = [
-        "AGENTS.md",
-        "SYSTEM.md",
-        "README.md",
+    # Campaign-level requirements (authoritative campaign data only)
+    campaign_required_files = [
         "state.md",
-        "master_philosophy.md",
-        ".agents/workflows/INDEX.md",
-        ".planning/MAP.md",
+        "00_System_Rules.md",
     ]
-    required_dirs = [
-        ".agents/agents",
-        ".agents/workflows",
-        ".planning/_templates",
+    campaign_required_dirs = [
         "01_World_Bible",
         "02_Characters",
         "03_Story",
     ]
-    required_personas = ["Narrator", "RulesLawyer", "WorldBuilder", "SessionPlanner"]
-    required_templates = [
+
+    for rel in campaign_required_files:
+        if not (root / rel).is_file():
+            issue("ERROR", "MISSING_FILE", f"Missing required file: {rel}")
+    for rel in campaign_required_dirs:
+        if not (root / rel).is_dir():
+            issue("ERROR", "MISSING_DIR", f"Missing required directory: {rel}")
+
+    # Core-level requirements (single source of truth for personas/workflows/templates)
+    core = resolve_repo_root()
+    core_required_files = [
+        "AGENTS.md",
+        "SYSTEM.md",
+        ".agents/workflows/INDEX.md",
+        ".planning/MAP.md",
+    ]
+    core_required_dirs = [
+        ".agents/agents",
+        ".agents/workflows",
+        ".planning/_templates",
+    ]
+    core_required_personas = ["Narrator", "RulesLawyer", "WorldBuilder", "SessionPlanner"]
+    core_required_templates = [
         "Encounter_Template.md",
         "Location_Template.md",
         "NPC_Template.md",
         "Episode_Overview_Template.md",
         "Chapter_Template.md",
     ]
-    required_workflows = [
+    core_required_workflows = [
         "new_campaign",
         "catch_up",
         "new_episode",
@@ -386,23 +400,23 @@ def actualize_campaign(root: pathlib.Path) -> int:
         "update_campaign",
     ]
 
-    for rel in required_files:
-        if not (root / rel).is_file():
-            issue("ERROR", "MISSING_FILE", f"Missing required file: {rel}")
-    for rel in required_dirs:
-        if not (root / rel).is_dir():
-            issue("ERROR", "MISSING_DIR", f"Missing required directory: {rel}")
-    for name in required_personas:
-        if not (root / ".agents" / "agents" / f"{name}.md").is_file():
-            issue("ERROR", "MISSING_PERSONA", f"Missing required persona file: .agents/agents/{name}.md")
-    for name in required_templates:
-        if not (root / ".planning" / "_templates" / name).is_file():
-            issue("ERROR", "MISSING_TEMPLATE", f"Missing required template: .planning/_templates/{name}")
-    for name in required_workflows:
-        if not (root / ".agents" / "workflows" / f"{name}.md").is_file():
-            issue("ERROR", "MISSING_WORKFLOW", f"Missing required workflow file: .agents/workflows/{name}.md")
+    for rel in core_required_files:
+        if not (core / rel).is_file():
+            issue("ERROR", "CORE_MISSING_FILE", f"Missing core file: {rel}")
+    for rel in core_required_dirs:
+        if not (core / rel).is_dir():
+            issue("ERROR", "CORE_MISSING_DIR", f"Missing core directory: {rel}")
+    for name in core_required_personas:
+        if not (core / ".agents" / "agents" / f"{name}.md").is_file():
+            issue("ERROR", "CORE_MISSING_PERSONA", f"Missing core persona: .agents/agents/{name}.md")
+    for name in core_required_templates:
+        if not (core / ".planning" / "_templates" / name).is_file():
+            issue("ERROR", "CORE_MISSING_TEMPLATE", f"Missing core template: .planning/_templates/{name}")
+    for name in core_required_workflows:
+        if not (core / ".agents" / "workflows" / f"{name}.md").is_file():
+            issue("ERROR", "CORE_MISSING_WORKFLOW", f"Missing core workflow: .agents/workflows/{name}.md")
 
-    agents = root / "AGENTS.md"
+    agents = core / "AGENTS.md"
     if agents.is_file():
         txt = agents.read_text(encoding="utf-8")
         if not re.search(r"(?is)Slash command style.*?/new_campaign", txt):
@@ -410,22 +424,24 @@ def actualize_campaign(root: pathlib.Path) -> int:
         if not re.search(r"(?is)Natural language style.*?run new_campaign workflow", txt):
             issue("ERROR", "AGENTS_TRIGGER_NL_MISSING", "AGENTS.md must document natural-language workflow invocation (for example run new_campaign workflow).")
 
-    index = root / ".agents" / "workflows" / "INDEX.md"
+    index = core / ".agents" / "workflows" / "INDEX.md"
     if index.is_file():
         lines = index.read_text(encoding="utf-8").splitlines()
         joined = "\n".join(lines)
         for line in lines:
             m = re.search(r"->\s*`?(.+?\.md)`?$", line)
-            if m and not (root / m.group(1).strip()).is_file():
+            if m and not (core / m.group(1).strip()).is_file():
                 issue("ERROR", "WORKFLOW_INDEX_BROKEN", f"Workflow index points to missing file: {m.group(1).strip()}")
-        for wf in required_workflows:
+        for wf in core_required_workflows:
             link = f".agents/workflows/{wf}.md"
             if link not in joined:
                 issue("ERROR", "WORKFLOW_INDEX_MISSING_ENTRY", f"Workflow index is missing mapping for: {wf}")
 
+    # With core-sourced framework, install-state in campaign is optional
     if not (root / ".framework" / "install-state.json").is_file():
-        issue("WARN", "NO_INSTALL_STATE", "No .framework/install-state.json found. Run an update/sync first.")
-    if "new_campaign" not in workflow_names(root):
+        issue("WARN", "NO_INSTALL_STATE", "No .framework/install-state.json found in campaign.")
+    # Validate workflow discovery against core
+    if "new_campaign" not in workflow_names(core):
         issue("WARN", "GM_WORKFLOWS_OUTPUT_UNEXPECTED", "Workflow list did not include new_campaign.")
 
     reports = root / ".framework" / "reports"
@@ -745,11 +761,6 @@ def app_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
         return 0
     if cmd == "update":
         campaign = resolve_campaign_for_app(state, opts.get("Name"), opts.get("Path"))
-        if not (campaign / ".agents").is_dir():
-            print("Campaign does not have framework files yet. Bootstrapping from core...")
-            bcode = framework_sync(campaign, repo_root, False, False)
-            if bcode != 0:
-                return bcode
         pass_args: List[str] = []
         if opts.get("DryRun"):
             pass_args.append("-DryRun")
@@ -762,11 +773,6 @@ def app_mode(args: Sequence[str], repo_root: pathlib.Path) -> int:
         return update_campaign_mode(pass_args, campaign)
     if cmd == "actualize":
         campaign = resolve_campaign_for_app(state, opts.get("Name"), opts.get("Path"))
-        if not (campaign / ".agents").is_dir():
-            print("Campaign does not have framework files yet. Bootstrapping from core...")
-            bcode = framework_sync(campaign, repo_root, False, False)
-            if bcode != 0:
-                return bcode
         return actualize_campaign_mode([], campaign)
     raise RuntimeError(f"Unknown command: {cmd}")
 

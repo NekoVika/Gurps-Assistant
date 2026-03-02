@@ -1,22 +1,8 @@
 {
   "framework_name": "GURPSAI-Core",
   "framework_version": "1.2.0",
-  "managed_roots": [
-    ".agents",
-    ".planning",
-    "scripts/python",
-    "src"
-  ],
-  "managed_files": [
-    "AGENTS.md",
-    "SYSTEM.md",
-    "gemini.md",
-    "master_philosophy.md",
-    "README.md",
-    "setup.py",
-    "pyproject.toml",
-    ".framework/framework.manifest.json"
-  ],
+  "managed_roots": [],
+  "managed_files": [],
   "protected_paths": [
     "00_System_Rules.md",
     "state.md",
