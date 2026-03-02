@@ -1,57 +1,48 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
-    [string]$RepoUrl,
-    [string]$CorePath,
-    [string]$Ref,
-    [switch]$LatestTag,
-    [switch]$DryRun,
-    [switch]$Force,
-    [switch]$SkipActualize
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$Args
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$repoRoot = (Get-Location).Path
-$updateCoreScript = Join-Path $repoRoot "scripts/update-core.ps1"
-$actualizeScript = Join-Path $repoRoot "scripts/actualize-campaign.ps1"
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$pythonScript = Join-Path $scriptRoot "python/gurpsai.py"
+$legacyScript = Join-Path $scriptRoot "legacy/update-campaign.ps1"
 
-if (-not (Test-Path -LiteralPath $updateCoreScript -PathType Leaf)) {
-    throw "Missing script: $updateCoreScript"
-}
-if (-not (Test-Path -LiteralPath $actualizeScript -PathType Leaf)) {
-    throw "Missing script: $actualizeScript"
-}
+function Find-PythonExecutable {
+    $candidates = @()
+    if (-not [string]::IsNullOrWhiteSpace($env:GURPSAI_PYTHON)) {
+        $candidates += $env:GURPSAI_PYTHON
+    }
+    $candidates += @("python", "python3")
 
-$coreArgs = @("-ExecutionPolicy", "Bypass", "-File", $updateCoreScript)
-if (-not [string]::IsNullOrWhiteSpace($RepoUrl)) { $coreArgs += @("-RepoUrl", $RepoUrl) }
-if (-not [string]::IsNullOrWhiteSpace($CorePath)) { $coreArgs += @("-CorePath", $CorePath) }
-if (-not [string]::IsNullOrWhiteSpace($Ref)) { $coreArgs += @("-Ref", $Ref) }
-if ($LatestTag) { $coreArgs += "-LatestTag" }
-if ($DryRun) { $coreArgs += "-DryRun" }
-if ($Force) { $coreArgs += "-Force" }
-
-Write-Host "Phase 1/2: Update Core"
-& powershell @coreArgs
-$updateExit = $LASTEXITCODE
-if ($updateExit -ne 0) {
-    exit $updateExit
-}
-
-if ($DryRun) {
-    Write-Host ""
-    Write-Host "Dry run completed. Actualization was skipped."
-    exit 0
+    foreach ($candidate in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($candidate)) {
+            continue
+        }
+        try {
+            & $candidate --version *> $null
+            if ($LASTEXITCODE -eq 0) {
+                return $candidate
+            }
+        } catch {
+            continue
+        }
+    }
+    return $null
 }
 
-if ($SkipActualize) {
-    Write-Host ""
-    Write-Host "Core updated. Actualization skipped by request."
-    exit 0
+$pythonExe = Find-PythonExecutable
+if ($pythonExe -and (Test-Path -LiteralPath $pythonScript -PathType Leaf)) {
+    & $pythonExe $pythonScript "update-campaign" @Args
+    exit $LASTEXITCODE
 }
 
-Write-Host ""
-Write-Host "Phase 2/2: Actualize Campaign"
-& powershell -ExecutionPolicy Bypass -File $actualizeScript
-$actualizeExit = $LASTEXITCODE
-exit $actualizeExit
+if (-not (Test-Path -LiteralPath $legacyScript -PathType Leaf)) {
+    throw "Missing legacy script fallback: $legacyScript"
+}
+
+& powershell -ExecutionPolicy Bypass -File $legacyScript @Args
+exit $LASTEXITCODE

@@ -88,13 +88,22 @@ To verify this contract after framework changes:
 - The report now validates required personas, templates, workflow files, workflow index coverage, and AGENTS invocation patterns.
 
 ## Install As CLI App
-After cloning the core repo, install the global launcher once:
+After cloning the core repo, install the Python package and global launcher:
 
 1. From repo root run:
+   `python -m pip install -e .`
+2. (Optional, Windows launcher setup) run:
    `powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1`
-2. Open a new terminal.
-3. Run:
+3. Open a new terminal.
+4. Run:
    `gurpsai help`
+
+Runtime note:
+- PowerShell entry scripts in `scripts/*.ps1` now act as compatibility wrappers.
+- Core command logic runs from Python package entry (`src/gurpsai/cli.py`).
+- Legacy script path `scripts/python/gurpsai.py` remains as a compatibility shim.
+- If Python is unavailable, wrappers fall back to `scripts/legacy/*.ps1`.
+- Advanced AI runtime commands (`chat`, `workflow`, `agent`) currently delegate to legacy PowerShell for full parity.
 
 Global app home (default):
 - `%USERPROFILE%\.gurps-assistant\`
@@ -181,6 +190,11 @@ This gives you two explicit phases:
 - `Actualize` = campaign integrity check and remediation guidance
 
 ## Script Shortcuts
+- Python runtime entrypoint:
+  `python -m gurpsai`
+  `gurpsai`
+- Legacy compatibility script:
+  `scripts/python/gurpsai.py`
 - Global app command layer:
   `scripts/install.ps1`
   `scripts/app.ps1`

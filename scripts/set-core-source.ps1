@@ -1,62 +1,48 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
-    [string]$RepoUrl = "https://github.com/NekoVika/Gurps-Assistant.git",
-    [string]$DefaultRef = "main",
-    [switch]$UseLatestTag
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$Args
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function Ensure-Dir {
-    param([string]$Path)
-    if (-not (Test-Path -LiteralPath $Path)) {
-        New-Item -ItemType Directory -Path $Path -Force | Out-Null
-    }
-}
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$pythonScript = Join-Path $scriptRoot "python/gurpsai.py"
+$legacyScript = Join-Path $scriptRoot "legacy/set-core-source.ps1"
 
-function Resolve-GlobalHome {
-    param([string]$RepoRoot)
-    $candidates = New-Object System.Collections.Generic.List[string]
-    if (-not [string]::IsNullOrWhiteSpace($env:GURPSAI_HOME)) {
-        $candidates.Add($env:GURPSAI_HOME)
+function Find-PythonExecutable {
+    $candidates = @()
+    if (-not [string]::IsNullOrWhiteSpace($env:GURPSAI_PYTHON)) {
+        $candidates += $env:GURPSAI_PYTHON
     }
-    if (-not [string]::IsNullOrWhiteSpace($env:USERPROFILE)) {
-        $candidates.Add((Join-Path $env:USERPROFILE ".gurps-assistant"))
-    }
-    $candidates.Add((Join-Path $RepoRoot ".app-global"))
+    $candidates += @("python", "python3")
 
     foreach ($candidate in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($candidate)) {
+            continue
+        }
         try {
-            Ensure-Dir -Path $candidate
-            $probe = Join-Path $candidate (".write-test-{0}-{1}" -f $PID, [Guid]::NewGuid().ToString("N"))
-            Set-Content -LiteralPath $probe -Value "ok" -Encoding ASCII
-            Remove-Item -LiteralPath $probe -Force
-            return $candidate
+            & $candidate --version *> $null
+            if ($LASTEXITCODE -eq 0) {
+                return $candidate
+            }
         } catch {
             continue
         }
     }
-    throw "Could not find a writable global home. Set GURPSAI_HOME to a writable directory."
+    return $null
 }
 
-$repoRoot = (Get-Location).Path
-$globalHome = Resolve-GlobalHome -RepoRoot $repoRoot
-$configPath = Join-Path $globalHome "core-source.json"
-
-$config = [ordered]@{
-    repo_url = $RepoUrl
-    default_ref = $DefaultRef
-    use_latest_tag = [bool]$UseLatestTag
-    updated_at_utc = [DateTime]::UtcNow.ToString("o")
+$pythonExe = Find-PythonExecutable
+if ($pythonExe -and (Test-Path -LiteralPath $pythonScript -PathType Leaf)) {
+    & $pythonExe $pythonScript "set-core-source" @Args
+    exit $LASTEXITCODE
 }
 
-$config | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $configPath -Encoding UTF8
+if (-not (Test-Path -LiteralPath $legacyScript -PathType Leaf)) {
+    throw "Missing legacy script fallback: $legacyScript"
+}
 
-Write-Host "Core source configuration saved:"
-Write-Host "  File: $configPath"
-Write-Host "  Global home: $globalHome"
-Write-Host "  Repo: $RepoUrl"
-Write-Host "  Default ref: $DefaultRef"
-Write-Host "  Use latest tag: $([bool]$UseLatestTag)"
-exit 0
+& powershell -ExecutionPolicy Bypass -File $legacyScript @Args
+exit $LASTEXITCODE

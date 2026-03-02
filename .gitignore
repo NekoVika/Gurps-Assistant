@@ -8,3 +8,9 @@ _app_test/
 
 .env
 .env.*
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
