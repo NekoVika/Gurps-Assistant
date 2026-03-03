@@ -26,18 +26,25 @@ To create a localized structural block for the next phase of the adventure withi
     Inside the new Chapter folder, create two sub-folders: `Encounters/` and `Battle_Maps/`.
     **Create `Chapter_Overview.md`** inside the Chapter folder using `.planning/_templates/Chapter_Template.md`. Preserve the GM's provided text **in full** within the "GM Summary" section.
 
-5.  **Smart Extraction (Auto-Generation):**
-    Analyze the GM's provided pitch/file for the following and execute accordingly:
-    - **Locations**: If specific locations (e.g., "The Ballroom," "The Command Cabin") are described with unique details, create them in `01_World_Bible/Locations/` using the template and link them in the Chapter Overview.
-    - **NPCs**: If new NPCs are introduced, create their files in `02_Characters/Main_Cast/` or `02_Characters/NPCs/` and link them.
-    - **Multiple Encounters**: If the pitch describes distinct scenes or choice branches (e.g., "Path A vs Path B," "Searching the Room," "The Final Encounter"), create **separate** encounter files in `Encounters/` for each, rather than one generic file.
-    - If any of these are ambiguous, create the Chapter Overview first, then list the "Identified Components" and ask the GM for permission to generate them.
+5.  **Smart Extraction (Identify & Confirm):**
+    Analyze the GM's provided pitch/file to identify potential sub-components. **Do not create files yet.** Instead, present a list to the GM:
+    - **Identified Locations**: (e.g., "The Ballroom," "The Command Cabin")
+    - **Identified NPCs**: (e.g., "The Commander," "Mary")
+    - **Proposed Encounters**: (e.g., "The Ballroom Choice," "Investigating the Cabin," "The Descent")
+    Ask: "I've identified these components from your notes. Should I generate them now using their respective templates, or would you like to refine the list?"
 
-6.  **Update Episode Overview:**
+6.  **Smart Generation (Procedural):**
+    Once confirmed, generate **each file individually** following these strict template rules:
+    - **Locations**: Create in `01_World_Bible/Locations/` using `.planning/_templates/Location_Template.md`.
+    - **NPCs**: Generate a full GURPS stat block and narrative profile in `02_Characters/Main_Cast/` using `.planning/_templates/NPC_Template.md` (referencing the logic of `/create_npc`).
+    - **Multiple Encounters**: Create separate files in `Encounters/` using `.planning/_templates/Encounter_Template.md`.
+    **CRITICAL:** Every generated file MUST contain all sections of its template. Do not truncate sections or summarize unless the GM explicitly asks for a "Quick/Empty" version.
+
+7.  **Update Episode Overview:**
     Add a link to the new `Chapter_Overview.md` in the *Target* `Episode_Overview.md` file. Include the GM’s chapter summary (truncated for the Episode level if very long, but linking to the full text in the Chapter file).
 
 7.  **Update Global State (Conditional):**
-    If the GM is creating a chapter for the *current active* Episode, modify `state.md` to set the "Current Chapter" to this newly created chapter.
+    If the GM is creating a chapter for the *current active* Episode, ask: "Would you like to set this as the active Current Chapter in `state.md` now?" If they agree, update the "Current Chapter" field in `state.md`. If they decline or are prepping ahead, leave `state.md` alone.
 
 8.  **Finalise Session Prep:**
     Ask the GM if they want to run `/prep_session` to further detail the newly created encounters.

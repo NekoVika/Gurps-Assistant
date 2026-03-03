@@ -18,10 +18,12 @@ If `state.md` or `00_System_Rules.md` is missing in `Campaign/`, create them usi
 - The `Legacy/` directory contains unformatted, ongoing campaign notes. **ALL agents and workflows MUST completely ignore the `Legacy/` directory**, EXCEPT when explicitly executing the `.agents/workflows/catch_up.md` workflow.
 
 ## 4. State Management
-Update `state.md` when:
-- `new_campaign` completes (Current Campaign section)
-- `prep_session` completes (anticipated next scene)
-- Major lore or NPC additions are created (Recent Events)
+Update `state.md` *only* when:
+- **Campaign Init**: `new_campaign` completes.
+- **Session Progress**: `prep_session`, `start_session`, or `conclude_session` explicitly advance the clock or scene.
+- **Explicit Signal**: The GM provides information that clearly shifts the state (e.g., "This NPC died," "We are moving to the next chapter").
+- **GM Confirmation**: A workflow asks "Make this the current active [X]?" and the GM agrees.
+**CRITICAL:** Pure content creation (creating a new Chapter, Episode, Location, or NPC) does **NOT** automatically update the "Current" state in `state.md`. Content can be prepped in advance without disrupting the active play state.
 
 ## 4. Workflows and Personas
 - Workflow call: load the matching file in `.agents/workflows/` and execute it step-by-step.
@@ -50,3 +52,4 @@ After completing any task, workflow, or file creation, you MUST perform a self-a
 3.  **Link Integrity**: Verify that all internal markdown links are **relative** and point to files that actually exist.
 4.  **State Sync**: Confirm that `state.md` has been updated if the task involved narrative progress, new characters, or significant world changes.
 5.  **Detail Preservation**: Double-check that no narrative or mechanical details from the user's prompt were lost during summarization or conversion.
+6.  **Batch Processing Integrity**: If a workflow extracts multiple components at once (e.g., smart extraction of NPCs/Locations), each component MUST still follow its full template. Speed or quantity never overrides the requirement for structural fidelity and mechanical detail.

@@ -1,6 +1,7 @@
 ---
 description: New Campaign Initialization
 ---
+
 # Workflow: New Campaign Initialization
 
 **Command Trigger:** `/new_campaign`
@@ -34,4 +35,4 @@ To assist the GM in standing up a brand new GURPS campaign by defining the core 
     Transition to the **WorldBuilder** persona. Ask the GM for a single starting location (a town, a spaceship, a dungeon entrance). Generate a brief Markdown file for that location and save it in `01_World_Bible/`. Include 2-3 notable NPCs and 1-2 plot hooks.
 
 6.  **Ready confirmation:**
-    Inform the GM that the campaign structure is initialized (rules, folders, and state). They can now begin creating PCs or run the `prep_session` workflow.
+    Inform the GM that the campaign structure is initialized (rules, folders, and state). They can now begin creating PCs or run the `new_episode` workflow.
