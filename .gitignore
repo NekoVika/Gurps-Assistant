@@ -6,6 +6,8 @@ _app_test/
 .framework/reports/
 .framework/install-state.json
 
+.rule-books/
+
 .env
 .env.*
 

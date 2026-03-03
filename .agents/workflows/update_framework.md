@@ -8,6 +8,12 @@ description: Update Core Framework
 ## Objective
 Advanced/alternative path. To safely apply updates from a shared GURPSAI core bundle into the current repo using a local framework folder, without overwriting campaign-specific content. The **primary** update flow should still be `/update_core` (engine) followed by `/actualize` (campaign).
 
+> Note (Develop Branch):
+> This workflow requires the CLI on the `feature/cli` branch. On `develop` without the CLI:
+> - Manually copy/sync framework files from the source core folder into `.framework/` (use Git or your file manager).
+> - Review changes carefully and retain campaign-specific content.
+> - Then run `/actualize` (manual mode note) to validate campaign structure.
+
 ## Execution Steps
 
 1. **Collect Source Path:**

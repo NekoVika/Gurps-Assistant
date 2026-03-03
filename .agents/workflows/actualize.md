@@ -8,6 +8,13 @@ description: Actualize Campaign After Core Update
 ## Objective
 Validate that campaign structure, active state, and legacy copy-mode compatibility remain consistent after a core/framework update. This is **Step 2** of the update flow, after `/update_core` has finished.
 
+> Note (Develop Branch):
+> The automated check requires the CLI on `feature/cli`. On `develop` without the CLI, perform a manual review:
+> - Confirm required folders/files per `.planning/MAP.md` exist.
+> - Verify `AGENTS.md` invocation patterns and personas/templates/workflows presence.
+> - Skim recent changes under `.framework/` for inconsistencies.
+> - Fix blocking issues before proceeding with GM workflows.
+
 ## Execution Steps
 
 1. **Run Actualization Check:**

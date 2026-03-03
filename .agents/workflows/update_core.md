@@ -8,6 +8,12 @@ description: Update Core From Global Repo
 ## Objective
 Update the technical framework from a global core repository release/tag/branch.
 
+> Note (Develop Branch):
+> This workflow requires the CLI available on the `feature/cli` branch. When operating on `develop` without the CLI:
+> - Perform core updates via Git (pull or merge the core changes).
+> - Review `.framework/` diffs.
+> - Then follow the validation steps in `/actualize` (manual mode note) to verify campaign consistency.
+
 ## Execution Steps
 
 1. **Run Core Update (Dry Run):**

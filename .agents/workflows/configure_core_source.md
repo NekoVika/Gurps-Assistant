@@ -8,6 +8,9 @@ description: Configure Global Core Source
 ## Objective
 Optionally override the preconfigured global core Git source for this campaign.
 
+> Note (Develop Branch):
+> Requires the CLI on `feature/cli`. On `develop` without the CLI, record core source details in your project notes and proceed with manual update steps when needed.
+
 ## Execution Steps
 
 1. **Collect Inputs:**
