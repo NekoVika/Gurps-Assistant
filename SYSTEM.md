@@ -42,3 +42,11 @@ For generated character sheets (PC/NPC/Bestiary):
 - Default response language is English.
 - If `Campaign/state.md` sets **Assistant Preferences → Preferred Language** to a specific language (e.g., Ukrainian), use that language for all user-facing chat and summaries.
 - Keep file/folder names and system keywords as-is unless the workflow explicitly requires translation.
+
+## 9. Project Integrity & Post-Task Verification
+After completing any task, workflow, or file creation, you MUST perform a self-audit to ensure project health:
+1.  **File Taxonomy**: Cross-reference `.planning/MAP.md`. Verify that new files are in the correct directories (e.g., Locations belong in `01_World_Bible/`, NOT in Chapter folders).
+2.  **Template Adherence**: Ensure all new files strictly follow their respective templates in `.planning/_templates/`.
+3.  **Link Integrity**: Verify that all internal markdown links are **relative** and point to files that actually exist.
+4.  **State Sync**: Confirm that `state.md` has been updated if the task involved narrative progress, new characters, or significant world changes.
+5.  **Detail Preservation**: Double-check that no narrative or mechanical details from the user's prompt were lost during summarization or conversion.
