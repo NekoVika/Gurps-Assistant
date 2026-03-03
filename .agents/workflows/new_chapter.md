@@ -19,21 +19,25 @@ To create a localized structural block for the next phase of the adventure withi
 3.  **Smart Interview & Gap Fill:**
     Analyze the provided info and ask only for missing pieces, offering multiple-choice scaffolds and a “skip/you decide” option as a last resort.
     - Extract where possible: Scene purpose, Starting situation, Primary location(s), Primary conflict/goal, Stakes, Notable NPCs present (role/link/motivation), Expected beats/encounters, Clues or props, Map needs, Time pressure, PC hooks, and Success/Fail outcomes.
-    - For gaps, ask concise follow-ups. If the GM defers, propose 2–3 sensible options aligned with `state.md` and `00_System_Rules.md` and request approval. If still deferred, proceed with best-practice defaults and mark as Assumptions with a TODO in the Chapter and Episode overview.
-    - Keep questioning minimal; stop once essentials are captured.
+    - If the GM provides a file (e.g., `@[Text.md]`) or a long narrative pitch, **do not ask for details already present in the text**.
 
-4.  **Generate Directories:**
+4.  **Generate Structure:**
     Create a new folder (e.g., `Chapter_01`) inside the *Target* `Episode_XX` folder.
     Inside the new Chapter folder, create two sub-folders: `Encounters/` and `Battle_Maps/`.
+    **Create `Chapter_Overview.md`** inside the Chapter folder using `.planning/_templates/Chapter_Template.md`. Preserve the GM's provided text **in full** within the "GM Summary" section.
 
-5.  **Create Locations (If Requested):**
-    If the GM asks to create a Location during this flow, create a new file under `01_World_Bible/Locations/` using `.planning/_templates/Location_Template.md`. Do not place locations inside Chapter folders. After creation, add a reference link to the Location under “Locations & Map Needs” in this Chapter and, if helpful, in the Episode overview.
+5.  **Smart Extraction (Auto-Generation):**
+    Analyze the GM's provided pitch/file for the following and execute accordingly:
+    - **Locations**: If specific locations (e.g., "The Ballroom," "The Command Cabin") are described with unique details, create them in `01_World_Bible/Locations/` using the template and link them in the Chapter Overview.
+    - **NPCs**: If new NPCs are introduced, create their files in `02_Characters/Main_Cast/` or `02_Characters/NPCs/` and link them.
+    - **Multiple Encounters**: If the pitch describes distinct scenes or choice branches (e.g., "Path A vs Path B," "Searching the Room," "The Final Encounter"), create **separate** encounter files in `Encounters/` for each, rather than one generic file.
+    - If any of these are ambiguous, create the Chapter Overview first, then list the "Identified Components" and ask the GM for permission to generate them.
 
 6.  **Update Episode Overview:**
-    Add a link to this new Chapter in the *Target* `Episode_Overview.md` file and include the GM’s chapter summary preserving all details. Lightly edit grammar/formatting and optionally polish wording without changing meaning or omitting content. If the GM has not provided wording, leave a placeholder and a TODO rather than inventing text.
+    Add a link to the new `Chapter_Overview.md` in the *Target* `Episode_Overview.md` file. Include the GM’s chapter summary (truncated for the Episode level if very long, but linking to the full text in the Chapter file).
 
 7.  **Update Global State (Conditional):**
-    If the GM is creating a chapter for the *current active* Episode, modify `state.md` to set the "Current Chapter" to this newly created chapter. If they are prepping ahead, leave `state.md` alone.
+    If the GM is creating a chapter for the *current active* Episode, modify `state.md` to set the "Current Chapter" to this newly created chapter.
 
-8.  **Provide Encounter Template:**
-    Create a blank encounter file (e.g., `01_Encounter.md`) inside the `Encounters/` folder using the `.planning/_templates/Encounter_Template.md`, or ask if they want to run `/prep_session` to automatically fill it out.
+8.  **Finalise Session Prep:**
+    Ask the GM if they want to run `/prep_session` to further detail the newly created encounters.

@@ -3,8 +3,8 @@
 **Status:** [Planned / Active / Completed]
 **Primary Location(s):** [Where does this mostly take place?]
 
-## GM Summary (preserved; lightly edited for clarity)
-[Insert the GM’s chapter summary here, preserving all details. Lightly edit grammar/formatting and optionally polish wording for readability without changing meaning or omitting content.]
+## GM Summary (preserved; lightly edited for formatting)
+[Insert the GM’s chapter summary here. **IMPORTANT:** If the GM provided a file or a long, detailed pitch, preserve its content **IN FULL** here. Lightly edit only for formatting/headers to match the document style. Do NOT omit mechanical details, narrative nuances, or atmospheric descriptions.]
 
 ## 1. Starting Situation & Purpose
 [Where the PCs are starting and what this chapter aims to accomplish.]
