@@ -46,5 +46,10 @@ To create a localized structural block for the next phase of the adventure withi
 7.  **Update Global State (Conditional):**
     If the GM is creating a chapter for the *current active* Episode, ask: "Would you like to set this as the active Current Chapter in `state.md` now?" If they agree, update the "Current Chapter" field in `state.md`. If they decline or are prepping ahead, leave `state.md` alone.
 
-8.  **Finalise Session Prep:**
-    Ask the GM if they want to run `/prep_session` to further detail the newly created encounters.
+8.  **Divergent Updates (Refinement):**
+    - If the GM provides an update to an existing chapter that constitutes a "Variant" or "Path B" rather than a replacement, **do not overwrite** Section 6.
+    - Instead, add a new section `## 6B. Variant [Name]` and preserve the new narrative pitch in full within the `## GM Summary` section (appending it with a "Variant" header if necessary).
+    - **CRITICAL:** Do not summarize the new narrative. If it's a branching path, keep both versions accessible to the GM.
+
+9.  **Finalise Session Prep:**
+    Ask the GM if they want to run `/prep_session` to further detail the newly created or updated encounters.

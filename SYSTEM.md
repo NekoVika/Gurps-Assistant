@@ -45,11 +45,17 @@ For generated character sheets (PC/NPC/Bestiary):
 - If `Campaign/state.md` sets **Assistant Preferences → Preferred Language** to a specific language (e.g., Ukrainian), use that language for all user-facing chat and summaries.
 - Keep file/folder names and system keywords as-is unless the workflow explicitly requires translation.
 
-## 9. Project Integrity & Post-Task Verification
+### 9. Preservation Prime Directive (Anti-Summarization)
+1. **Never summarize** GM-provided narrative or mechanical details.
+2. Treat the `## GM Summary` section as a **Raw Archive**. Preserve text in its original language (e.g., Ukrainian) to retain nuance.
+3. If the GM provides an update that conflicts with or branches from existing text, do not replace the old text. Instead, create a **Variant** section (e.g., `## 6B. Variant B`) to maintain the divergent narrative paths.
+4. If a GM pitch involves massive detail, extraction should complement the summary, not replace it.
+
+### 10. Project Integrity & Post-Task Verification
 After completing any task, workflow, or file creation, you MUST perform a self-audit to ensure project health:
 1.  **File Taxonomy**: Cross-reference `.planning/MAP.md`. Verify that new files are in the correct directories (e.g., Locations belong in `01_World_Bible/`, NOT in Chapter folders).
 2.  **Template Adherence**: Ensure all new files strictly follow their respective templates in `.planning/_templates/`.
 3.  **Link Integrity**: Verify that all internal markdown links are **relative** and point to files that actually exist.
 4.  **State Sync**: Confirm that `state.md` has been updated if the task involved narrative progress, new characters, or significant world changes.
-5.  **Detail Preservation**: Double-check that no narrative or mechanical details from the user's prompt were lost during summarization or conversion.
+5.  **Detail Preservation**: Double-check that no narrative or mechanical details from the user's prompt were lost during summarization or conversion. Verify that the GM's raw text is preserved In Full.
 6.  **Batch Processing Integrity**: If a workflow extracts multiple components at once (e.g., smart extraction of NPCs/Locations), each component MUST still follow its full template. Speed or quantity never overrides the requirement for structural fidelity and mechanical detail.

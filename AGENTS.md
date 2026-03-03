@@ -54,7 +54,8 @@ If the user asks for a persona, load the corresponding file from `.agents/agents
 - Do not rely on IDE-only features or hidden slash-command runtimes.
 - If a workflow references a missing path, reconcile it with `.planning/MAP.md`.
 
-## Language Preference
+## Language Preference & Retention
 - Default to English for responses.
 - If `Campaign/state.md` sets **Assistant Preferences → Preferred Language**, generate all user-facing chat in that language (e.g., Ukrainian).
+- **Multilingual Detail Retention**: Never translate or summarize GM-provided narrative notes (e.g., in `## GM Summary` or descriptive beats). Keep them in the original language provided to preserve nuance, tone, and specific GM terminology.
 - Do not rename files or paths for localization unless a workflow explicitly instructs to do so.

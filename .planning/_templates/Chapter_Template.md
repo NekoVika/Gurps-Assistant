@@ -23,9 +23,15 @@
 ## 5. Notable NPCs (Role/Link/Motivation)
 *   [Role]: [Link to NPC] – [Motivation/Notes]
 
-## 6. Beat Outline
+## 6. Beat Outline (Main Path)
 *   Beat 1: [Description]
 *   Beat 2: [Description]
+
+## 6B. Variant / Branching Path (Optional)
+*   **Trigger/Condition:** [What leads to this variant?]
+*   **Alternate Beats:**
+    *   Beat B1: [Description]
+    *   Beat B2: [Description]
 
 ## 7. Encounters & Scenes
 *(Links to the individual encounter files stored in Encounters/)*
