@@ -20,6 +20,8 @@ dist/
 Legacy/
 !Legacy/README.md
  
-Campaign/**
+# Campaign directory management
+Campaign/**/*
+!Campaign/**/
 !Campaign/**/.keep
-!Campaign/Legacy/README.md
+!Campaign/README.md

@@ -5,8 +5,7 @@ This document is the source of truth for the folder architecture. Always refer t
 ## Directory Structure
 
 ```text
-/Campaign_Root/              # Your Active Campaign Folder
-│
+/Project_Root/              # This project root
 ├── .agents/                 # Core AI behaviors and automations
 │   ├── agents/              # Persona files (e.g., SessionPlanner.md, WorldBuilder.md)
 │   └── workflows/           # Slash commands & procedures (e.g., prep_session.md)
@@ -20,25 +19,26 @@ This document is the source of truth for the folder architecture. Always refer t
 │       ├── Episode_Overview_Template.md
 │       └── Chapter_Template.md
 │
-├── 00_System_Rules.md       # System rules, Tech Level, Mana Level
-├── 01_World_Bible/          # Lore, Factions, and Locations
-│   ├── Factions/
-│   └── Locations/
-├── 02_Characters/           # Mechanics and descriptions
-│   ├── PCs/                 # Player Characters
-│   ├── Main_Cast/           # Story-crucial NPCs
-│   └── Bestiary/            # Monsters, animals, generic mooks, guards
-├── 03_Story/                # Timeline, Sessions, and Encounters
-│   ├── Campaign_Overview.md # Global timeline and arcs
-│   └── Episode_01/          # A major narrative arc
-│       ├── Episode_Overview.md
-│       └── Chapter_01/      # A subdivision of an Episode
-│           ├── Encounters/  # Specific scenes derived from Encounter_Template.md
-│           └── Battle_Maps/
+├── Campaign/                # Your Active Campaign Folder
+│   ├── 00_System_Rules.md   # System rules, Tech Level, Mana Level
+│   ├── 01_World_Bible/      # Lore, Factions, and Locations
+│   │   ├── Factions/
+│   │   └── Locations/
+│   ├── 02_Characters/       # Mechanics and descriptions
+│   │   ├── PCs/             # Player Characters
+│   │   ├── Main_Cast/       # Story-crucial NPCs
+│   │   └── Bestiary/        # Monsters, animals, generic mooks, guards
+│   ├── 03_Story/            # Timeline, Sessions, and Encounters
+│   │   ├── Campaign_Overview.md # Global timeline and arcs
+│   │   └── Episode_01/      # A major narrative arc
+│   │       ├── Episode_Overview.md
+│   │       └── Chapter_01/  # A subdivision of an Episode
+│   │           ├── Encounters/  # Specific scenes derived from Encounter_Template.md
+│   │           └── Battle_Maps/
+│   └── state.md             # Current game state and what's happening NOW
 │
 ├── gemini.md                # System instructions for AI parsing
-├── master_philosophy.md     # AI Core principles and GURPS rules adherence
-└── state.md                 # Current game state and what's happening NOW
+└── master_philosophy.md     # AI Core principles and GURPS rules adherence
 ```
 
 ## Template Enforcement
