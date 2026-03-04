@@ -4,11 +4,11 @@ This file is the Codex entrypoint for workspace behavior. It mirrors the existin
 
 ## Startup Read Order
 On task start, read these files in order:
-1. `state.md`
+1. `Campaign/state.md`
 2. `SYSTEM.md`
 3. `master_philosophy.md`
 4. `.planning/MAP.md`
-5. `00_System_Rules.md`
+5. `Campaign/00_System_Rules.md`
 
 ## Workflow Invocation (Universal)
 Workflows can be triggered by either style:

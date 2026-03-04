@@ -9,6 +9,7 @@ Read:
 - `master_philosophy.md`
 - `.planning/MAP.md`
 - `00_System_Rules.md`
+- `01_World_Bible/World_Dossier.md`
 
 If `state.md` or `00_System_Rules.md` is missing in `Campaign/`, create them using templates:
 - `.planning/_templates/State_Template.md` → `Campaign/state.md`
@@ -24,6 +25,11 @@ Update `state.md` *only* when:
 - **Explicit Signal**: The GM provides information that clearly shifts the state (e.g., "This NPC died," "We are moving to the next chapter").
 - **GM Confirmation**: A workflow asks "Make this the current active [X]?" and the GM agrees.
 **CRITICAL:** Pure content creation (creating a new Chapter, Episode, Location, or NPC) does **NOT** automatically update the "Current" state in `state.md`. Content can be prepped in advance without disrupting the active play state.
+
+## 4A. World Dossier Management (Setting Canon)
+- When you need to confirm/check anything about the world’s logic/lore/cosmology/tone, consult `01_World_Bible/World_Dossier.md` first (then drill down into specific `01_World_Bible/Locations/` and `01_World_Bible/Factions/` files as needed).
+- When the GM provides a change that affects setting-wide logic/lore (e.g., new travel rules, new immutable premise, retcon of major truths, new recurring cosmic rule, major faction reframe), update `01_World_Bible/World_Dossier.md` and add an entry to its **Change Log**.
+- Do **not** update `state.md` for purely setting-canon edits unless the change also alters the current situation/clock/objectives per the State Management rules above.
 
 ## 4. Workflows and Personas
 - Workflow call: load the matching file in `.agents/workflows/` and execute it step-by-step.

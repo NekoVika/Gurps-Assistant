@@ -13,17 +13,23 @@ This document is the source of truth for the folder architecture. Always refer t
 ├── .planning/               # Architectural truth and standardized blueprints
 │   ├── MAP.md               # [THIS FILE] The campaign folder map & taxonomy 
 │   └── _templates/          # Blank GURPS Markdown templates 
+│       ├── 00_System_Rules_Template.md
+│       ├── Campaign_Overview_Template.md
 │       ├── Encounter_Template.md
+│       ├── Episode_Overview_Template.md
+│       ├── Chapter_Template.md
 │       ├── Location_Template.md
 │       ├── NPC_Template.md
-│       ├── Episode_Overview_Template.md
-│       └── Chapter_Template.md
+│       ├── State_Template.md
+│       └── World_Dossier_Template.md
 │
 ├── Campaign/                # Your Active Campaign Folder
 │   ├── 00_System_Rules.md   # System rules, Tech Level, Mana Level
 │   ├── 01_World_Bible/      # Lore, Factions, and Locations
+│   │   ├── World_Dossier.md # Setting-wide lore, rules, and metadata
 │   │   ├── Factions/
-│   │   └── Locations/
+│   │   ├── Locations/
+│   │   └── World_Maps_and_Art/
 │   ├── 02_Characters/       # Mechanics and descriptions
 │   │   ├── PCs/             # Player Characters
 │   │   ├── Main_Cast/       # Story-crucial NPCs

@@ -11,7 +11,7 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
 ## Execution Steps
 
 1.  **Run a Multi-Step NPC Interview (Wizard Style):**
-    Before asking anything, silently load and honor the existing campaign context from `state.md`, `SYSTEM.md`, `master_philosophy.md`, and `00_System_Rules.md`. Treat those as defaults for tone, genre, power sources, tech level, and safety/content boundaries.
+    Before asking anything, silently load and honor the existing campaign context from `state.md`, `SYSTEM.md`, `master_philosophy.md`, `00_System_Rules.md`, and `01_World_Bible/World_Dossier.md`. Treat those as defaults for tone, genre, world logic, power sources, tech level, and safety/content boundaries.
     - Do **not** re-ask for information that is already clearly defined at campaign level unless the GM explicitly marks this NPC as an exception.
     - Start by asking the GM to choose a **build mode** using a **single interactive option picker (radio buttons)** with exactly one selection allowed:
         - Options: "Quick NPC (scene-use, low friction)", "Standard NPC (balanced detail)", "Detailed NPC (PC-grade, full treatment)", plus "You decide (pick what fits)".
@@ -22,9 +22,12 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
     1.  **Core Concept & Role:**
         - Ask these as **separate prompts**, in order:
             1. **High-level concept** — free-text input only (short, e.g., "Grizzled veteran town guard who takes bribes."). Do **not** add buttons here.
-            2. **Narrative role** — **single-choice option picker** with options like: "Ally", "Enemy", "Contact", "Patron", "Background/Mook", "Unknown/You decide", plus "Other (type your own)".
-            3. **Story importance** — **single-choice option picker** with options: "Main Story NPC", "Recurring Side NPC", "One-off/Mook", "Template Monster", plus "You decide".
-        - Each of the three bullets above should be delivered in its **own** message/step (with its own picker where applicable), not concatenated into one combined question.
+            2. **NPC name** — **single-choice option picker** with:
+                - 5 AI-suggested name options that fit the inferred setting/era/culture (use `01_World_Bible/World_Dossier.md` and any relevant `01_World_Bible/Locations/` file for naming cues)
+                - plus "Other (type your own)" and "You decide"
+            3. **Narrative role** — **single-choice option picker** with options like: "Ally", "Enemy", "Contact", "Patron", "Background/Mook", "Unknown/You decide", plus "Other (type your own)".
+            4. **Story importance** — **single-choice option picker** with options: "Main Story NPC", "Recurring Side NPC", "One-off/Mook", "Template Monster", plus "You decide".
+        - Each of the four bullets above should be delivered in its **own** message/step (with its own picker where applicable), not concatenated into one combined question.
     2.  **Mechanical Scale & Focus:**
         - Ask for, again as **separate interactive prompts**, in this order:
             1. **Point total target** — single-choice option picker with options: "25", "50", "75", "100", "150", "Same ballpark as PCs", "Irrelevant/Use what fits scene", plus "Other (type your own)".
