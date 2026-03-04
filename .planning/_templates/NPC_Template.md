@@ -14,10 +14,10 @@
 **Point Total:** [XX]
 
 **Attributes:**
-*   ST [10] [[0]]; DX [10] [[0]]; IQ [10] [[0]]; HT [10] [[0]]
-*   Will [10] [[0]]; Per [10] [[0]]; HP [10] [[0]]; FP [10] [[0]]
-*   Basic Speed: [5.00] [[0]]; Basic Move: [5] [[0]]
-*   Dodge: [8]; Parry: [8]; Block: [8]
+*   ST 10 [0]; DX 10 [0]; IQ 10 [0]; HT 10 [0]
+*   Will 10 [0]; Per 10 [0]; HP 10 [0]; FP 10 [0]
+*   Basic Speed: 5.00 [0]; Basic Move: 5 [0]
+*   Dodge: 8; Parry: 8; Block: 8
 
 **Advantages & Perks:**
 *   [Advantage Name] (Level/Modifiers) [[Cost]]: [Mandatory mechanical explanation of how this works in-game.]
