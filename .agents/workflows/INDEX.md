@@ -15,6 +15,7 @@ Use this index to map user intent to workflow files.
 - `start_session` -> `.agents/workflows/start_session.md`
 - `conclude_session` -> `.agents/workflows/conclude_session.md`
 - `create_npc` -> `.agents/workflows/create_npc.md`
+- `create_world_dossier` -> `.agents/workflows/create_world_dossier.md`
 - `brainstorm` -> `.agents/workflows/brainstorm.md`
 - `update_framework` -> `.agents/workflows/update_framework.md`
 - `update_core` -> `.agents/workflows/update_core.md`

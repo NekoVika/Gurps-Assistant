@@ -26,6 +26,7 @@ Supported workflows:
 - `start_session`
 - `conclude_session`
 - `create_npc`
+- `create_world_dossier`
 - `brainstorm`
 - `update_framework`
 - `update_core`
