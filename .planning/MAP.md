@@ -49,3 +49,7 @@ This document is the source of truth for the folder architecture. Always refer t
 
 ## Template Enforcement
 Whenever a workflow or user prompt instructs you to create a "Location", an "Encounter", an "Episode Overview", or an "NPC," you MUST use the corresponding `.md` template from `.planning/_templates/`. If multiple entries are requested, make separate files. Ensure formatting stays consistent with the template.
+
+For characters:
+- Use `.planning/_templates/NPC_Template.md` for **individual** NPCs (PCs/Main Cast/unique individuals).
+- Use `.planning/_templates/Bestiary_Entry_Template.md` for **Bestiary** entries (generic creatures, mooks, tribal groups, etc.).

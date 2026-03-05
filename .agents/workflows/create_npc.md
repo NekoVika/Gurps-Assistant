@@ -11,63 +11,19 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
 ## Execution Steps
 
 1.  **Run a Multi-Step NPC Interview (Wizard Style):**
-    Before asking anything, silently load and honor the existing campaign context from `state.md`, `SYSTEM.md`, `master_philosophy.md`, `00_System_Rules.md`, and `01_World_Bible/World_Dossier.md`. Treat those as defaults for tone, genre, world logic, power sources, tech level, and safety/content boundaries.
-    - Do **not** re-ask for information that is already clearly defined at campaign level unless the GM explicitly marks this NPC as an exception.
-    - **Preservation rule (critical):** Treat any GM-provided NPC description (especially visual details) as canonical. Capture it as a **Visual Anchor** and re-use the GM's phrasing in the final NPC file (verbatim where possible). Do not overwrite or "improve" it unless the GM asks.
-    - Start by asking the GM to choose a **build mode** using a **single interactive option picker (radio buttons)** with exactly one selection allowed:
-        - Options: "Quick NPC (scene-use, low friction)", "Standard NPC (balanced detail)", "Detailed NPC (PC-grade, full treatment)", plus "You decide (pick what fits)".
-        - If **Quick NPC** is chosen, favor minimal follow-up questions, accept more "You decide" defaults, and bias toward simple, robust builds with only the most relevant traits/skills.
-        - If **Detailed NPC** is chosen, prefer asking the full set of clarifying questions, including finer-grained personality, background, and niche capabilities.
-        - If **Standard NPC** is chosen or the GM defers, strike a middle ground between brevity and detail.
-    - For **every subsequent step**, ask **one compact interactive question at a time** (checkboxes/radio buttons with “Other (type your own)” and “You decide” options where appropriate), wait for the GM’s answer, then continue. **Do not** merge multiple unrelated questions into a single long text message.
-    1.  **Core Concept & Role:**
-        - Ask these as **separate prompts**, in order:
-            1. **High-level concept** — free-text input only (short, e.g., "Grizzled veteran town guard who takes bribes."). Do **not** add buttons here.
-            2. **NPC name** — **single-choice option picker** with:
-                - 5 AI-suggested name options that fit the inferred setting/era/culture (use `01_World_Bible/World_Dossier.md` and any relevant `01_World_Bible/Locations/` file for naming cues)
-                - plus "Other (type your own)" and "You decide"
-            3. **Visual Anchor (appearance)** — start with a single-choice picker:
-                - "I will describe the look"
-                - "Generate 3 look options for me to pick"
-                - "I have a reference image / actor / art link"
-                - "You decide"
-               Then follow up as needed (one prompt at a time):
-                - If GM describes: ask for free-text appearance (age, build, face, hair/eyes/skin, clothing silhouette, gear, distinctive marks), plus **1–3 must-not-change details**.
-                - If generating options: propose **3 concise visual packages** (2–4 sentences each), have the GM pick one, then ask for tweaks + must-not-change details.
-                - If reference: record the reference + must-not-change details in text.
-               Store the result internally as the NPC's **Visual Anchor** and later paste it into the NPC file (verbatim).
-            4. **Narrative role** — **single-choice option picker** with options like: "Ally", "Enemy", "Contact", "Patron", "Background/Mook", "Unknown/You decide", plus "Other (type your own)".
-            5. **Significance** — **single-choice option picker** (always store as `number (label)`):
-                - **0 (Common Variant)** — Bestiary entry for a *type* of enemy/creature; not an individual with continuity. Requires a Variations section (names/loadouts/toggles).
-                - **1 (Extra)** — One-scene or disposable individual; minimal hooks; fast build.
-                - **2 (Supporting)** — Recurs sometimes; has a clear hook; solid baseline build.
-                - **3 (Featured)** — Episode-level presence; defined relationships; stronger niche.
-                - **4 (Major)** — Campaign-moving NPC; robust sheet + strong integration hooks.
-                - **5 (Keystone)** — Pillar NPC; removing them changes campaign structure.
-                - plus "You decide"
-        - Each of the prompts above should be delivered in its **own** message/step (with its own picker where applicable), not concatenated into one combined question.
-    2.  **Mechanical Scale & Focus:**
-        - Ask for, again as **separate interactive prompts**, in this order:
-            1. **Point total target** — single-choice option picker with options: "25", "50", "75", "100", "150", "Same ballpark as PCs", "Irrelevant/Use what fits scene", plus "Other (type your own)".
-            2. **Key focus** — multi-select option picker: "Frontline Combat", "Skirmisher/Ranged", "Face/Social", "Investigator", "Scholar/Academic", "Support/Healer", "Utility/Scout", "Non-combatant", plus "Other (type your own)" and "You decide".
-            3. **Desired build complexity** — single-choice option picker: "Ultra-quick (few traits, good enough)", "Standard NPC (balanced, readable)", "Detailed (PC-grade)", plus "You decide".
-    3.  **World & Power Context (Only When Deviating From Defaults):**
-        - First, **summarize inferred campaign defaults** very briefly (tone, power sources, TL, any key boundaries) based on `state.md` and `00_System_Rules.md`.
-        - Ask the GM a single, high-level question:
-            - **Is this NPC within normal campaign rules, or an exception?** (single-choice): "Within normal campaign rules", "Minor twist but basically on-theme", "Major exception/genre-bending", "You decide"
-        - If the GM chooses **Within normal campaign rules**, do **not** re-ask world/power questions; proceed using campaign defaults.
-        - If they pick **Minor twist** or **Major exception**, then ask for:
-            - **Tone & realism override** (single-choice): "Same as campaign default", "Grittier", "More cinematic", "Over-the-top/gonzo", plus "Other (type your own)" and "You decide"
-            - **Power source overrides** (multi-select): "Same as campaign defaults", "Add Magic", "Add Psionics", "Add Divine/Miracles", "Add Superpowers/Meta-traits", "Add Ultra-tech/Biotech", "Strip all supernatural", plus "Other (type your own)"
-            - **Tech level anchor override** (single-choice): "Same as campaign default", "One TL higher", "One TL lower", plus “Other (type your own)” and “You decide”
-    4.  **Archetype & Template Hints:**
-        - Offer a short list of archetypes inferred from `state.md` and recent sessions (e.g., City Guard, Cult Adept, Guild Factor, Street Urchin, Courtier, Monster type) as single-choice plus “Other (type your own)”. Accept a free-form profession/background if the GM prefers to type.
-    5.  **Constraints & Content Boundaries:**
-        - Start from the campaign’s existing safety tools and content boundaries (from `state.md` or `00_System_Rules.md`) and **assume they apply** unless the GM explicitly marks an exception.
-        - Ask for:
-            - **Required elements** (free text and/or multi-select keywords, e.g., "Must have Social Stigma", "Must be 100% loyal", "Must be cowardly")
-            - **Additional disallowed elements for this NPC** (traits, books, themes to avoid) with a multi-select offering common categories ("No supernatural", "No mind control", "No graphic violence", "No sexual content") plus “Other (type your own)”
-            - Any **NPC-specific exceptions** where the GM wants to temporarily bend campaign norms; clearly flag these internally as out-of-bounds choices to be logged later under **Assumptions & Open Questions**.
+    Silently load campaign context from `state.md`, `SYSTEM.md`, `master_philosophy.md`, `00_System_Rules.md`, and `01_World_Bible/World_Dossier.md`. Do not re-ask what’s already defined unless the GM marks an exception.
+    - **Preservation rule (critical):** Treat GM-provided details as canon. Capture appearance as a **Visual Anchor** and paste it into the final file **verbatim**.
+    - **One question at a time:** Ask a single compact question, wait, then continue.
+    - **Build mode (pick one):** Quick / Standard / Detailed / You decide.
+    - **Core prompts (ask in order, each as its own step):**
+        1. Concept (free text)
+        2. Name (GM picks / GM types / You decide)
+        3. Visual Anchor (GM describes / reference / generate 3 options, then GM picks)
+        4. Narrative role (Ally/Enemy/Contact/Patron/Mook/etc.)
+        5. **Significance** (store as `number (label)`): 0 Common Variant (Bestiary type), 1 Extra, 2 Supporting, 3 Featured, 4 Major, 5 Keystone.
+    - **Mechanical scale (separate steps):** point total target, key focus (combat/social/support/etc.), desired complexity.
+    - **Defaults vs exception:** Ask if the NPC follows campaign defaults. Only if it’s an exception, ask for overrides (tone, power source, TL).
+    - **Constraints:** required elements, disallowed elements, and any NPC-specific exceptions to log under **Assumptions & Open Questions**.
 
 2.  **Smart Gap Fill Using Defaults:**
     Analyze provided info and identify only what is still missing for a robust NPC build, **respecting the chosen build mode**:
@@ -104,9 +60,11 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
     - **Appearance rule (critical):** If the GM provided a Visual Anchor, paste it into the NPC file's appearance section **verbatim** (or with only minimal formatting fixes), and only add extra flavor in a clearly separated "Additional notes" line that does not contradict the anchor.
 
 7.  **File Creation:**
-    Ask the GM if they approve of the NPC. Then save the Markdown file based on Significance:
-    *   If **Significance = 0 (Common Variant)**: save in `02_Characters/Bestiary/`
-    *   If **Significance = 1-5**: save in `02_Characters/Main_Cast/`
-    Use `.planning/_templates/NPC_Template.md` as the base.
-    - If **Significance = 0 (Common Variant)**: remove/omit any individual-only status/state fields (e.g., the Status line) and ensure the Variations section is present and usable at the table.
+     Ask the GM if they approve of the NPC. Then save the Markdown file based on Significance:
+     *   If **Significance = 0 (Common Variant)**: save in `02_Characters/Bestiary/`
+     *   If **Significance = 1-5**: save in `02_Characters/Main_Cast/`
+    Use the correct template as the base:
+    - If **Significance = 0 (Common Variant)**: use `.planning/_templates/Bestiary_Entry_Template.md`
+    - If **Significance = 1-5**: use `.planning/_templates/NPC_Template.md`
+    - Do not mix templates: **Main Cast/individual NPCs must not include a Variations section**, and **Bestiary entries must not include Status**.
     - Populate “Assumptions & Open Questions” with any deferred choices and TODOs to confirm later, and include the Visual Anchor in the narrative section (verbatim).

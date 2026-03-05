@@ -36,7 +36,9 @@ To create a localized structural block for the next phase of the adventure withi
 6.  **Smart Generation (Procedural):**
     Once confirmed, generate **each file individually** following these strict template rules:
     - **Locations**: Create in `01_World_Bible/Locations/` using `.planning/_templates/Location_Template.md`.
-    - **NPCs**: Generate a full GURPS stat block and narrative profile in `02_Characters/Main_Cast/` using `.planning/_templates/NPC_Template.md` (referencing the logic of `/create_npc`).
+    - **NPCs**: Generate using the correct character template (follow `/create_npc`):
+        - Individual NPCs (Significance 1-5): `02_Characters/Main_Cast/` using `.planning/_templates/NPC_Template.md`.
+        - Bestiary types (Significance 0): `02_Characters/Bestiary/` using `.planning/_templates/Bestiary_Entry_Template.md`.
     - **Multiple Encounters**: Create separate files in `Encounters/` using `.planning/_templates/Encounter_Template.md`.
     **CRITICAL:** Every generated file MUST contain all sections of its template. Do not truncate sections or summarize unless the GM explicitly asks for a "Quick/Empty" version.
 

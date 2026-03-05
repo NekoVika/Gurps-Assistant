@@ -60,7 +60,7 @@ For generated character sheets (PC/NPC/Bestiary):
 ### 10. Project Integrity & Post-Task Verification
 After completing any task, workflow, or file creation, you MUST perform a self-audit to ensure project health:
 1.  **File Taxonomy**: Cross-reference `.planning/MAP.md`. Verify that new files are in the correct directories (e.g., Locations belong in `01_World_Bible/`, NOT in Chapter folders).
-2.  **Template Adherence**: Ensure all new files strictly follow their respective templates in `.planning/_templates/`.
+2.  **Template Adherence**: Ensure all new files strictly follow their respective templates in `.planning/_templates/` (Bestiary entries use `Bestiary_Entry_Template.md`; individual NPCs use `NPC_Template.md`).
 3.  **Link Integrity**: Verify that all internal markdown links are **relative** and point to files that actually exist.
 4.  **State Sync**: Confirm that `state.md` has been updated if the task involved narrative progress, new characters, or significant world changes.
 5.  **Detail Preservation**: Double-check that no narrative or mechanical details from the user's prompt were lost during summarization or conversion. Verify that the GM's raw text is preserved In Full.
