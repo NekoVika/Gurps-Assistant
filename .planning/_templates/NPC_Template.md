@@ -1,8 +1,10 @@
 # [NPC Name] - [Short Concept]
 
+**Significance:** [0-5] ([Common Variant / Extra / Supporting / Featured / Major / Keystone])
 **Role:** (Ally, Enemy, Informant, Merchant)
 **Location:** [Where are they usually found?]
-**Status:** [Alive / Deceased / Missing]
+**Continuity:** [Individual / Bestiary Entry]
+**Status (Omit for Bestiary):** [Alive / Deceased / Missing]
 
 ## Narrative & Roleplay
 *   **Appearance (Visual Anchor / GM-Canon):** [Paste GM-provided appearance verbatim when available]
@@ -33,6 +35,14 @@
 **Gear & Weapons:**
 *   **[Weapon Name]:** Damage [X]; Reach [X]; Acc [X]; Notes [X]
 *   **[Armor]:** DR [X] (Location)
+
+## Variations (Bestiary / Significance 0 Only)
+*   **Name Pool / Callsigns (Optional):** [8-20 names, if applicable]
+*   **Loadout Kits (Pick 1 per individual):** [3-6 kits; list weapons/armor/gear swaps]
+*   **Visual Tags (Pick 0-2):** [quick distinguishing details]
+*   **Behavior Tags (Pick 0-1):** [discipline, cowardice, aggression, teamwork]
+*   **Stat Toggles (Pick 0-1):** [Rookie/Regular/Veteran/Elite with explicit small deltas]
+*   **Leader/Elite Package (Optional):** [1 standout variant for the group]
 
 ## Tactics & Combat Style
 *   [Preferred range, common maneuvers, target priorities, retreat habits]

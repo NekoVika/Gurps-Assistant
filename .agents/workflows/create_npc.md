@@ -37,7 +37,14 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
                 - If reference: record the reference + must-not-change details in text.
                Store the result internally as the NPC's **Visual Anchor** and later paste it into the NPC file (verbatim).
             4. **Narrative role** — **single-choice option picker** with options like: "Ally", "Enemy", "Contact", "Patron", "Background/Mook", "Unknown/You decide", plus "Other (type your own)".
-            5. **Story importance** — **single-choice option picker** with options: "Main Story NPC", "Recurring Side NPC", "One-off/Mook", "Template Monster", plus "You decide".
+            5. **Significance** — **single-choice option picker** (always store as `number (label)`):
+                - **0 (Common Variant)** — Bestiary entry for a *type* of enemy/creature; not an individual with continuity. Requires a Variations section (names/loadouts/toggles).
+                - **1 (Extra)** — One-scene or disposable individual; minimal hooks; fast build.
+                - **2 (Supporting)** — Recurs sometimes; has a clear hook; solid baseline build.
+                - **3 (Featured)** — Episode-level presence; defined relationships; stronger niche.
+                - **4 (Major)** — Campaign-moving NPC; robust sheet + strong integration hooks.
+                - **5 (Keystone)** — Pillar NPC; removing them changes campaign structure.
+                - plus "You decide"
         - Each of the prompts above should be delivered in its **own** message/step (with its own picker where applicable), not concatenated into one combined question.
     2.  **Mechanical Scale & Focus:**
         - Ask for, again as **separate interactive prompts**, in this order:
@@ -69,6 +76,13 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
     - For **Detailed NPCs**, ask more granular questions where useful (e.g., secondary skills, nuanced social roles, specific cultural details), while still avoiding redundancy with campaign context.
     - In all modes, prefer **short, targeted follow-up questions** using multiple-choice scaffolds (with “Other (type your own)” and “You decide”).
     - Specifically ensure coverage of: **Visual Anchor** (and must-not-change details), signature weapons/armor, combat role, social role, languages/culture, notable contacts, reaction modifiers, signature gear, legal status, constraints/content boundaries, and desired complexity (quick build vs detailed).
+    - If **Significance = 0 (Common Variant)** (Bestiary entry), additionally ensure coverage of a **Variations** section:
+        - Name pool / callsigns (only for humans/sapients)
+        - 3-6 loadout kits (weapons + armor + notable gear swaps)
+        - Visual tags (quick distinguishing details)
+        - Behavior/tactics tags (discipline, cowardice, aggression, teamwork)
+        - Stat toggles (Rookie/Regular/Veteran/Elite) with **explicit small deltas**
+        - Optional Leader/Elite package (1 standout in a group)
     - When the GM chooses “You decide” or skips, propose 2–3 sensible options aligned with `state.md` and `00_System_Rules.md` and ask for quick approval. If they still defer, pick the best-practice default and later record it as an Assumption with a TODO in the NPC file under **Assumptions & Open Questions**.
 
 3.  **Mechanical Generation (RulesLawyer Mode):**
@@ -90,7 +104,9 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
     - **Appearance rule (critical):** If the GM provided a Visual Anchor, paste it into the NPC file's appearance section **verbatim** (or with only minimal formatting fixes), and only add extra flavor in a clearly separated "Additional notes" line that does not contradict the anchor.
 
 7.  **File Creation:**
-    Ask the GM if they approve of the NPC and whether they are a "Main Story NPC" or a "Generic Monster/Mook". Based on their answer, save the Markdown file in:
-    *   `02_Characters/Main_Cast/` (for unique characters)
-    *   `02_Characters/Bestiary/` (for monsters, guards, or creatures)
-    Use `.planning/_templates/NPC_Template.md` as the base. Populate “Assumptions & Open Questions” with any deferred choices and TODOs to confirm later, and include the Visual Anchor in the narrative section (verbatim).
+    Ask the GM if they approve of the NPC. Then save the Markdown file based on Significance:
+    *   If **Significance = 0 (Common Variant)**: save in `02_Characters/Bestiary/`
+    *   If **Significance = 1-5**: save in `02_Characters/Main_Cast/`
+    Use `.planning/_templates/NPC_Template.md` as the base.
+    - If **Significance = 0 (Common Variant)**: remove/omit any individual-only status/state fields (e.g., the Status line) and ensure the Variations section is present and usable at the table.
+    - Populate “Assumptions & Open Questions” with any deferred choices and TODOs to confirm later, and include the Visual Anchor in the narrative section (verbatim).
