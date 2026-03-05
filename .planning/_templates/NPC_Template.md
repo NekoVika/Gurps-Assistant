@@ -5,7 +5,8 @@
 **Status:** [Alive / Deceased / Missing]
 
 ## Narrative & Roleplay
-*   **Appearance:** [1-2 sentences]
+*   **Appearance (Visual Anchor / GM-Canon):** [Paste GM-provided appearance verbatim when available]
+*   **Additional Notes (Optional):** [Extra flavor added after GM approval; must not contradict the Visual Anchor]
 *   **Personality & Quirks:** [Key traits, e.g., "Always coughs before lying", "Deeply superstitious."]
 *   **Motivation:** [What do they want?]
 *   **Speech Snippet:** [One or two lines the NPC might say]
@@ -54,7 +55,10 @@
 *   **[Equipment]:** (Weight, Cost)
 
 ## PC Hooks
-*   [How this NPC interacts with specific PCs’ traits, goals, or disadvantages]
+*   [How this NPC interacts with specific PCs' traits, goals, or disadvantages]
+
+## GM Summary (Raw Archive)
+*Paste GM-provided notes/interview answers verbatim (especially the Visual Anchor). Do not edit or "clean up" this section; it is the raw source of truth.*
 
 ## Assumptions & Open Questions
 *   **Assumptions:** [Choices taken when GM deferred; confirm later]

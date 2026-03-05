@@ -13,6 +13,7 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
 1.  **Run a Multi-Step NPC Interview (Wizard Style):**
     Before asking anything, silently load and honor the existing campaign context from `state.md`, `SYSTEM.md`, `master_philosophy.md`, `00_System_Rules.md`, and `01_World_Bible/World_Dossier.md`. Treat those as defaults for tone, genre, world logic, power sources, tech level, and safety/content boundaries.
     - Do **not** re-ask for information that is already clearly defined at campaign level unless the GM explicitly marks this NPC as an exception.
+    - **Preservation rule (critical):** Treat any GM-provided NPC description (especially visual details) as canonical. Capture it as a **Visual Anchor** and re-use the GM's phrasing in the final NPC file (verbatim where possible). Do not overwrite or "improve" it unless the GM asks.
     - Start by asking the GM to choose a **build mode** using a **single interactive option picker (radio buttons)** with exactly one selection allowed:
         - Options: "Quick NPC (scene-use, low friction)", "Standard NPC (balanced detail)", "Detailed NPC (PC-grade, full treatment)", plus "You decide (pick what fits)".
         - If **Quick NPC** is chosen, favor minimal follow-up questions, accept more "You decide" defaults, and bias toward simple, robust builds with only the most relevant traits/skills.
@@ -25,9 +26,19 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
             2. **NPC name** — **single-choice option picker** with:
                 - 5 AI-suggested name options that fit the inferred setting/era/culture (use `01_World_Bible/World_Dossier.md` and any relevant `01_World_Bible/Locations/` file for naming cues)
                 - plus "Other (type your own)" and "You decide"
-            3. **Narrative role** — **single-choice option picker** with options like: "Ally", "Enemy", "Contact", "Patron", "Background/Mook", "Unknown/You decide", plus "Other (type your own)".
-            4. **Story importance** — **single-choice option picker** with options: "Main Story NPC", "Recurring Side NPC", "One-off/Mook", "Template Monster", plus "You decide".
-        - Each of the four bullets above should be delivered in its **own** message/step (with its own picker where applicable), not concatenated into one combined question.
+            3. **Visual Anchor (appearance)** — start with a single-choice picker:
+                - "I will describe the look"
+                - "Generate 3 look options for me to pick"
+                - "I have a reference image / actor / art link"
+                - "You decide"
+               Then follow up as needed (one prompt at a time):
+                - If GM describes: ask for free-text appearance (age, build, face, hair/eyes/skin, clothing silhouette, gear, distinctive marks), plus **1–3 must-not-change details**.
+                - If generating options: propose **3 concise visual packages** (2–4 sentences each), have the GM pick one, then ask for tweaks + must-not-change details.
+                - If reference: record the reference + must-not-change details in text.
+               Store the result internally as the NPC's **Visual Anchor** and later paste it into the NPC file (verbatim).
+            4. **Narrative role** — **single-choice option picker** with options like: "Ally", "Enemy", "Contact", "Patron", "Background/Mook", "Unknown/You decide", plus "Other (type your own)".
+            5. **Story importance** — **single-choice option picker** with options: "Main Story NPC", "Recurring Side NPC", "One-off/Mook", "Template Monster", plus "You decide".
+        - Each of the prompts above should be delivered in its **own** message/step (with its own picker where applicable), not concatenated into one combined question.
     2.  **Mechanical Scale & Focus:**
         - Ask for, again as **separate interactive prompts**, in this order:
             1. **Point total target** — single-choice option picker with options: "25", "50", "75", "100", "150", "Same ballpark as PCs", "Irrelevant/Use what fits scene", plus "Other (type your own)".
@@ -57,7 +68,7 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
     - For **Standard NPCs**, ask a moderate number of follow-ups to clarify role, capabilities, and any distinctive hooks, but avoid overwhelming the GM.
     - For **Detailed NPCs**, ask more granular questions where useful (e.g., secondary skills, nuanced social roles, specific cultural details), while still avoiding redundancy with campaign context.
     - In all modes, prefer **short, targeted follow-up questions** using multiple-choice scaffolds (with “Other (type your own)” and “You decide”).
-    - Specifically ensure coverage of: signature weapons/armor, combat role, social role, languages/culture, notable contacts, reaction modifiers, signature gear, legal status, constraints/content boundaries, and desired complexity (quick build vs detailed).
+    - Specifically ensure coverage of: **Visual Anchor** (and must-not-change details), signature weapons/armor, combat role, social role, languages/culture, notable contacts, reaction modifiers, signature gear, legal status, constraints/content boundaries, and desired complexity (quick build vs detailed).
     - When the GM chooses “You decide” or skips, propose 2–3 sensible options aligned with `state.md` and `00_System_Rules.md` and ask for quick approval. If they still defer, pick the best-practice default and later record it as an Assumption with a TODO in the NPC file under **Assumptions & Open Questions**.
 
 3.  **Mechanical Generation (RulesLawyer Mode):**
@@ -69,15 +80,17 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
 
 4.  **Validation & Compliance:**
     Verify point totals, prerequisites, and book allowances against `00_System_Rules.md`. If a chosen trait is disallowed, select a nearest-analog allowed trait and note the substitution in Assumptions. Ensure attack/damage lines and defenses are coherent with ST, skills, weapons, and armor coverage.
+    - **Coverage check (critical):** Compare the final NPC writeup against the interview answers and the Visual Anchor. If anything is missing or contradicted (especially appearance), stop and ask the GM to correct it before saving the file.
 
 5.  **Output Format:**
     Present the stat block in the standard text format defined by the RulesLawyer, making it easy for the GM to read or input into GCS.
 
 6.  **Narrative Integration (WorldBuilder Mode):**
     Switch to the **WorldBuilder** persona. Provide appearance, a personality quirk, a motivation tied to existing lore, and a short speech snippet. Add PC hooks by consulting `02_Characters/PCs/` where relevant. Preserve GM-provided narrative details with light edits for clarity only.
+    - **Appearance rule (critical):** If the GM provided a Visual Anchor, paste it into the NPC file's appearance section **verbatim** (or with only minimal formatting fixes), and only add extra flavor in a clearly separated "Additional notes" line that does not contradict the anchor.
 
 7.  **File Creation:**
     Ask the GM if they approve of the NPC and whether they are a "Main Story NPC" or a "Generic Monster/Mook". Based on their answer, save the Markdown file in:
     *   `02_Characters/Main_Cast/` (for unique characters)
     *   `02_Characters/Bestiary/` (for monsters, guards, or creatures)
-    Use `.planning/_templates/NPC_Template.md` as the base. Populate “Assumptions & Open Questions” with any deferred choices and TODOs to confirm later.
+    Use `.planning/_templates/NPC_Template.md` as the base. Populate “Assumptions & Open Questions” with any deferred choices and TODOs to confirm later, and include the Visual Anchor in the narrative section (verbatim).
