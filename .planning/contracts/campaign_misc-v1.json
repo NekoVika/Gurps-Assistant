@@ -1,0 +1,13 @@
+{
+  "id": "campaign_misc-v1",
+  "description": "Non-templated Campaign root documents that should be tracked but not structurally validated.",
+  "template_path": null,
+  "include_globs": ["Campaign/README.md", "Campaign/Integrity_Report.md"],
+  "exclude_globs": [],
+  "required_meta_keys": [],
+  "forbidden_meta_keys": [],
+  "required_headings": [],
+  "forbidden_heading_prefixes": [],
+  "allow_extra_headings": true
+}
+

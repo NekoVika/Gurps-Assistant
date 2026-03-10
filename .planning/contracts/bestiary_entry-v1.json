@@ -1,0 +1,21 @@
+{
+  "id": "bestiary_entry-v1",
+  "description": "Bestiary entries (Campaign/02_Characters/Bestiary/*.md).",
+  "template_path": ".planning/_templates/Bestiary_Entry_Template.md",
+  "include_globs": ["Campaign/02_Characters/Bestiary/**/*.md"],
+  "exclude_globs": [],
+  "required_meta_keys": ["Significance", "Role", "Location", "Continuity"],
+  "forbidden_meta_keys": ["Status"],
+  "required_headings": [
+    { "level": 2, "text": "Narrative & Roleplay" },
+    { "level": 2, "text": "GURPS 4e Statistics" },
+    { "level": 2, "text": "Variations (Significance 0 Only)" },
+    { "level": 2, "text": "Tactics & Combat Style" },
+    { "level": 2, "text": "PC Hooks" },
+    { "level": 2, "text": "GM Summary (Raw Archive)" },
+    { "level": 2, "text": "Assumptions & Open Questions" }
+  ],
+  "forbidden_heading_prefixes": [],
+  "allow_extra_headings": true
+}
+

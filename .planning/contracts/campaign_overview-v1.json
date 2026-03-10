@@ -1,0 +1,21 @@
+{
+  "id": "campaign_overview-v1",
+  "description": "Campaign story overview (Campaign/03_Story/Campaign_Overview.md).",
+  "template_path": ".planning/_templates/Campaign_Overview_Template.md",
+  "include_globs": ["Campaign/03_Story/Campaign_Overview.md"],
+  "exclude_globs": [],
+  "required_meta_keys": ["Campaign Title", "Status", "Tone & Genre", "Tech/Mana"],
+  "forbidden_meta_keys": [],
+  "required_headings": [
+    { "level": 2, "text": "Episode Index" },
+    { "level": 2, "text": "Current Arc Summary" },
+    { "level": 2, "text": "Global Themes" },
+    { "level": 2, "text": "Factions Spotlight" },
+    { "level": 2, "text": "Timeline Beats" },
+    { "level": 2, "text": "Open Threads & Hooks" },
+    { "level": 2, "text": "Notes for Next Prep" }
+  ],
+  "forbidden_heading_prefixes": [],
+  "allow_extra_headings": true
+}
+

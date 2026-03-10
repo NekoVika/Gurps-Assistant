@@ -1,0 +1,24 @@
+{
+  "id": "system_rules-v1",
+  "description": "Campaign system rules (Campaign/00_System_Rules.md).",
+  "template_path": ".planning/_templates/00_System_Rules_Template.md",
+  "include_globs": ["Campaign/00_System_Rules.md"],
+  "exclude_globs": [],
+  "required_meta_keys": [
+    "Genre",
+    "Tech Level (TL)",
+    "Mana Level",
+    "Base Starting Points",
+    "Disadvantage Limit"
+  ],
+  "forbidden_meta_keys": [],
+  "required_headings": [
+    { "level": 2, "text": "Basic Parameters" },
+    { "level": 2, "text": "Allowed Books / Supplements" },
+    { "level": 2, "text": "Forbidden Rules & Traits" },
+    { "level": 2, "text": "Custom Rules / House Rules" }
+  ],
+  "forbidden_heading_prefixes": [],
+  "allow_extra_headings": true
+}
+

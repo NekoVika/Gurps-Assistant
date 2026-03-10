@@ -1,0 +1,20 @@
+{
+  "id": "location-v1",
+  "description": "Location files (Campaign/01_World_Bible/Locations/*.md).",
+  "template_path": ".planning/_templates/Location_Template.md",
+  "include_globs": ["Campaign/01_World_Bible/Locations/**/*.md"],
+  "exclude_globs": [],
+  "required_meta_keys": ["Type", "Region", "Tech Level", "Mana Level"],
+  "forbidden_meta_keys": [],
+  "required_headings": [
+    { "level": 2, "text": "1. Overview" },
+    { "level": 2, "text": "2. Key Landmarks & Exterior Features" },
+    { "level": 2, "text": "3. Internal Structure & Layout" },
+    { "level": 2, "text": "4. Factions & Power Structure" },
+    { "level": 2, "text": "5. Notable NPCs" },
+    { "level": 2, "text": "6. Plot Hooks & Secrets" }
+  ],
+  "forbidden_heading_prefixes": [],
+  "allow_extra_headings": true
+}
+

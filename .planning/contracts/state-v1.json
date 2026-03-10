@@ -1,0 +1,21 @@
+{
+  "id": "state-v1",
+  "description": "Campaign global state file (Campaign/state.md).",
+  "template_path": ".planning/_templates/State_Template.md",
+  "include_globs": ["Campaign/state.md"],
+  "exclude_globs": [],
+  "required_meta_keys": [],
+  "forbidden_meta_keys": [],
+  "required_headings": [
+    { "level": 2, "text": "Current Status" },
+    { "level": 2, "text": "Assistant Preferences" },
+    { "level": 2, "text": "Active Plotlines / Quests" },
+    { "level": 2, "text": "Recent Events / Last Session Summary" },
+    { "level": 2, "text": "Immediate Next Steps (For the GM/AI)" },
+    { "level": 2, "text": "Active Rules Anomalies" },
+    { "level": 2, "text": "Important Sandbox Notes" }
+  ],
+  "forbidden_heading_prefixes": [],
+  "allow_extra_headings": true
+}
+

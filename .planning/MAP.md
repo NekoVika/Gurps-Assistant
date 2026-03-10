@@ -47,6 +47,10 @@ This document is the source of truth for the folder architecture. Always refer t
 └── master_philosophy.md     # AI Core principles and GURPS rules adherence
 ```
 
+## Repo-Scoped Skills (Portable)
+
+This repo may include a `skills/` directory containing portable "repo-scoped skills" (each as `skills/<name>/SKILL.md`). These are designed to work even when a chat UI removes slash-command support by providing a plain-text entrypoint that routes to the authoritative workflows in `.agents/workflows/`.
+
 ## Template Enforcement
 Whenever a workflow or user prompt instructs you to create a "Location", an "Encounter", an "Episode Overview", or an "NPC," you MUST use the corresponding `.md` template from `.planning/_templates/`. If multiple entries are requested, make separate files. Ensure formatting stays consistent with the template.
 

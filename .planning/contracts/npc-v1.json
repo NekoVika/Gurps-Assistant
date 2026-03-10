@@ -1,0 +1,20 @@
+{
+  "id": "npc-v1",
+  "description": "Individual NPC files (Campaign/02_Characters/Main_Cast/*.md).",
+  "template_path": ".planning/_templates/NPC_Template.md",
+  "include_globs": ["Campaign/02_Characters/Main_Cast/**/*.md"],
+  "exclude_globs": [],
+  "required_meta_keys": ["Significance", "Role", "Location", "Continuity", "Status"],
+  "forbidden_meta_keys": [],
+  "required_headings": [
+    { "level": 2, "text": "Narrative & Roleplay" },
+    { "level": 2, "text": "GURPS 4e Statistics" },
+    { "level": 2, "text": "Tactics & Combat Style" },
+    { "level": 2, "text": "PC Hooks" },
+    { "level": 2, "text": "GM Summary (Raw Archive)" },
+    { "level": 2, "text": "Assumptions & Open Questions" }
+  ],
+  "forbidden_heading_prefixes": ["Variations"],
+  "allow_extra_headings": true
+}
+

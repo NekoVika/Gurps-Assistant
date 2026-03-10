@@ -1,0 +1,27 @@
+{
+  "id": "chapter-v1",
+  "description": "Chapter overviews (Campaign/03_Story/**/Chapter_*/Chapter_Overview.md).",
+  "template_path": ".planning/_templates/Chapter_Template.md",
+  "include_globs": ["Campaign/03_Story/**/Chapter_*/Chapter_Overview.md"],
+  "exclude_globs": [],
+  "required_meta_keys": ["Status", "Primary Location(s)"],
+  "forbidden_meta_keys": [],
+  "required_headings": [
+    { "level": 2, "text": "GM Summary (preserved; lightly edited for formatting)" },
+    { "level": 2, "text": "1. Starting Situation & Purpose" },
+    { "level": 2, "text": "2. Key Objectives" },
+    { "level": 2, "text": "3. Stakes & Time Pressure" },
+    { "level": 2, "text": "4. Locations & Map Needs" },
+    { "level": 2, "text": "5. Notable NPCs (Role/Link/Motivation)" },
+    { "level": 2, "text": "6. Beat Outline (Main Path)" },
+    { "level": 2, "text": "6B. Variant / Branching Path (Optional)" },
+    { "level": 2, "text": "7. Encounters & Scenes" },
+    { "level": 2, "text": "8. Clues & Props" },
+    { "level": 2, "text": "9. PC Hooks" },
+    { "level": 2, "text": "10. Outcomes" },
+    { "level": 2, "text": "11. Assumptions & Open Questions" }
+  ],
+  "forbidden_heading_prefixes": [],
+  "allow_extra_headings": true
+}
+

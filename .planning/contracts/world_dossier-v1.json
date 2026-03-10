@@ -1,0 +1,39 @@
+{
+  "id": "world_dossier-v1",
+  "description": "World dossier (Campaign/01_World_Bible/World_Dossier.md).",
+  "template_path": ".planning/_templates/World_Dossier_Template.md",
+  "include_globs": ["Campaign/01_World_Bible/World_Dossier.md"],
+  "exclude_globs": [],
+  "required_meta_keys": [
+    "World Type",
+    "Primary World ID",
+    "Canonical Scope",
+    "Scale of Play",
+    "Baseline TL (If Applicable)",
+    "Baseline Mana/Power (If Applicable)",
+    "Tone & Genre",
+    "Themes",
+    "Keywords",
+    "Tech Tags",
+    "Magic Tags",
+    "Threat Tags"
+  ],
+  "forbidden_meta_keys": [],
+  "required_headings": [
+    { "level": 2, "text": "1. Elevator Pitch (Player-Facing)" },
+    { "level": 2, "text": "2. World Meta (GM)" },
+    { "level": 2, "text": "3. Core Premises & Truths" },
+    { "level": 2, "text": "4. Physical Reality & Constraints" },
+    { "level": 2, "text": "5. Metaphysics / The Weird (If Any)" },
+    { "level": 2, "text": "6. People, Cultures, and Everyday Life" },
+    { "level": 2, "text": "7. Power Map (Summary)" },
+    { "level": 2, "text": "8. Key Locations (Summary)" },
+    { "level": 2, "text": "9. Deep Lore (GM-Only)" },
+    { "level": 2, "text": "10. Continuity & Disclosure (GM)" },
+    { "level": 2, "text": "11. Tags & Attributes (For Search/Indexing)" },
+    { "level": 2, "text": "12. Change Log" }
+  ],
+  "forbidden_heading_prefixes": [],
+  "allow_extra_headings": true
+}
+

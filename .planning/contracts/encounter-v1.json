@@ -1,0 +1,19 @@
+{
+  "id": "encounter-v1",
+  "description": "Encounter files (Campaign/03_Story/**/Encounters/*.md).",
+  "template_path": ".planning/_templates/Encounter_Template.md",
+  "include_globs": ["Campaign/03_Story/**/Encounters/**/*.md"],
+  "exclude_globs": [],
+  "required_meta_keys": ["Type", "Location", "Status"],
+  "forbidden_meta_keys": [],
+  "required_headings": [
+    { "level": 2, "text": "1. Scene Setup" },
+    { "level": 2, "text": "2. Objectives" },
+    { "level": 2, "text": "3. Participants" },
+    { "level": 2, "text": "4. Key Mechanics & Skill Checks" },
+    { "level": 2, "text": "5. Loot & Rewards" }
+  ],
+  "forbidden_heading_prefixes": [],
+  "allow_extra_headings": true
+}
+

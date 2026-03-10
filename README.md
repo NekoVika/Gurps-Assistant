@@ -78,12 +78,21 @@ Available workflows in `.agents/workflows/`:
 - `update_core`
 - `actualize`
 - `configure_core_source`
+
+## Validator (No AI)
+A deterministic structural validator is available for the `Campaign/` folder. It checks Markdown files against versioned contracts in `.planning/contracts/` and writes reports to `Campaign/_reports/`.
+
+- Run: `powershell -ExecutionPolicy Bypass -File scripts/validate.ps1`
+- JSON output is intended to drive a future fixer.
 - `update_campaign`
 
 ## Universal Invocation
 You can invoke workflows in either form:
 - Slash style: `/create_npc`
 - Plain style: `run create_npc workflow`
+
+If your chat client removed slash-command support, use the repo-scoped router skill:
+- `use repo skill: anomalyhunter` (then: `run prep_session workflow`)
 
 You can invoke personas directly:
 - `RulesLawyer, build a 100-point city guard`

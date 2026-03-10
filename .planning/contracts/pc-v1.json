@@ -1,0 +1,16 @@
+{
+  "id": "pc-v1",
+  "description": "PC sheets (Campaign/02_Characters/PCs/*.md). Project-specific contract (no template yet).",
+  "template_path": null,
+  "include_globs": ["Campaign/02_Characters/PCs/**/*.md"],
+  "exclude_globs": [],
+  "required_meta_keys": ["Role", "Location", "Status"],
+  "forbidden_meta_keys": [],
+  "required_headings": [
+    { "level": 2, "text": "Narrative & Roleplay" },
+    { "level": 2, "text": "GURPS 4e Statistics" }
+  ],
+  "forbidden_heading_prefixes": [],
+  "allow_extra_headings": true
+}
+

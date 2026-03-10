@@ -1,0 +1,22 @@
+{
+  "id": "episode_overview-v1",
+  "description": "Episode overviews (Campaign/03_Story/Episode_*/Episode_Overview.md).",
+  "template_path": ".planning/_templates/Episode_Overview_Template.md",
+  "include_globs": ["Campaign/03_Story/Episode_*/Episode_Overview.md", "Campaign/03_Story/Episode_*/**/Episode_Overview.md"],
+  "exclude_globs": [],
+  "required_meta_keys": ["Status", "Primary Setting"],
+  "forbidden_meta_keys": [],
+  "required_headings": [
+    { "level": 2, "text": "GM Brief (preserved; lightly edited for clarity)" },
+    { "level": 2, "text": "1. Premise & Setup" },
+    { "level": 2, "text": "2. Main Objectives" },
+    { "level": 2, "text": "3. Key Antagonists & Figures" },
+    { "level": 2, "text": "4. Detailed Story Outline" },
+    { "level": 2, "text": "5. Chapter Index" },
+    { "level": 2, "text": "6. Resolution & Consequences" },
+    { "level": 2, "text": "7. Assumptions & Open Questions" }
+  ],
+  "forbidden_heading_prefixes": [],
+  "allow_extra_headings": true
+}
+

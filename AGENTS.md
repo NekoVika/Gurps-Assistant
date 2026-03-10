@@ -34,6 +34,16 @@ Supported workflows:
 - `configure_core_source`
 - `update_campaign`
 
+## Repo-Scoped Skills (Portable)
+Some chat clients remove or break slash-command routing. This repo provides **repo-scoped skills** under `skills/` as a plain-text entrypoint that routes to the same workflow files.
+
+Invocation examples:
+- `use repo skill: anomalyhunter`
+- `skill: anomalyhunter`
+
+Repo skill rule:
+- If the user invokes a repo skill, load `skills/<name>/SKILL.md` and follow it.
+
 ## Persona Invocation
 If the user asks for a persona, load the corresponding file from `.agents/agents/` first:
 - `Narrator`
