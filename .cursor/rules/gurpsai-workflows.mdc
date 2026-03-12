@@ -13,6 +13,7 @@ alwaysApply: true
   - `start_session`
   - `conclude_session`
   - `create_npc`
+  - `enrich_pcs`
   - `brainstorm`
   - `update_framework`
   - `update_core`

@@ -73,6 +73,7 @@ Available workflows in `.agents/workflows/`:
 - `start_session`
 - `conclude_session`
 - `create_npc`
+- `enrich_pcs`
 - `brainstorm`
 - `update_framework`
 - `update_core`
@@ -82,9 +83,19 @@ Available workflows in `.agents/workflows/`:
 ## Validator (No AI)
 A deterministic structural validator is available for the `Campaign/` folder. It checks Markdown files against versioned contracts in `.planning/contracts/` and writes reports to `Campaign/_reports/`.
 
-- Run: `powershell -ExecutionPolicy Bypass -File scripts/validate.ps1`
-- JSON output is intended to drive a future fixer.
+- Run: `python scripts/validate.py`
+- JSON output is intended to drive the `/fix` workflow (step-by-step, GM-confirmed).
 - `update_campaign`
+
+## PC Sheets (GCS Sync)
+If you keep player character sheets in **GCS** (`.gcs`) and want a single AI-friendly Markdown file per PC, use the deterministic sync script:
+
+- Structure rule: store sources as `Campaign/02_Characters/PCs/_source/<PC>.gcs`
+- Single file: `python scripts/sync_pc_from_gcs.py Campaign/02_Characters/PCs/_source/PC.gcs --md Campaign/02_Characters/PCs/PC_Name.md`
+- Batch (scan all PCs): `python scripts/sync_pc_from_gcs.py`
+- PowerShell wrapper: `powershell -ExecutionPolicy Bypass -File scripts/sync_pc_from_gcs.ps1 -Gcs Campaign/02_Characters/PCs/_source/PC.gcs -Md Campaign/02_Characters/PCs/PC_Name.md -Sort`
+
+The sync updates only marked/generated blocks (Attributes, Advantages, Disadvantages, Skills, Gear) and preserves hand-authored notes and callouts.
 
 ## Universal Invocation
 You can invoke workflows in either form:

@@ -1,52 +1,62 @@
 ---
-description: Campaign Healer - Audit and repair campaign integrity
+description: Campaign Healer - Validator-driven, step-by-step fixer
 ---
 # Workflow: Fix (Campaign Healer)
 
 **Command Trigger:** `/fix`
 
 ## Objective
-To ensure the Campaign folder adheres to high-quality standards, following the `.planning/MAP.md` taxonomy, template structures, and technical integrity. This workflow is "Smart"—it fixes trivial issues automatically and collaborates with the GM on logical or creative gaps.
+Use the latest validator report in `Campaign/_reports/` and fix issues **one at a time**, always explaining the intended change to the GM **before** editing files.
+
+Two styles are supported:
+- **Mechanical fix:** insert template placeholders only (safe, non-destructive).
+- **AI fix:** use local file context to fill missing structure more intelligently, but never invent or overwrite GM-provided narrative notes.
 
 ## Execution Steps
 
-### 1. Comprehensive Audit
-Scan the `Campaign/` directory (skipping `Legacy/`) for the following issues:
+### 1. Prepare Inputs (Validator-Driven)
+1. Run `/validate` (or run `scripts/validate.ps1`) to generate a fresh report.
+2. Open the latest `Campaign/_reports/validation-*.json` (machine-readable) and `validation-*.md` (human-readable).
+3. Create an ordered list of findings:
+   - Errors first, then warnings
+   - Stable order: by file path, then line (if present), then code
 
-*   **Taxonomy (MAP Alignment)**: Files in the wrong folders (e.g., a Location in a Chapter folder).
-*   **Template Integrity**: Files missing sections defined in `.planning/_templates/`.
-*   **Link Integrity**: Broken internal Markdown links or absolute links that should be relative.
-*   **Logical Gaps**: 
-    - Mention of an NPC or Location in Chapter/Episode text that has no corresponding file in `02_Characters/` or `01_World_Bible/`.
-    - `state.md` inconsistencies (e.g., active chapter points to a deleted folder).
-    - Timeline contradictions (if detectable).
+### 2. Step-by-step Fix Loop (One Issue at a Time)
+For each finding, repeat the following loop **without skipping ahead**:
 
-### 2. Healing Report
-Present findings to the GM in a three-tier format:
+1. **Show the issue**
+   - File path + (line if present)
+   - Contract id (if present)
+   - Code + message
 
-🟢 **Safe Auto-Fixes** (Will be done automatically):
-- Moving files to correct folders per `MAP.md`.
-- Converting absolute links to relative links.
-- Fixing minor formatting/indentation in templates.
+2. **Explain the proposed change (no file edits yet)**
+   - State what will be added/changed/removed and *why* it satisfies the contract.
+   - State whether this is **Mechanical** or **AI** style.
+   - Promise non-destructive behavior: preserve existing content; append missing sections; never summarize GM notes.
 
-🟡 **Structural Issues** (Requires decision):
-- Identified mentions of NPCs/Locations without files.
-- **Action**: Offer a list. "I found these: [List]. Should I fast-generate their skeletons or link to `/create_npc`?"
+3. **Ask for GM approval**
+   - “Apply this exact change?”
+   - If GM says **No**, propose an alternative (or mark as deferred) and move on.
+   - If GM says **Yes**, apply the edit.
 
-🔴 **Logical Conflicts** (Requires GM input):
-- Contradictions in narrative state or broken timeline links.
-- **Action**: "I noticed [Conflict]. How should we resolve this to match your vision?"
+4. **Apply the change**
+   - Make the minimal edit necessary.
+   - Prefer inserting the missing template section using `.planning/_templates/` as the source of structure.
 
-### 3. Execution Phase
+5. **Re-validate and continue**
+   - Re-run `/validate` (or re-check the relevant file) to ensure the specific issue is resolved.
+   - Proceed to the next finding in order.
 
-1.  **Perform Auto-Fixes**: Execute all 🟢 items immediately.
-2.  **Interactive Healing**: 
-    - For 🟡 items: If GM agrees, create skeleton files using correct templates or guide through specialized workflows.
-    - For 🔴 items: Engage in a brief dialogue to fix the specific logic gap.
-3.  **Final Validation**: Re-run the audit to ensure a "Clean Health" status.
+### 3. Categories (How to Handle)
+- **Template/Contract drift (missing headings/meta):** Prefer append-only or insert-before-next-heading fixes.
+- **Taxonomy / MAP alignment:** Propose the move, ask approval, then move.
+- **Links:** Fix broken relative links without changing narrative text.
+- **Logical gaps / missing entities:** Ask whether to (a) create a skeleton via template, (b) run the dedicated workflow (e.g. `/create_npc`), or (c) leave as-is.
 
 ## Rules for AI Agent
 - **DO NOT** delete files without explicit confirmation.
 - **DO NOT** summarize or lose GM's narrative notes while fixing templates.
 - **ALWAYS** use relative links for internal cross-references.
 - **NEVER** touch the `Legacy/` directory.
+- **ALWAYS** fix only one finding per approval (step-by-step).
+

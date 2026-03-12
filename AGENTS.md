@@ -28,6 +28,7 @@ Supported workflows:
 - `create_npc`
 - `create_world_dossier`
 - `brainstorm`
+- `enrich_pcs`
 - `update_framework`
 - `update_core`
 - `actualize`
