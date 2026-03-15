@@ -465,23 +465,46 @@ def _sorted_blocks_for_page(
     def is_full_width(x0: float, x1: float) -> bool:
         return (x1 - x0) >= (page_width * 0.80)
 
-    mid_x = page_width / 2.0
-    items: list[tuple[tuple[int, int, float, float, float], tuple[float, float, float, float, str]]] = []
-    for x0, y0, x1, y1, text, _, block_type in blocks:
+    valid_blocks = []
+    x_centers = []
+
+    for b in blocks:
+        x0, y0, x1, y1, text, _, block_type = b
         if block_type != 0:
             continue
         t = text.strip()
         if not t:
             continue
+        valid_blocks.append((x0, y0, x1, y1, t))
+        if not is_full_width(x0, x1):
+            x_centers.append((x0 + x1) / 2.0)
 
+    x_centers.sort()
+    columns = []
+    if x_centers:
+        current_cluster = [x_centers[0]]
+        for xc in x_centers[1:]:
+            # Group centers within ~72 points (1 inch) of each other
+            if xc - current_cluster[-1] < 72.0:
+                current_cluster.append(xc)
+            else:
+                columns.append(sum(current_cluster) / len(current_cluster))
+                current_cluster = [xc]
+        columns.append(sum(current_cluster) / len(current_cluster))
+
+    items: list[tuple[tuple[int, int, float, float, float], tuple[float, float, float, float, str]]] = []
+    for x0, y0, x1, y1, t in valid_blocks:
         full = is_full_width(x0, x1)
         if full:
             group = 0
             col = 0
         else:
             group = 1
-            x_center = (x0 + x1) / 2.0
-            col = 0 if x_center < mid_x else 1
+            xc = (x0 + x1) / 2.0
+            if columns:
+                col = min(range(len(columns)), key=lambda i: abs(columns[i] - xc))
+            else:
+                col = 0
 
         sort_key = (group, col, y0, x0, y1)
         items.append((sort_key, (x0, y0, x1, y1, t)))
