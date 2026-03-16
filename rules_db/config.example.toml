@@ -1,0 +1,48 @@
+# Copy to `rules_db/config.toml` (this file is tracked; config.toml is gitignored).
+
+# Canonical store (SQLite).
+db_path = "rules_db/basic_set.sqlite"
+
+# Where PDFs live (local-only; gitignored via `.rule-books/`).
+rulebooks_dir = ".rule-books"
+
+# Embeddings backend is intentionally pluggable.
+# - "sqlite": store vectors in SQLite (simple v1 default)
+# - "external": store vectors in `vector_dir` (FAISS/LanceDB/etc in a later milestone)
+vector_backend = "sqlite"
+vector_dir = "rules_db/embeddings"
+
+[books.basic_set]
+title = "GURPS Basic Set"
+edition = "4e"
+source_label = "Basic Set"
+
+# One logical "book" can be backed by multiple PDFs.
+# Set `pdf_page_1_logical_page` so that:
+#   logical_page = pdf_page_number + pdf_page_1_logical_page - 1
+#
+# For split volumes, set the second file's `pdf_page_1_logical_page` to
+# the logical page number that corresponds to *its* first PDF page.
+
+[[books.basic_set.sources]]
+source_label = "Characters"
+pdf_relpath = ".rule-books/GURPS Basic Set - Characters.pdf"
+pdf_page_1_logical_page = 1
+
+[[books.basic_set.sources]]
+source_label = "Campaigns"
+pdf_relpath = ".rule-books/GURPS Basic Set - Campaigns.pdf"
+# IMPORTANT: This must not overlap the Characters logical page range.
+# A common simple mapping is to place Campaigns after Characters:
+#   Campaigns.pdf_page_1_logical_page = Characters_page_count + 1
+# If you get a "Logical page collision detected" error during extraction, fix this value.
+pdf_page_1_logical_page = 337
+
+# --- Alternative: single PDF ---
+#
+# If you have Basic Set as one PDF, replace both sources above with:
+#
+# [[books.basic_set.sources]]
+# source_label = "Basic Set (single PDF)"
+# pdf_relpath = ".rule-books/Basic Set.pdf"
+# pdf_page_1_logical_page = 1

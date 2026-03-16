@@ -17,9 +17,18 @@ __pycache__/
 build/
 dist/
 
+# Rules DB (derived artifacts; keep code/docs in-repo)
+rules_db/*.sqlite
+rules_db/*.sqlite-*
+rules_db/cache/
+rules_db/logs/
+rules_db/chroma/
+rules_db/embeddings/
+rules_db/config.toml
+
 Legacy/
 !Legacy/README.md
- 
+  
 # Campaign directory management
 Campaign/**/*
 !Campaign/**/

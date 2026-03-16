@@ -2327,6 +2327,22 @@ def _extract_section_entities_skills(
                 now,
             ),
         )
+        entity_id = int(cur.lastrowid)
+        conn.execute(
+            """
+            INSERT INTO entity_text(entity_id, text_raw, text_clean, primary_citation, block_refs, created_at, updated_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                entity_id,
+                text_raw,
+                text_clean,
+                json.dumps(primary, ensure_ascii=False),
+                json.dumps(block_refs, ensure_ascii=False),
+                now,
+                now,
+            ),
+        )
         if fts_enabled:
             conn.execute(
                 "INSERT INTO entity_text_fts(text_clean, entity_id) VALUES(?, ?)",
@@ -2338,6 +2354,431 @@ def _extract_section_entities_skills(
 
     meta = {
         "entity_type": "skill",
+        "start_page": start_page,
+        "end_page_exclusive": end_page_exclusive,
+        "detected_starts": len(starts),
+        "created": created,
+        "skipped_due_to_max_entities": skipped,
+        "duplicates_skipped": duplicates_skipped,
+    }
+    return created, review_count, meta
+
+
+def _extract_section_entities_spells(
+    conn: sqlite3.Connection,
+    book_id: int,
+    start_page: int,
+    end_page_exclusive: int,
+    max_span_pages: int,
+    min_chars: int,
+    max_entities: int | None = None,
+    mode: str = "replace",
+) -> tuple[int, int, dict[str, object]]:
+    """
+    Spells in the Basic Set start with a name on line 1, and their class on line 2.
+    E.g.
+    Purify Air
+    Area
+    """
+    if mode == "replace":
+        entity_ids = [
+            int(r["id"])
+            for r in conn.execute(
+                f"SELECT id FROM entities WHERE book_id = ? AND type = 'spell'", [book_id]
+            ).fetchall()
+        ]
+        if entity_ids:
+            if _table_exists(conn, "entity_text_fts"):
+                conn.execute(
+                    f"DELETE FROM entity_text_fts WHERE entity_id IN ({','.join('?' for _ in entity_ids)})",
+                    entity_ids,
+                )
+            conn.execute(
+                f"DELETE FROM entity_text WHERE entity_id IN ({','.join('?' for _ in entity_ids)})",
+                entity_ids,
+            )
+            conn.execute(
+                f"DELETE FROM entities WHERE id IN ({','.join('?' for _ in entity_ids)})",
+                entity_ids,
+            )
+            conn.commit()
+
+    raw_blocks = conn.execute(
+        """
+        SELECT logical_page_number, block_id, text_raw, text_clean, block_meta
+        FROM blocks
+        WHERE book_id = ? AND logical_page_number >= ? AND logical_page_number < ?
+        ORDER BY logical_page_number, reading_order
+        """,
+        (book_id, start_page, end_page_exclusive),
+    ).fetchall()
+    
+    blocks: list[dict[str, object]] = []
+    for b in raw_blocks:
+        if _is_hf_block(cast(str | None, b["block_meta"])):
+            continue
+        blocks.append({
+            "logical_page_number": int(b["logical_page_number"]),
+            "block_id": str(b["block_id"]),
+            "text_clean": str(b["text_clean"] or ""),
+            "text_raw": str(b["text_raw"] or "")
+        })
+
+    # Valid spell classes commonly seen in Basic Set
+    SPELL_CLASSES = {
+        "Area", "Regular", "Information", "Enchantment", 
+        "Blocking", "Melee", "Missile", "Special", "Resisted"
+    }
+
+    starts: list[int] = []
+    for i, b in enumerate(blocks):
+        text = str(b["text_clean"])
+        lines = text.split("\n")
+        
+        # Heuristic: First line is short (the name), second line is a known spell class.
+        if len(lines) >= 2:
+            first_line = lines[0].strip()
+            second_line = lines[1].strip()
+            
+            # Remove symbols sometimes attached to classes or (VH) tags on the name
+            clean_class = second_line.split(" ")[0].strip(",.")
+            if clean_class in SPELL_CLASSES and len(first_line) < 40 and first_line[0].isupper():
+                starts.append(i)
+
+    # 2) Gather spans
+    spans: list[tuple[int, int]] = []
+    for i in range(len(starts)):
+        s_idx = starts[i]
+        e_idx = starts[i + 1] if i + 1 < len(starts) else len(blocks)
+        
+        # Enforce max span constraint based on pages
+        start_p = int(blocks[s_idx]["logical_page_number"])
+        cap_p = start_p + max_span_pages
+        while e_idx > s_idx:
+            if int(blocks[e_idx - 1]["logical_page_number"]) <= cap_p:
+                break
+            e_idx -= 1
+        
+        if e_idx > s_idx:
+            spans.append((s_idx, e_idx))
+
+    # 3) Yield and insert
+    fts_enabled = _table_exists(conn, "entity_text_fts")
+    now = datetime.now(timezone.utc).isoformat()
+    created = 0
+    review_count = 0
+    skipped = 0
+    duplicates_skipped = 0
+    
+    seen_names: set[str] = set()
+    if mode == "append":
+        for row in conn.execute("SELECT name FROM entities WHERE book_id=? AND type='spell'", (book_id,)):
+            seen_names.add(row[0])
+
+    for s_idx, e_idx in spans:
+        if max_entities is not None and created >= max_entities:
+            skipped += 1
+            break
+            
+        span_blocks = blocks[s_idx:e_idx]
+        text_clean = "\n\n".join(str(b["text_clean"]) for b in span_blocks if b["text_clean"])
+        text_raw = "\n\n".join(str(b["text_raw"]) for b in span_blocks if b["text_raw"])
+        
+        lines = text_clean.split("\n")
+        name = lines[0].strip()
+        # Remove (VH) notation from name if present
+        if "(VH)" in name:
+            name = name.replace("(VH)", "").strip()
+            
+        if not name or len(name) > 60:
+            continue
+            
+        if mode == "append" and name in seen_names:
+            duplicates_skipped += 1
+            continue
+            
+        seen_names.add(name)
+
+        start_page_n = int(span_blocks[0]["logical_page_number"])
+        end_page_n = int(span_blocks[-1]["logical_page_number"])
+        
+        needs_review = 0
+        review_reason = None
+        if len(text_clean) < min_chars:
+            needs_review = 1
+            review_reason = "Too short"
+            review_count += 1
+        elif "Duration:" not in text_clean and "Cost:" not in text_clean and "Base Cost:" not in text_clean:
+             needs_review = 1
+             review_reason = "Missing Cost/Duration fields"
+             review_count += 1
+
+        conf = 0.9 if not needs_review else 0.5
+        primary = {
+            "logical_page_number": start_page_n,
+            "block_id": span_blocks[0]["block_id"],
+        }
+        block_refs = [
+            {"logical_page_number": b["logical_page_number"], "block_id": b["block_id"]}
+            for b in span_blocks
+        ]
+
+        cur = conn.execute(
+            """
+            INSERT INTO entities(name, aliases, book_id, type, start_page, end_page, confidence, needs_review, review_reason, created_at, updated_at)
+            VALUES(?, ?, ?, 'spell', ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                name,
+                json.dumps([name], ensure_ascii=False),
+                book_id,
+                start_page_n,
+                end_page_n,
+                conf,
+                needs_review,
+                review_reason,
+                now,
+                now,
+            ),
+        )
+        entity_id = int(cur.lastrowid)
+        conn.execute(
+            """
+            INSERT INTO entity_text(entity_id, text_raw, text_clean, primary_citation, block_refs, created_at, updated_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                entity_id,
+                text_raw,
+                text_clean,
+                json.dumps(primary, ensure_ascii=False),
+                json.dumps(block_refs, ensure_ascii=False),
+                now,
+                now,
+            ),
+        )
+        if fts_enabled:
+            conn.execute(
+                "INSERT INTO entity_text_fts(text_clean, entity_id) VALUES(?, ?)",
+                (text_clean, entity_id),
+            )
+        created += 1
+
+    conn.commit()
+
+    meta = {
+        "entity_type": "spell",
+        "start_page": start_page,
+        "end_page_exclusive": end_page_exclusive,
+        "detected_starts": len(starts),
+        "created": created,
+        "skipped_due_to_max_entities": skipped,
+        "duplicates_skipped": duplicates_skipped,
+    }
+    return created, review_count, meta
+
+
+def _extract_section_entities_equipment(
+    conn: sqlite3.Connection,
+    book_id: int,
+    start_page: int,
+    end_page_exclusive: int,
+    max_span_pages: int,
+    min_chars: int,
+    max_entities: int | None = None,
+    mode: str = "replace",
+) -> tuple[int, int, dict[str, object]]:
+    """
+    Extracts contiguous blocks representing tables like "Melee Weapon Table".
+    """
+    if mode == "replace":
+        entity_ids = [
+            int(r["id"])
+            for r in conn.execute(
+                f"SELECT id FROM entities WHERE book_id = ? AND type = 'table'", [book_id]
+            ).fetchall()
+        ]
+        if entity_ids:
+            if _table_exists(conn, "entity_text_fts"):
+                conn.execute(
+                    f"DELETE FROM entity_text_fts WHERE entity_id IN ({','.join('?' for _ in entity_ids)})",
+                    entity_ids,
+                )
+            conn.execute(
+                f"DELETE FROM entity_text WHERE entity_id IN ({','.join('?' for _ in entity_ids)})",
+                entity_ids,
+            )
+            conn.execute(
+                f"DELETE FROM entities WHERE id IN ({','.join('?' for _ in entity_ids)})",
+                entity_ids,
+            )
+            conn.commit()
+
+    raw_blocks = conn.execute(
+        """
+        SELECT logical_page_number, block_id, text_raw, text_clean, block_meta
+        FROM blocks
+        WHERE book_id = ? AND logical_page_number >= ? AND logical_page_number < ?
+        ORDER BY logical_page_number, reading_order
+        """,
+        (book_id, start_page, end_page_exclusive),
+    ).fetchall()
+    
+    blocks: list[dict[str, object]] = []
+    for b in raw_blocks:
+        if _is_hf_block(cast(str | None, b["block_meta"])):
+            continue
+        blocks.append({
+            "logical_page_number": int(b["logical_page_number"]),
+            "block_id": str(b["block_id"]),
+            "text_clean": str(b["text_clean"] or ""),
+            "text_raw": str(b["text_raw"] or "")
+        })
+
+    # Known table headers in the Equipment / Combat chapters
+    TABLE_REGEXES = [
+        re.compile(r"Melee Weapon Table", re.IGNORECASE),
+        re.compile(r"Ranged Weapon Table", re.IGNORECASE),
+        re.compile(r"Muscle-Powered Ranged Weapon Table", re.IGNORECASE),
+        re.compile(r"Firearms Table", re.IGNORECASE),
+        re.compile(r"Heavy Weapons Table", re.IGNORECASE),
+        re.compile(r"Armor Table", re.IGNORECASE),
+        re.compile(r"Shields \(.*\)", re.IGNORECASE),
+        re.compile(r"Hit Location Table", re.IGNORECASE),
+        re.compile(r"Size and Speed/Range Table", re.IGNORECASE),
+    ]
+
+    starts: list[int] = []
+    for i, b in enumerate(blocks):
+        text_clean = str(b["text_clean"]).strip()
+        
+        is_trigger = False
+        for t_re in TABLE_REGEXES:
+            if t_re.search(text_clean):
+                # Ensure it's not simply an index entry mentioning the page number
+                if "Table," not in text_clean and "Tables," not in text_clean:
+                    is_trigger = True
+                    break
+                
+        if is_trigger:
+            starts.append(i)
+
+    # 2) Gather spans: Tables are usually 1 massive block, plus maybe continuation blocks loosely associated
+    # We will grab all text up to the next table, or up to max_span_pages, whichever comes first
+    spans: list[tuple[int, int]] = []
+    for i in range(len(starts)):
+        s_idx = starts[i]
+        e_idx = starts[i + 1] if i + 1 < len(starts) else len(blocks)
+        
+        start_p = int(blocks[s_idx]["logical_page_number"])
+        cap_p = start_p + max_span_pages
+        while e_idx > s_idx:
+            if int(blocks[e_idx - 1]["logical_page_number"]) <= cap_p:
+                break
+            e_idx -= 1
+        
+        if e_idx > s_idx:
+            spans.append((s_idx, e_idx))
+
+    # 3) Yield and insert
+    fts_enabled = _table_exists(conn, "entity_text_fts")
+    now = datetime.now(timezone.utc).isoformat()
+    created = 0
+    review_count = 0
+    skipped = 0
+    duplicates_skipped = 0
+    
+    seen_names: set[str] = set()
+    if mode == "append":
+        for row in conn.execute("SELECT name FROM entities WHERE book_id=? AND type='table'", (book_id,)):
+            seen_names.add(row[0])
+
+    for s_idx, e_idx in spans:
+        if max_entities is not None and created >= max_entities:
+            skipped += 1
+            break
+            
+        span_blocks = blocks[s_idx:e_idx]
+        text_clean = "\n\n".join(str(b["text_clean"]) for b in span_blocks if b["text_clean"])
+        text_raw = "\n\n".join(str(b["text_raw"]) for b in span_blocks if b["text_raw"])
+        
+        lines = text_clean.split("\n")
+        name = lines[0].strip()
+            
+        if not name or len(name) > 60:
+            continue
+            
+        if mode == "append" and name in seen_names:
+            duplicates_skipped += 1
+            continue
+            
+        seen_names.add(name)
+
+        start_page_n = int(span_blocks[0]["logical_page_number"])
+        end_page_n = int(span_blocks[-1]["logical_page_number"])
+        
+        needs_review = 0
+        review_reason = None
+        if len(text_clean) < min_chars:
+            needs_review = 1
+            review_reason = "Too short"
+            review_count += 1
+
+        conf = 0.9 if not needs_review else 0.5
+        primary = {
+            "logical_page_number": start_page_n,
+            "block_id": span_blocks[0]["block_id"],
+        }
+        block_refs = [
+            {"logical_page_number": b["logical_page_number"], "block_id": b["block_id"]}
+            for b in span_blocks
+        ]
+
+        cur = conn.execute(
+            """
+            INSERT INTO entities(name, aliases, book_id, type, start_page, end_page, confidence, needs_review, review_reason, created_at, updated_at)
+            VALUES(?, ?, ?, 'table', ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                name,
+                json.dumps([name], ensure_ascii=False),
+                book_id,
+                start_page_n,
+                end_page_n,
+                conf,
+                needs_review,
+                review_reason,
+                now,
+                now,
+            ),
+        )
+        entity_id = int(cur.lastrowid)
+        conn.execute(
+            """
+            INSERT INTO entity_text(entity_id, text_raw, text_clean, primary_citation, block_refs, created_at, updated_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                entity_id,
+                text_raw,
+                text_clean,
+                json.dumps(primary, ensure_ascii=False),
+                json.dumps(block_refs, ensure_ascii=False),
+                now,
+                now,
+            ),
+        )
+        if fts_enabled:
+            conn.execute(
+                "INSERT INTO entity_text_fts(text_clean, entity_id) VALUES(?, ?)",
+                (text_clean, entity_id),
+            )
+        created += 1
+
+    conn.commit()
+
+    meta = {
+        "entity_type": "table",
         "start_page": start_page,
         "end_page_exclusive": end_page_exclusive,
         "detected_starts": len(starts),
@@ -2365,6 +2806,80 @@ def cmd_entity_extract(args: argparse.Namespace) -> int:
         book_cfg = _pick_book_cfg(config, args.book)
         book_id = _pick_book_id(conn, book_cfg)
 
+        # --- Spells ---
+        if kind == "spells":
+            start_p = _find_heading_page_after(conn, book_id=book_id, headings=["MAGIC"], min_page=1)
+            if start_p is None:
+                raise SystemExit("Could not find MAGIC heading.")
+            end_p = _find_heading_page_after(conn, book_id=book_id, headings=["PSIONICS"], min_page=start_p + 1)
+            if end_p is None:
+                raise SystemExit("Could not find PSIONICS heading (end boundary).")
+
+            created, review_count, meta = _extract_section_entities_spells(
+                conn,
+                book_id=book_id,
+                start_page=start_p,
+                end_page_exclusive=end_p,
+                max_span_pages=int(args.max_span_pages),
+                min_chars=int(args.min_chars),
+                max_entities=int(args.max_entities) if args.max_entities is not None else None,
+                mode=str(args.mode),
+            )
+
+            report_dir = RULES_DB_DIR / "logs"
+            report_dir.mkdir(parents=True, exist_ok=True)
+            report = {
+                "book_id": book_id,
+                "db_path": str(db_path),
+                "config_path": str(config_path),
+                "kind": kind,
+                "mode": args.mode,
+                "created_entities": created,
+                "needs_review": review_count,
+                "meta": meta,
+            }
+            out_path = report_dir / f"entity_extract_{kind}_book{book_id}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
+            out_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"Extracted entities ({kind}) for book_id={book_id}: {created} created. Report: {out_path}")
+            return 0
+
+        # --- Equipment ---
+        if kind == "equipment":
+            start_p = _find_heading_page_after(conn, book_id=book_id, headings=["EQUIPMENT"], min_page=1)
+            if start_p is None:
+                raise SystemExit("Could not find EQUIPMENT heading.")
+            end_p = _find_heading_page_after(conn, book_id=book_id, headings=["COMBAT"], min_page=start_p + 1)
+            if end_p is None:
+                raise SystemExit("Could not find COMBAT heading (end boundary).")
+
+            created, review_count, meta = _extract_section_entities_equipment(
+                conn,
+                book_id=book_id,
+                start_page=start_p,
+                end_page_exclusive=end_p,
+                max_span_pages=int(args.max_span_pages),
+                min_chars=int(args.min_chars),
+                max_entities=int(args.max_entities) if args.max_entities is not None else None,
+                mode=str(args.mode),
+            )
+
+            report_dir = RULES_DB_DIR / "logs"
+            report_dir.mkdir(parents=True, exist_ok=True)
+            report = {
+                "book_id": book_id,
+                "db_path": str(db_path),
+                "config_path": str(config_path),
+                "kind": kind,
+                "mode": args.mode,
+                "created_entities": created,
+                "needs_review": review_count,
+                "meta": meta,
+            }
+            out_path = report_dir / f"entity_extract_{kind}_book{book_id}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
+            out_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+            print(f"Extracted entities ({kind}) for book_id={book_id}: {created} created. Report: {out_path}")
+            return 0
+            
         # --- Advantages ---
         if kind == "advantages":
             start_p = _find_heading_page_after(conn, book_id=book_id, headings=["ADVANTAGES"], min_page=1)
@@ -3235,6 +3750,172 @@ def cmd_extract(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_embed(args: argparse.Namespace) -> int:
+    try:
+        import chromadb
+    except ImportError:
+        raise SystemExit("chromadb is not installed. Please Run `pip install chromadb` first.")
+    
+    config_path = Path(args.config).resolve() if args.config else DEFAULT_CONFIG_PATH
+    config = _load_config_or_none(config_path)
+    db_path = (Path(args.db).resolve() if args.db else Path(config.db_path).resolve()
+               if config and config.db_path else DEFAULT_DB_PATH)
+    conn = _connect(db_path)
+    
+    chroma_dir = RULES_DB_DIR / "chroma"
+    chroma_dir.parent.mkdir(parents=True, exist_ok=True)
+    
+    print(f"Initializing ChromaDB in {chroma_dir}...")
+    client = chromadb.PersistentClient(path=str(chroma_dir))
+    collection = client.get_or_create_collection(name="gurps_rules")
+    
+    print("Loading chunks from SQLite...")
+    chunks = conn.execute("SELECT id, book_id, text_clean FROM chunks").fetchall()
+    
+    print("Loading entities from SQLite...")
+    entities = conn.execute("SELECT id, name, type, book_id FROM entities").fetchall()
+    
+    documents = []
+    metadatas = []
+    ids = []
+    
+    for c in chunks:
+        doc_id = f"chunk_{c['id']}"
+        text = str(c["text_clean"])
+        if not text.strip(): continue
+        documents.append(text)
+        metadatas.append({"type": "chunk", "book_id": c["book_id"]})
+        ids.append(doc_id)
+        
+    for e in entities:
+        doc_id = f"entity_{e['id']}"
+        rows = conn.execute("SELECT text_clean FROM entity_text WHERE entity_id=?", (e["id"],)).fetchall()
+        text = "\n\n".join([str(r["text_clean"]) for r in rows if r["text_clean"]])
+        if not text.strip(): continue
+        
+        full_text = f"[{str(e['type']).upper()}]: {e['name']}\n{text}"
+        documents.append(full_text)
+        metadatas.append({"type": f"entity_{e['type']}", "name": str(e["name"]), "book_id": e["book_id"]})
+        ids.append(doc_id)
+        
+    if not documents:
+        print("No documents found to embed.")
+        return 0
+        
+    print(f"Embedding {len(documents)} documents (this may take a few minutes the first time it downloads the model)...")
+    
+    batch_size = 500
+    for i in range(0, len(documents), batch_size):
+        end = min(i + batch_size, len(documents))
+        collection.upsert(
+            documents=documents[i:end],
+            metadatas=metadatas[i:end],
+            ids=ids[i:end]
+        )
+        print(f"Upserted {end}/{len(documents)}...")
+        
+    print("Embedding complete!")
+    return 0
+
+
+def cmd_semantic_search(args: argparse.Namespace) -> int:
+    try:
+        import chromadb
+    except ImportError:
+        raise SystemExit("chromadb is not installed. Please Run `pip install chromadb` first.")
+        
+    query = args.query.strip()
+    if not query:
+        raise SystemExit("Empty query.")
+        
+    chroma_dir = RULES_DB_DIR / "chroma"
+    if not chroma_dir.exists():
+        raise SystemExit("Chroma DB not found. Run 'rulesdb embed' first.")
+
+    client = chromadb.PersistentClient(path=str(chroma_dir))
+    
+    try:
+        collection = client.get_collection(name="gurps_rules")
+    except Exception:
+        raise SystemExit("Collection 'gurps_rules' not found. Run 'rulesdb embed' first.")
+        
+    results = collection.query(
+        query_texts=[query],
+        n_results=args.limit
+    )
+    
+    docs = results.get("documents", [[]])[0] if results.get("documents") else []
+    metas = results.get("metadatas", [[]])[0] if results.get("metadatas") else []
+    ids = results.get("ids", [[]])[0] if results.get("ids") else []
+    distances = results.get("distances", [[]])[0] if results.get("distances") else []
+    
+    print(f"\\nSemantic Search Results for: '{query}'")
+    print("=" * 60)
+    for doc, meta, doc_id, dist in zip(docs, metas, ids, distances):
+        meta_dict = meta if isinstance(meta, dict) else {}
+        type_str = str(meta_dict.get("type", "unknown"))
+        name_str = meta_dict.get("name")
+        label = f"[{type_str.upper()}] {name_str}" if name_str else f"[{type_str.upper()}] {doc_id}"
+        
+        print(f"--- {label} (Distance: {dist:.3f}) ---")
+        preview = doc[:800] + "..." if len(doc) > 800 else doc
+        print(preview)
+        print("-" * 40 + "\\n")
+        
+    return 0
+
+
+def cmd_agent_search(args: argparse.Namespace) -> int:
+    try:
+        import chromadb
+    except ImportError:
+        raise SystemExit("chromadb is not installed.")
+        
+    query = args.query.strip()
+    if not query:
+        raise SystemExit("Empty query.")
+        
+    chroma_dir = RULES_DB_DIR / "chroma"
+    if not chroma_dir.exists():
+        raise SystemExit("Chroma DB not found. Run 'rulesdb embed' first.")
+
+    client = chromadb.PersistentClient(path=str(chroma_dir))
+    
+    try:
+        collection = client.get_collection(name="gurps_rules")
+    except Exception:
+        raise SystemExit("Collection 'gurps_rules' not found.")
+        
+    results = collection.query(
+        query_texts=[query],
+        n_results=args.limit
+    )
+    
+    docs = results.get("documents", [[]])[0] if results.get("documents") else []
+    metas = results.get("metadatas", [[]])[0] if results.get("metadatas") else []
+    ids = results.get("ids", [[]])[0] if results.get("ids") else []
+    distances = results.get("distances", [[]])[0] if results.get("distances") else []
+    
+    print(f"# DATABASE SEARCH RESULTS: {query}\\n")
+    for doc, meta, doc_id, dist in zip(docs, metas, ids, distances):
+        meta_dict = meta if isinstance(meta, dict) else {}
+        type_str = str(meta_dict.get("type", "unknown"))
+        name_str = meta_dict.get("name")
+        label = f"[{type_str.upper()}] {name_str}" if name_str else f"[{type_str.upper()}] {doc_id}"
+        
+        # Truncate extremely long documents to save LLM context window limits
+        preview = doc[:4500]
+        if len(doc) > 4500:
+            preview += "\\n... (truncated)"
+            
+        print(f"## {label} (Distance: {dist:.3f})")
+        print("```text")
+        print(preview)
+        print("```\\n")
+        
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="rulesdb", description="Local Rules DB utilities")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -3296,12 +3977,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_show.set_defaults(func=cmd_chunk_show)
 
     p_ent = sub.add_parser(
-        "entity-extract", help="Deterministically extract entities (v1: maneuvers, advantages, disadvantages)"
+        "entity-extract", help="Deterministically extract entities (v1: maneuvers, advantages, disadvantages, skills, spells, equipment)"
     )
     p_ent.add_argument(
         "--kind",
         default="maneuvers",
-        choices=["maneuvers", "advantages", "disadvantages", "skills"],
+        choices=["maneuvers", "advantages", "disadvantages", "skills", "spells", "equipment"],
         help="Entity kind to extract",
     )
     p_ent.add_argument("--mode", default="replace", choices=["replace", "append"], help="Default: replace")
@@ -3371,8 +4052,26 @@ def build_parser() -> argparse.ArgumentParser:
     p_ext.add_argument("--max-pages", type=int, default=None, help="Limit pages per PDF (for testing)")
     p_ext.set_defaults(func=cmd_extract)
 
-    return p
+    p_embed = sub.add_parser("embed", help="Generate vector embeddings for semantic search using ChromaDB")
+    p_embed.add_argument("--config", default=None, help="Config path (default: rules_db/config.toml)")
+    p_embed.add_argument("--db", default=None, help="Path to sqlite db (overrides config db_path)")
+    p_embed.set_defaults(func=cmd_embed)
+    
+    p_semantic = sub.add_parser("semantic-search", help="Semantic search via ChromaDB embeddings")
+    p_semantic.add_argument("query", help="Query text to embed and search")
+    p_semantic.add_argument("--limit", type=int, default=5, help="Number of results to return (default: 5)")
+    p_semantic.add_argument("--config", default=None, help="Config path (default: rules_db/config.toml)")
+    p_semantic.add_argument("--db", default=None, help="Path to sqlite db (overrides config db_path)")
+    p_semantic.set_defaults(func=cmd_semantic_search)
 
+    p_agent = sub.add_parser("agent-search", help="Semantic search optimized for reading by an LLM")
+    p_agent.add_argument("query", help="Query text to embed and search")
+    p_agent.add_argument("--limit", type=int, default=5, help="Number of results to return (default: 5)")
+    p_agent.add_argument("--config", default=None, help="Config path (default: rules_db/config.toml)")
+    p_agent.add_argument("--db", default=None, help="Path to sqlite db (overrides config db_path)")
+    p_agent.set_defaults(func=cmd_agent_search)
+
+    return p
 
 def main(argv: list[str]) -> int:
     parser = build_parser()

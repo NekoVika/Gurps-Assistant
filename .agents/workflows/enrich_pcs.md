@@ -33,6 +33,22 @@ This workflow MUST preserve deterministic sync blocks generated from `.gcs` file
    - Skills list (include point spends where present)
    - Gear list (optional)
 
+3. **Detect “Gray Zone” (custom/setting-specific) items (critical):**
+   The enricher MUST avoid hallucinating rules text for custom traits like “Bernkastel Blessing”.
+
+   For each PC:
+   - Open the corresponding `.gcs` in `Campaign/02_Characters/PCs/_source/` and locate the matching trait/skill entries (by `name`).
+   - Mark an item as **Gray Zone** if any of the following are true:
+     - It has no `reference`, or the `reference` does not look like a book/page cite (e.g., not like `B271`, `HT63`, etc.).
+     - It has `local_notes` that indicate custom table rulings.
+     - Its name is clearly setting-specific / non-GURPS-canonical.
+   - Also mark as Gray Zone if the item already has a nested bullet starting with `TODO (GM):`.
+
+   **Policy:** For Gray Zone items, the enricher may only:
+   - Ask the GM for the canon table effect, and/or
+   - Preserve/format GM-provided text verbatim as `GM:` notes.
+   It must NOT invent an explanation.
+
 3. **Decide enrichment depth (GM choice):**
    - **Light:** Explain all Advantages/Disadvantages; explain only the top ~6 skills by points + any combat skills.
    - **Standard (recommended):** Explain all Advantages/Disadvantages; explain top ~10 skills by points + combat skills + any “weird” skills.
@@ -52,7 +68,14 @@ This workflow MUST preserve deterministic sync blocks generated from `.gcs` file
 5. **Generate explanations (RulesLawyer mode):**
    - Use concise, table-useful phrasing: “In play: …”, “Common rolls: …”, “Edge cases: …”.
    - For standard traits/skills: provide a 1–4 line explanation.
-   - For any custom/anomalous trait: add a `TODO (GM)` line asking for the specific table ruling to avoid hallucinating.
+   - For any Gray Zone item:
+     - Insert a single nested bullet: `    - TODO (GM): Define this item’s exact in-play effect/limits/triggers.`
+     - Then ask the GM a compact question set (one item at a time), for example:
+       - “What does it do in play (trigger + effect)?”
+       - “Any limits/cooldowns/costs/tracks?”
+       - “Any special interactions/edge cases you care about?”
+     - After GM answers, store them as nested bullets prefixed `GM:` (verbatim when possible).
+     - Only after GM text exists may the enricher add a short `AI:` clarification that restates the GM’s ruling without adding new mechanics.
    - If you can’t be confident, prefer *questions* over assertions.
 
 6. **Merge policy (idempotent updates):**
