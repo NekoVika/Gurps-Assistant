@@ -2,7 +2,7 @@
 
 This is a structured AI-assisted environment for running GURPS 4th Edition campaigns with reusable personas, workflows, and a consistent folder architecture.
 
-Status: Active development on develop focuses on AI GM personas/workflows and campaign framework. CLI/app work is paused on develop and continues on the feature/cli branch.
+Status: Active development on `develop` focuses on AI GM personas/workflows and local rules retrieval. The broad app-style CLI remains incomplete, but the local `rulesdb` tooling is active and used by the rules persona.
 
 ## Project Purpose
 The system is a co-pilot for GMs. It offloads rules crunching, tracking, and organization so the GM can focus on pacing, improvisation, and player-facing narrative.
@@ -24,8 +24,13 @@ Repo layout (develop):
 |-- .planning/              # Folder map and templates (authoritative source)
 |-- .framework/             # Core metadata/state (non-sensitive)
 |-- scripts/
+|   |-- rulesdb.py          # Local rules DB CLI
+|   |-- rulesdb_lib/        # Rules DB helper/command modules
+|   |-- test_rulesdb_qa.py  # Rules DB regression runner
 |   `-- python/
-|       `-- gurpsai.py      # Legacy shim; depends on CLI (not functional on develop)
+|       `-- gurpsai.py      # Legacy shim for broader CLI/app work
+|-- rules_db/               # Local DB schema, config example, docs
+|-- tests/                  # Automated tests
 |-- AGENTS.md               # Codex-compatible instructions
 |-- SYSTEM.md               # Assistant-neutral canonical instructions
 |-- master_philosophy.md    # Core principles
@@ -33,7 +38,7 @@ Repo layout (develop):
 |-- TODO.md                 # Roadmap; App section on hold
 |-- gemini.md               # Gemini compatibility shim
 |-- .gitignore
-`-- (no src/ CLI on develop)
+`-- Campaign/              # Active campaign workspace
 ```
 ```text
 /Campaign_Root/
@@ -59,9 +64,30 @@ Notes:
 
 ## Personas
 - Narrator: Scene text, dialogue, atmosphere.
-- RulesLawyer: Mechanical rulings, point math, adjudication.
+- RulesLawyer: Mechanical rulings, point math, adjudication. For rules questions it is wired to use `python scripts/rulesdb.py qa "the user's question"` before answering.
 - WorldBuilder: Locations, factions, lore depth.
 - SessionPlanner: Session/chapter structure and encounter flow.
+
+## Rules Retrieval
+The repo includes a local, offline rules database pipeline for the GURPS Basic Set.
+
+Main command:
+- `python scripts/rulesdb.py qa "How does a Deceptive Attack work?"`
+
+Useful commands:
+- `python scripts/rulesdb.py doctor`
+- `python scripts/rulesdb.py search "Alcoholism" --book basic_set`
+- `python scripts/rulesdb.py entity-show "Combat Reflexes" --book basic_set --refs`
+- `python scripts/rulesdb.py qa "Can I dodge bullets?"`
+
+Current capabilities:
+- deterministic PDF extraction into SQLite
+- lexical chunk search
+- structured entity extraction for advantages, disadvantages, skills, maneuvers, and combat rules
+- semantic retrieval via Chroma
+- question-oriented retrieval that returns a compact evidence bundle with citations
+
+See [rules_db/README.md](/c:/Users/VikA/Documents/RPG/AnomalyHunter_v2/rules_db/README.md) for setup and DB-specific usage.
 
 ## Workflows
 Available workflows in `.agents/workflows/`:
@@ -111,12 +137,13 @@ You can invoke personas directly:
 
 Note:
 - Codex may not show a slash-command menu from `.agents/workflows`. Natural language invocation is always supported.
-- Terminal CLI commands are not available on develop. See “CLI Availability” below for the feature branch that contains the CLI.
+- The broader app/manager CLI is still in flux, but `python scripts/rulesdb.py ...` is available on `develop`.
 
 ## Getting Started
 1. Read `state.md`.
 2. Follow startup docs: `AGENTS.md` (Codex) and `SYSTEM.md` (universal).
 3. Use templates from `.planning/_templates/` for new campaign files.
+4. For any rules DB work, use `python scripts/rulesdb.py --help` and the setup notes in `rules_db/README.md`.
 
 ## Compatibility Contract (Legacy Copy Mode)
 The original workflow remains a supported path:
@@ -129,19 +156,22 @@ To verify this contract after framework changes:
 - The report now validates required personas, templates, workflow files, workflow index coverage, and AGENTS invocation patterns.
 
 ## CLI Availability
-The Python CLI is not present on develop to keep AI GM work front-and-center.
+There are currently two different command surfaces:
 
-- Active CLI development lives on branch: `feature/cli`.
-- On that branch you can install and use the CLI:
-  - `python -m pip install -e .`
-  - `gurpsai help`
-- The legacy script `scripts/python/gurpsai.py` is a shim that depends on the CLI sources; it is non-functional on develop.
+- `python scripts/rulesdb.py ...`
+  - available on `develop`
+  - used for local rules extraction and retrieval
+  - actively maintained
+- broader `gurpsai` app/manager CLI
+  - still tied to unfinished CLI/app work
+  - legacy shim remains in `scripts/python/gurpsai.py`
+  - if you are working on that surface specifically, `feature/cli` is still the relevant branch
 
-## Application Mode (Paused on develop)
-The global app/manager commands are paused on develop. When working on CLI/app features, switch to `feature/cli`.
+## Application Mode
+The global app/manager command surface is still incomplete on `develop`. Core persona/workflow usage and the local rules DB tooling are the supported paths in this branch.
 
 ## Terminal AI Providers
-Provider routing via CLI is part of the paused app surface on develop. Use personas/workflows within your IDE or chat. Provider adapter work continues as part of Core AI development; CLI surfaces will return when merged from `feature/cli`.
+Provider routing via the unfinished app CLI is still not the primary path on `develop`. Use personas/workflows in chat, and use `rulesdb.py` directly for deterministic rules retrieval.
 
 ## Updates Distribution
 - End users pull updates via Git. No packaged app releases are provided on develop.
