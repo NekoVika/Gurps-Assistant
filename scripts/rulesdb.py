@@ -13,6 +13,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, cast
 
+from rulesdb_lib.qa_helpers import (
+    citation_label_for_chunk as _citation_label_for_chunk,
+    citation_label_for_entity as _citation_label_for_entity,
+    citation_preview_from_block_refs as _citation_preview_from_block_refs,
+    entity_name_relevance as _entity_name_relevance,
+    normalize_query_text as _normalize_query_text,
+    pages_label as _pages_label,
+    qa_candidate_terms as _qa_candidate_terms,
+)
+from rulesdb_lib.rule_maps import (
+    COMBAT_RULE_EXTRA_ALIASES,
+    COMBAT_RULE_HEADINGS,
+    MANEUVER_NAMES,
+)
+
 
 ROOT = Path(__file__).resolve().parent.parent
 RULES_DB_DIR = ROOT / "rules_db"
@@ -118,6 +133,38 @@ def _pick_book_id(conn: sqlite3.Connection, book_cfg: BookConfig | None) -> int:
             "Run extract first."
         )
     return int(row["id"])
+
+
+def _fetch_entity_rows_by_ids(
+    conn: sqlite3.Connection, *, book_id: int, entity_ids: list[int]
+) -> list[sqlite3.Row]:
+    if not entity_ids:
+        return []
+    return conn.execute(
+        f"""
+        SELECT e.id, e.type, e.name, e.start_page, e.end_page, e.needs_review, e.review_reason,
+               t.text_clean, t.primary_citation, t.block_refs
+        FROM entities e
+        JOIN entity_text t ON t.entity_id = e.id
+        WHERE e.book_id = ? AND e.id IN ({",".join("?" for _ in entity_ids)})
+        """,
+        [book_id, *entity_ids],
+    ).fetchall()
+
+
+def _fetch_chunk_rows_by_ids(
+    conn: sqlite3.Connection, *, book_id: int, chunk_ids: list[int]
+) -> list[sqlite3.Row]:
+    if not chunk_ids:
+        return []
+    return conn.execute(
+        f"""
+        SELECT id, start_page, end_page, text_clean, block_refs
+        FROM chunks
+        WHERE book_id = ? AND id IN ({",".join("?" for _ in chunk_ids)})
+        """,
+        [book_id, *chunk_ids],
+    ).fetchall()
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -1074,23 +1121,23 @@ def _norm_heading_key(s: str) -> str:
 
 
 def _maneuver_name_map() -> dict[str, str]:
-    # Canonical maneuver names (Basic Set combat maneuvers).
-    names = [
-        "Aim",
-        "All-Out Attack",
-        "All-Out Defense",
-        "Attack",
-        "Change Posture",
-        "Concentrate",
-        "Do Nothing",
-        "Evaluate",
-        "Feint",
-        "Move",
-        "Move and Attack",
-        "Ready",
-        "Wait",
-    ]
-    return {_norm_heading_key(n): n for n in names}
+    return {_norm_heading_key(n): n for n in MANEUVER_NAMES}
+
+
+def _combat_rule_name_map() -> tuple[dict[str, str], dict[str, list[str]]]:
+    aliases_by_name: dict[str, list[str]] = {}
+    heading_map: dict[str, str] = {}
+    for heading, canonical in COMBAT_RULE_HEADINGS.items():
+        heading_map[_norm_heading_key(heading)] = canonical
+        aliases_by_name.setdefault(canonical, [])
+        if heading != canonical and heading not in aliases_by_name[canonical]:
+            aliases_by_name[canonical].append(heading.title())
+    for canonical, aliases in COMBAT_RULE_EXTRA_ALIASES.items():
+        aliases_by_name.setdefault(canonical, [])
+        for alias in aliases:
+            if alias not in aliases_by_name[canonical]:
+                aliases_by_name[canonical].append(alias)
+    return heading_map, aliases_by_name
 
 
 def _block_heading_match(block_text: str, heading_map: dict[str, str]) -> str | None:
@@ -1143,6 +1190,248 @@ def _looks_like_section_break(block_text: str, *, heading_map: dict[str, str]) -
         return False
 
     return True
+
+
+def _extract_named_rule_entities(
+    conn: sqlite3.Connection,
+    *,
+    book_id: int,
+    heading_map: dict[str, str],
+    aliases_by_name: dict[str, list[str]] | None,
+    max_span_pages: int,
+    min_chars: int,
+    cluster_gap_pages: int,
+    cluster_choice: str,
+    cluster_tail_pages: int,
+    mode: str,
+) -> tuple[int, int, dict[str, object]]:
+    rule_names = sorted(set(heading_map.values()))
+
+    if mode == "replace":
+        placeholders = ",".join("?" for _ in rule_names)
+        entity_ids = [
+            int(r["id"])
+            for r in conn.execute(
+                f"""
+                SELECT id FROM entities
+                WHERE book_id = ? AND type = 'rule' AND name IN ({placeholders})
+                """,
+                [book_id, *rule_names],
+            ).fetchall()
+        ]
+        if entity_ids:
+            if _table_exists(conn, "entity_text_fts"):
+                conn.execute(
+                    f"DELETE FROM entity_text_fts WHERE entity_id IN ({','.join('?' for _ in entity_ids)})",
+                    entity_ids,
+                )
+            conn.execute(
+                f"DELETE FROM entity_text WHERE entity_id IN ({','.join('?' for _ in entity_ids)})",
+                entity_ids,
+            )
+            conn.execute(
+                f"DELETE FROM entities WHERE id IN ({','.join('?' for _ in entity_ids)})",
+                entity_ids,
+            )
+            conn.commit()
+
+    blocks = conn.execute(
+        """
+        SELECT logical_page_number, block_id, text_raw, text_clean, block_meta
+        FROM blocks
+        WHERE book_id = ?
+        ORDER BY logical_page_number, reading_order
+        """,
+        (book_id,),
+    ).fetchall()
+
+    seq: list[dict[str, object]] = []
+    for b in blocks:
+        if _is_hf_block(cast(str | None, b["block_meta"])):
+            continue
+        seq.append(
+            {
+                "page": int(b["logical_page_number"]),
+                "block_id": cast(str, b["block_id"]),
+                "text_raw": cast(str, b["text_raw"] or ""),
+                "text_clean": cast(str, b["text_clean"] or b["text_raw"] or ""),
+            }
+        )
+
+    starts: list[tuple[int, str]] = []
+    for idx, b in enumerate(seq):
+        t = cast(str, b["text_clean"])
+        match = _block_heading_match(t, heading_map)
+        if match:
+            starts.append((idx, match))
+
+    if not starts:
+        raise SystemExit(
+            "No named rule headings detected in blocks. "
+            "Run clean first and ensure blocks.text_clean is populated."
+        )
+
+    starts_with_page: list[tuple[int, str, int]] = []
+    for idx, name in starts:
+        starts_with_page.append((idx, name, cast(int, seq[idx]["page"])))
+    starts_with_page.sort(key=lambda x: (x[2], x[0]))
+
+    clusters: list[list[tuple[int, str, int]]] = []
+    current: list[tuple[int, str, int]] = []
+    last_page: int | None = None
+    for hit in starts_with_page:
+        page = hit[2]
+        if last_page is None or (page - last_page) <= cluster_gap_pages:
+            current.append(hit)
+        else:
+            clusters.append(current)
+            current = [hit]
+        last_page = page
+    if current:
+        clusters.append(current)
+
+    def cluster_score(c: list[tuple[int, str, int]]) -> tuple[int, int, int, int]:
+        pages = [h[2] for h in c]
+        span = max(pages) - min(pages)
+        uniq = len(set(h[1] for h in c))
+        count = len(c)
+        start_p = min(pages)
+        return (uniq, count, -span, -start_p)
+
+    if not clusters:
+        raise SystemExit("No clusters found (unexpected).")
+
+    clusters_sorted = sorted(clusters, key=cluster_score, reverse=True)
+    if cluster_choice == "auto":
+        chosen_cluster = clusters_sorted[0]
+    elif cluster_choice == "earliest":
+        chosen_cluster = min(clusters, key=lambda c: min(h[2] for h in c))
+    elif cluster_choice == "latest":
+        chosen_cluster = max(clusters, key=lambda c: max(h[2] for h in c))
+    elif cluster_choice == "all":
+        chosen_cluster = [hit for cluster in clusters for hit in cluster]
+    else:
+        raise SystemExit("Invalid --cluster choice.")
+
+    chosen_hits = sorted(chosen_cluster, key=lambda x: x[0])
+    seen: set[str] = set()
+    filtered_hits: list[tuple[int, str, int]] = []
+    duplicates_in_cluster = 0
+    for idx, name, page in chosen_hits:
+        if name in seen:
+            duplicates_in_cluster += 1
+            continue
+        seen.add(name)
+        filtered_hits.append((idx, name, page))
+
+    now = _utc_now_iso()
+    created = 0
+    review_count = 0
+
+    cluster_max_page = max(h[2] for h in chosen_cluster)
+    cluster_page_limit = cluster_max_page + cluster_tail_pages
+    cluster_end_idx = len(seq) - 1
+    while cluster_end_idx > 0 and cast(int, seq[cluster_end_idx]["page"]) > cluster_page_limit:
+        cluster_end_idx -= 1
+
+    for pos, (start_idx, name, start_page) in enumerate(filtered_hits):
+        next_idx = filtered_hits[pos + 1][0] if pos + 1 < len(filtered_hits) else None
+
+        max_page_allowed = start_page + max_span_pages
+        end_idx = len(seq) - 1
+        if next_idx is not None:
+            end_idx = min(end_idx, next_idx - 1)
+        end_idx = min(end_idx, cluster_end_idx)
+        while end_idx > start_idx and cast(int, seq[end_idx]["page"]) > max_page_allowed:
+            end_idx -= 1
+        for j in range(start_idx + 1, end_idx + 1):
+            if _looks_like_section_break(cast(str, seq[j]["text_clean"]), heading_map=heading_map):
+                end_idx = j - 1
+                break
+
+        span = seq[start_idx : end_idx + 1]
+        if not span:
+            continue
+
+        pages = [cast(int, s["page"]) for s in span]
+        end_page = max(pages)
+        text_raw = "\n\n".join(cast(str, s["text_raw"]) for s in span).strip()
+        text_clean = "\n\n".join(_clean_block_text(cast(str, s["text_clean"])) for s in span).strip()
+        block_refs = [{"page": cast(int, s["page"]), "block_id": cast(str, s["block_id"])} for s in span]
+        primary = block_refs[0] if block_refs else {"page": start_page}
+
+        needs_review = 0
+        review_reason = None
+        conf = 0.9
+        if len(text_raw) < min_chars:
+            needs_review = 1
+            review_reason = f"short_span<{min_chars}"
+            conf = 0.5
+            review_count += 1
+
+        aliases = [name]
+        if aliases_by_name:
+            for alias in aliases_by_name.get(name, []):
+                if alias not in aliases:
+                    aliases.append(alias)
+
+        cur = conn.execute(
+            """
+            INSERT INTO entities(
+              type, name, aliases, book_id, start_page, end_page,
+              confidence, needs_review, review_reason, created_at, updated_at
+            )
+            VALUES('rule', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                name,
+                json.dumps(aliases, ensure_ascii=False),
+                book_id,
+                start_page,
+                end_page,
+                conf,
+                needs_review,
+                review_reason,
+                now,
+                now,
+            ),
+        )
+        entity_id = int(cur.lastrowid)
+
+        conn.execute(
+            """
+            INSERT INTO entity_text(
+              entity_id, text_raw, text_clean, primary_citation, block_refs, created_at, updated_at
+            )
+            VALUES(?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                entity_id,
+                text_raw,
+                text_clean,
+                json.dumps(primary, ensure_ascii=False),
+                json.dumps(block_refs, ensure_ascii=False),
+                now,
+                now,
+            ),
+        )
+        if _table_exists(conn, "entity_text_fts"):
+            conn.execute(
+                "INSERT INTO entity_text_fts(text_clean, entity_id) VALUES(?, ?)",
+                (text_clean, entity_id),
+            )
+        created += 1
+
+    conn.commit()
+
+    meta = {
+        "detected_starts": len(starts),
+        "chosen_cluster_hits": len(filtered_hits),
+        "duplicates_in_cluster": duplicates_in_cluster,
+        "cluster_count": len(clusters),
+        "rule_names": rule_names,
+    }
+    return created, review_count, meta
 
 
 def _first_nonempty_line(text: str) -> str | None:
@@ -2327,22 +2616,6 @@ def _extract_section_entities_skills(
                 now,
             ),
         )
-        entity_id = int(cur.lastrowid)
-        conn.execute(
-            """
-            INSERT INTO entity_text(entity_id, text_raw, text_clean, primary_citation, block_refs, created_at, updated_at)
-            VALUES(?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                entity_id,
-                text_raw,
-                text_clean,
-                json.dumps(primary, ensure_ascii=False),
-                json.dumps(block_refs, ensure_ascii=False),
-                now,
-                now,
-            ),
-        )
         if fts_enabled:
             conn.execute(
                 "INSERT INTO entity_text_fts(text_clean, entity_id) VALUES(?, ?)",
@@ -2995,279 +3268,48 @@ def cmd_entity_extract(args: argparse.Namespace) -> int:
             print(f"Extracted entities ({kind}) for book_id={book_id}: {created} created. Report: {out_path}")
             return 0
 
-        # --- Maneuvers ---
-        heading_map = _maneuver_name_map()
-        maneuver_names = sorted(set(heading_map.values()))
-
-        if args.mode == "replace":
-            placeholders = ",".join("?" for _ in maneuver_names)
-            # Delete prior extracted maneuvers (rule entities with these exact names).
-            # This keeps the operation scoped without requiring schema changes for subtype tagging.
-            entity_ids = [
-                int(r["id"])
-                for r in conn.execute(
-                    f"""
-                    SELECT id FROM entities
-                    WHERE book_id = ? AND type = 'rule' AND name IN ({placeholders})
-                    """,
-                    [book_id, *maneuver_names],
-                ).fetchall()
-            ]
-            if entity_ids:
-                if _table_exists(conn, "entity_text_fts"):
-                    conn.execute(
-                        f"DELETE FROM entity_text_fts WHERE entity_id IN ({','.join('?' for _ in entity_ids)})",
-                        entity_ids,
-                    )
-                conn.execute(
-                    f"DELETE FROM entity_text WHERE entity_id IN ({','.join('?' for _ in entity_ids)})",
-                    entity_ids,
-                )
-                conn.execute(
-                    f"DELETE FROM entities WHERE id IN ({','.join('?' for _ in entity_ids)})",
-                    entity_ids,
-                )
-                conn.commit()
-
-        blocks = conn.execute(
-            """
-            SELECT logical_page_number, block_id, text_raw, text_clean, block_meta
-            FROM blocks
-            WHERE book_id = ?
-            ORDER BY logical_page_number, reading_order
-            """,
-            (book_id,),
-        ).fetchall()
-
-        # Build a linear sequence of non-header/footer blocks.
-        seq: list[dict[str, object]] = []
-        for b in blocks:
-            if _is_hf_block(cast(str | None, b["block_meta"])):
-                continue
-            seq.append(
-                {
-                    "page": int(b["logical_page_number"]),
-                    "block_id": cast(str, b["block_id"]),
-                    "text_raw": cast(str, b["text_raw"] or ""),
-                    "text_clean": cast(str, b["text_clean"] or b["text_raw"] or ""),
-                }
+        # --- Combat subrules ---
+        if kind == "combat_rules":
+            heading_map, aliases_by_name = _combat_rule_name_map()
+            created, review_count, meta = _extract_named_rule_entities(
+                conn,
+                book_id=book_id,
+                heading_map=heading_map,
+                aliases_by_name=aliases_by_name,
+                max_span_pages=int(args.max_span_pages),
+                min_chars=int(args.min_chars),
+                cluster_gap_pages=int(args.cluster_gap_pages),
+                cluster_choice="all" if str(args.cluster) == "auto" else str(args.cluster),
+                cluster_tail_pages=int(args.cluster_tail_pages),
+                mode=str(args.mode),
             )
-
-        starts: list[tuple[int, str]] = []  # (index, canonical_name)
-        for idx, b in enumerate(seq):
-            t = cast(str, b["text_clean"])
-            match = _block_heading_match(t, heading_map)
-            if match:
-                starts.append((idx, match))
-
-        if not starts:
-            raise SystemExit(
-                "No maneuver headings detected in blocks. "
-                "Run clean first and ensure blocks.text_clean is populated."
-            )
-
-        starts.sort(key=lambda x: x[0])
-        min_chars = int(args.min_chars)
-        max_span_pages = int(args.max_span_pages)
-        cluster_gap_pages = int(args.cluster_gap_pages)
-        cluster_choice = str(args.cluster)
-        cluster_tail_pages = int(args.cluster_tail_pages)
-
-        # Compute start pages for clustering.
-        starts_with_page: list[tuple[int, str, int]] = []
-        for idx, name in starts:
-            starts_with_page.append((idx, name, cast(int, seq[idx]["page"])))
-        starts_with_page.sort(key=lambda x: (x[2], x[0]))
-
-        # Cluster by page gaps.
-        clusters: list[list[tuple[int, str, int]]] = []
-        current: list[tuple[int, str, int]] = []
-        last_page: int | None = None
-        for hit in starts_with_page:
-            page = hit[2]
-            if last_page is None or (page - last_page) <= cluster_gap_pages:
-                current.append(hit)
-            else:
-                clusters.append(current)
-                current = [hit]
-            last_page = page
-        if current:
-            clusters.append(current)
-
-        def cluster_score(c: list[tuple[int, str, int]]) -> tuple[int, int, int, int]:
-            pages = [h[2] for h in c]
-            span = max(pages) - min(pages)
-            uniq = len(set(h[1] for h in c))
-            count = len(c)
-            start_p = min(pages)
-            # Higher uniq/count better; smaller span better; earlier start as final tie-break.
-            return (uniq, count, -span, -start_p)
-
-        if not clusters:
-            raise SystemExit("No clusters found (unexpected).")
-
-        clusters_sorted = sorted(clusters, key=cluster_score, reverse=True)
-        chosen_cluster: list[tuple[int, str, int]]
-        if cluster_choice == "auto":
-            chosen_cluster = clusters_sorted[0]
-        elif cluster_choice == "earliest":
-            chosen_cluster = min(clusters, key=lambda c: min(h[2] for h in c))
-        elif cluster_choice == "latest":
-            chosen_cluster = max(clusters, key=lambda c: max(h[2] for h in c))
         else:
-            raise SystemExit("Invalid --cluster choice.")
-
-        # Use only hits from chosen cluster, ordered by sequence index.
-        chosen_hits = sorted(chosen_cluster, key=lambda x: x[0])
-        chosen_names = [h[1] for h in chosen_hits]
-        duplicates_in_cluster = {n: chosen_names.count(n) for n in set(chosen_names) if chosen_names.count(n) > 1}
-
-        # Optional: within a cluster, keep first occurrence of each heading.
-        seen: set[str] = set()
-        filtered_hits: list[tuple[int, str, int]] = []
-        for idx, name, page in chosen_hits:
-            if name in seen:
-                continue
-            seen.add(name)
-            filtered_hits.append((idx, name, page))
-
-        now = _utc_now_iso()
-        created = 0
-        review_count = 0
-
-        cluster_max_page = max(h[2] for h in chosen_cluster)
-        cluster_page_limit = cluster_max_page + cluster_tail_pages
-        # Last index in seq that is still within the cluster page boundary.
-        cluster_end_idx = len(seq) - 1
-        while cluster_end_idx > 0 and cast(int, seq[cluster_end_idx]["page"]) > cluster_page_limit:
-            cluster_end_idx -= 1
-
-        for pos, (start_idx, name, start_page) in enumerate(filtered_hits):
-            next_idx = filtered_hits[pos + 1][0] if pos + 1 < len(filtered_hits) else None
-
-            # Cap span by pages to prevent runaway captures.
-            max_page_allowed = start_page + max_span_pages
-            end_idx = len(seq) - 1
-            if next_idx is not None:
-                end_idx = min(end_idx, next_idx - 1)
-            end_idx = min(end_idx, cluster_end_idx)
-            # Also cap by page.
-            while end_idx > start_idx and cast(int, seq[end_idx]["page"]) > max_page_allowed:
-                end_idx -= 1
-            # Stop at a new major section heading if it appears before the next maneuver.
-            for j in range(start_idx + 1, end_idx + 1):
-                if _looks_like_section_break(cast(str, seq[j]["text_clean"]), heading_map=heading_map):
-                    end_idx = j - 1
-                    break
-
-            span = seq[start_idx : end_idx + 1]
-            if not span:
-                continue
-
-            pages = [cast(int, s["page"]) for s in span]
-            end_page = max(pages)
-
-            text_raw = "\n\n".join(cast(str, s["text_raw"]) for s in span).strip()
-            text_clean = "\n\n".join(_clean_block_text(cast(str, s["text_clean"])) for s in span).strip()
-
-            block_refs = [{"page": cast(int, s["page"]), "block_id": cast(str, s["block_id"])} for s in span]
-            primary = block_refs[0] if block_refs else {"page": start_page}
-
-            needs_review = 0
-            review_reason = None
-            conf = 0.9
-            if len(text_raw) < min_chars:
-                needs_review = 1
-                review_reason = f"short_span<{min_chars}"
-                conf = 0.5
-                review_count += 1
-
-            cur = conn.execute(
-                """
-                INSERT INTO entities(
-                  type, name, aliases, book_id, start_page, end_page,
-                  confidence, needs_review, review_reason, created_at, updated_at
-                )
-                VALUES('rule', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    name,
-                    json.dumps([name], ensure_ascii=False),
-                    book_id,
-                    start_page,
-                    end_page,
-                    conf,
-                    needs_review,
-                    review_reason,
-                    now,
-                    now,
-                ),
+            heading_map = _maneuver_name_map()
+            aliases_by_name = {name: [name] for name in set(heading_map.values())}
+            created, review_count, meta = _extract_named_rule_entities(
+                conn,
+                book_id=book_id,
+                heading_map=heading_map,
+                aliases_by_name=aliases_by_name,
+                max_span_pages=int(args.max_span_pages),
+                min_chars=int(args.min_chars),
+                cluster_gap_pages=int(args.cluster_gap_pages),
+                cluster_choice=str(args.cluster),
+                cluster_tail_pages=int(args.cluster_tail_pages),
+                mode=str(args.mode),
             )
-            entity_id = int(cur.lastrowid)
 
-            conn.execute(
-                """
-                INSERT INTO entity_text(
-                  entity_id, text_raw, text_clean, primary_citation, block_refs, created_at, updated_at
-                )
-                VALUES(?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    entity_id,
-                    text_raw,
-                    text_clean,
-                    json.dumps(primary, ensure_ascii=False),
-                    json.dumps(block_refs, ensure_ascii=False),
-                    now,
-                    now,
-                ),
-            )
-            if _table_exists(conn, "entity_text_fts"):
-                conn.execute(
-                    "INSERT INTO entity_text_fts(text_clean, entity_id) VALUES(?, ?)",
-                    (text_clean, entity_id),
-                )
-            created += 1
-
-        conn.commit()
-
-    # Report
     report_dir = RULES_DB_DIR / "logs"
     report_dir.mkdir(parents=True, exist_ok=True)
-    clusters_report = []
-    for c in clusters_sorted[:10]:
-        pages = [h[2] for h in c]
-        clusters_report.append(
-            {
-                "start_page": min(pages),
-                "end_page": max(pages),
-                "span_pages": max(pages) - min(pages),
-                "hits": len(c),
-                "unique_names": len(set(h[1] for h in c)),
-                "names": sorted(set(h[1] for h in c)),
-            }
-        )
     report = {
         "book_id": book_id,
         "db_path": str(db_path),
         "config_path": str(config_path),
         "kind": kind,
         "mode": args.mode,
-        "cluster_gap_pages": cluster_gap_pages,
-        "cluster_choice": cluster_choice,
-        "cluster_tail_pages": cluster_tail_pages,
-        "max_span_pages": max_span_pages,
         "created_entities": created,
         "needs_review": review_count,
-        "detected_headings_total": len(starts),
-        "detected_unique_headings": len(set(n for _, n in starts)),
-        "chosen_cluster": {
-            "start_page": min(h[2] for h in chosen_cluster),
-            "end_page": max(h[2] for h in chosen_cluster),
-            "unique_names": len(set(h[1] for h in chosen_cluster)),
-            "duplicates_in_cluster": duplicates_in_cluster,
-        },
-        "clusters_top": clusters_report,
+        "meta": meta,
     }
     out_path = report_dir / f"entity_extract_{kind}_book{book_id}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
     out_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -3874,7 +3916,40 @@ def cmd_agent_search(args: argparse.Namespace) -> int:
     query = args.query.strip()
     if not query:
         raise SystemExit("Empty query.")
-        
+
+    config_path = Path(args.config).resolve() if args.config else DEFAULT_CONFIG_PATH
+    config = _load_config_or_none(config_path)
+    db_path = (
+        Path(args.db).resolve()
+        if args.db
+        else Path(config.db_path).resolve()
+        if config and config.db_path
+        else DEFAULT_DB_PATH
+    )
+
+    exact_rows: list[sqlite3.Row] = []
+    with _connect(db_path) as conn:
+        exact_rows = conn.execute(
+            """
+            SELECT e.id, e.type, e.name, e.start_page, e.end_page, et.text_clean
+            FROM entities e
+            JOIN entity_text et ON et.entity_id = e.id
+            WHERE lower(e.name) = lower(?)
+               OR lower(e.aliases) LIKE ?
+            ORDER BY
+              CASE e.type
+                WHEN 'advantage' THEN 1
+                WHEN 'disadvantage' THEN 2
+                WHEN 'skill' THEN 3
+                WHEN 'rule' THEN 4
+                ELSE 9
+              END,
+              e.name
+            LIMIT ?
+            """,
+            (query, f'%"{query.lower()}"%', int(args.limit)),
+        ).fetchall()
+
     chroma_dir = RULES_DB_DIR / "chroma"
     if not chroma_dir.exists():
         raise SystemExit("Chroma DB not found. Run 'rulesdb embed' first.")
@@ -3897,7 +3972,34 @@ def cmd_agent_search(args: argparse.Namespace) -> int:
     distances = results.get("distances", [[]])[0] if results.get("distances") else []
     
     print(f"# DATABASE SEARCH RESULTS: {query}\\n")
+    emitted_ids: set[str] = set()
+
+    for row in exact_rows:
+        entity_id = int(row["id"])
+        emitted_ids.add(f"entity_{entity_id}")
+        label = f"[ENTITY_{str(row['type']).upper()}] {row['name']}"
+        page_start = row["start_page"]
+        page_end = row["end_page"]
+        page_text = (
+            f"p. {page_start}"
+            if page_start == page_end
+            else f"p. {page_start}-{page_end}"
+        )
+        preview = str(row["text_clean"])[:4500]
+        if len(str(row["text_clean"])) > 4500:
+            preview += "\\n... (truncated)"
+        print(f"## {label} (Exact Match, {page_text})")
+        print("```text")
+        print(preview)
+        print("```\\n")
+
+    remaining = max(0, int(args.limit) - len(exact_rows))
+    if remaining <= 0:
+        return 0
+
     for doc, meta, doc_id, dist in zip(docs, metas, ids, distances):
+        if str(doc_id) in emitted_ids:
+            continue
         meta_dict = meta if isinstance(meta, dict) else {}
         type_str = str(meta_dict.get("type", "unknown"))
         name_str = meta_dict.get("name")
@@ -3912,7 +4014,299 @@ def cmd_agent_search(args: argparse.Namespace) -> int:
         print("```text")
         print(preview)
         print("```\\n")
+        remaining -= 1
+        if remaining <= 0:
+            break
         
+    return 0
+
+
+def cmd_qa(args: argparse.Namespace) -> int:
+    query = (args.query or "").strip()
+    if not query:
+        raise SystemExit("Empty query.")
+
+    config_path = Path(args.config).resolve() if args.config else DEFAULT_CONFIG_PATH
+    config = _load_config_or_none(config_path)
+    db_path = (
+        Path(args.db).resolve()
+        if args.db
+        else Path(config.db_path).resolve()
+        if config and config.db_path
+        else DEFAULT_DB_PATH
+    )
+
+    limit = int(args.limit)
+    if limit < 1 or limit > 10:
+        raise SystemExit("--limit must be 1..10")
+
+    semantic_limit = max(limit * 3, 6)
+    candidate_terms = _qa_candidate_terms(query)
+    normalized_query = _normalize_query_text(query)
+
+    try:
+        import chromadb
+    except ImportError:
+        chromadb = None
+
+    with _connect(db_path) as conn:
+        book_cfg = _pick_book_cfg(config, getattr(args, "book", None))
+        book_id = _pick_book_id(conn, book_cfg)
+
+        exact_entities = conn.execute(
+            """
+            SELECT e.id, e.type, e.name, e.start_page, e.end_page, e.needs_review, e.review_reason,
+                   t.text_clean, t.primary_citation, t.block_refs
+            FROM entities e
+            JOIN entity_text t ON t.entity_id = e.id
+            WHERE e.book_id = ? AND (
+                lower(e.name) = lower(?)
+                OR lower(e.aliases) LIKE ?
+            )
+            ORDER BY
+              CASE e.type
+                WHEN 'advantage' THEN 1
+                WHEN 'disadvantage' THEN 2
+                WHEN 'skill' THEN 3
+                WHEN 'rule' THEN 4
+                ELSE 9
+              END,
+              e.name, e.id
+            LIMIT ?
+            """,
+            (book_id, query, f'%"{normalized_query}"%', limit),
+        ).fetchall()
+
+        supporting_entities: list[sqlite3.Row] = []
+        seen_entity_ids = {int(r["id"]) for r in exact_entities}
+        for term in candidate_terms:
+            if len(supporting_entities) >= limit:
+                break
+            rows = conn.execute(
+                """
+                SELECT e.id, e.type, e.name, e.start_page, e.end_page, e.needs_review, e.review_reason,
+                       t.text_clean, t.primary_citation, t.block_refs
+                FROM entities e
+                JOIN entity_text t ON t.entity_id = e.id
+                WHERE e.book_id = ? AND (
+                    e.name LIKE ?
+                    OR e.aliases LIKE ?
+                )
+                ORDER BY
+                  CASE
+                    WHEN lower(e.name) = lower(?) THEN 0
+                    WHEN lower(e.name) LIKE lower(?) THEN 1
+                    ELSE 2
+                  END,
+                  CASE e.type
+                    WHEN 'advantage' THEN 1
+                    WHEN 'disadvantage' THEN 2
+                    WHEN 'skill' THEN 3
+                    WHEN 'rule' THEN 4
+                    ELSE 9
+                  END,
+                  e.name, e.id
+                LIMIT 4
+                """,
+                (book_id, f"%{term}%", f"%{term}%", term, f"{term}%"),
+            ).fetchall()
+            for row in rows:
+                entity_id = int(row["id"])
+                if entity_id in seen_entity_ids:
+                    continue
+                if _entity_name_relevance(cast(str, row["name"]), candidate_terms, query) < 50:
+                    continue
+                supporting_entities.append(row)
+                seen_entity_ids.add(entity_id)
+                if len(supporting_entities) >= limit:
+                    break
+
+        semantic_entities: list[sqlite3.Row] = []
+        semantic_chunks: list[sqlite3.Row] = []
+        if chromadb is not None:
+            chroma_dir = RULES_DB_DIR / "chroma"
+            if chroma_dir.exists():
+                client = chromadb.PersistentClient(path=str(chroma_dir))
+                try:
+                    collection = client.get_collection(name="gurps_rules")
+                except Exception:
+                    collection = None
+                if collection is not None:
+                    results = collection.query(query_texts=[query], n_results=semantic_limit)
+                    ids = results.get("ids", [[]])[0] if results.get("ids") else []
+                    entity_ids: list[int] = []
+                    chunk_ids: list[int] = []
+                    for doc_id in ids:
+                        doc_id_s = str(doc_id)
+                        if doc_id_s.startswith("entity_"):
+                            try:
+                                entity_id = int(doc_id_s.split("_", 1)[1])
+                            except ValueError:
+                                continue
+                            if entity_id not in seen_entity_ids:
+                                entity_ids.append(entity_id)
+                                seen_entity_ids.add(entity_id)
+                        elif doc_id_s.startswith("chunk_"):
+                            try:
+                                chunk_id = int(doc_id_s.split("_", 1)[1])
+                            except ValueError:
+                                continue
+                            chunk_ids.append(chunk_id)
+
+                    semantic_entities = _fetch_entity_rows_by_ids(
+                        conn, book_id=book_id, entity_ids=entity_ids[:limit]
+                    )
+                    semantic_chunks = _fetch_chunk_rows_by_ids(
+                        conn, book_id=book_id, chunk_ids=chunk_ids[:limit]
+                    )
+
+        chunk_rows: list[sqlite3.Row] = []
+        seen_chunk_ids: set[int] = set()
+        for row in semantic_chunks:
+            cid = int(row["id"])
+            if cid not in seen_chunk_ids:
+                chunk_rows.append(row)
+                seen_chunk_ids.add(cid)
+
+        if not chunk_rows:
+            use_fts = _table_exists(conn, "chunks_fts")
+            search_terms = [query, *candidate_terms[:5]]
+            for term in search_terms:
+                if len(chunk_rows) >= limit:
+                    break
+                if use_fts:
+                    tokens = [t for t in re.findall(r"[A-Za-z0-9']+", term) if t.strip()]
+                    if tokens:
+                        fts_q = " AND ".join(f'"{t.replace(chr(34), chr(34) * 2)}"' for t in tokens)
+                    else:
+                        q = term.replace('"', '""')
+                        fts_q = f"\"{q}\""
+                    try:
+                        rows = conn.execute(
+                            """
+                            SELECT c.id, c.start_page, c.end_page, c.text_clean, c.block_refs
+                            FROM chunks_fts f
+                            JOIN chunks c ON c.id = f.chunk_id
+                            WHERE f MATCH ? AND c.book_id = ?
+                            ORDER BY bm25(f)
+                            LIMIT 3
+                            """,
+                            (fts_q, book_id),
+                        ).fetchall()
+                    except sqlite3.OperationalError:
+                        rows = []
+                else:
+                    rows = conn.execute(
+                        """
+                        SELECT id, start_page, end_page, text_clean, block_refs
+                        FROM chunks
+                        WHERE book_id = ? AND text_clean LIKE ?
+                        ORDER BY id
+                        LIMIT 3
+                        """,
+                        (book_id, f"%{term}%"),
+                    ).fetchall()
+                for row in rows:
+                    cid = int(row["id"])
+                    if cid in seen_chunk_ids:
+                        continue
+                    chunk_rows.append(row)
+                    seen_chunk_ids.add(cid)
+                    if len(chunk_rows) >= limit:
+                        break
+
+    print(f"# RULES QA EVIDENCE: {query}\n")
+    if candidate_terms:
+        print("Candidate terms:", ", ".join(candidate_terms[:8]))
+        print()
+
+    if exact_entities:
+        print("## Exact Entities")
+        for row in exact_entities[:limit]:
+            review = f" [needs_review: {row['review_reason']}]" if int(row["needs_review"]) == 1 else ""
+            print(
+                f"- {row['type']}: {row['name']} ({_pages_label(cast(int | None, row['start_page']), cast(int | None, row['end_page']))}) { _citation_label_for_entity(row) }{review}"
+            )
+            block_preview = _citation_preview_from_block_refs(row["block_refs"])
+            if block_preview:
+                print(f"  refs: {block_preview}")
+        print()
+
+    if supporting_entities or semantic_entities:
+        print("## Supporting Entities")
+        merged_entities: list[sqlite3.Row] = []
+        seen_out_ids: set[int] = set()
+        for row in [*supporting_entities, *semantic_entities]:
+            eid = int(row["id"])
+            if eid in seen_out_ids:
+                continue
+            merged_entities.append(row)
+            seen_out_ids.add(eid)
+            if len(merged_entities) >= limit:
+                break
+        for row in merged_entities:
+            preview = cast(str, row["text_clean"] or "").replace("\n", " ").strip()
+            preview = preview[:220] + ("..." if len(preview) > 220 else "")
+            print(
+                f"- {row['type']}: {row['name']} ({_pages_label(cast(int | None, row['start_page']), cast(int | None, row['end_page']))}) { _citation_label_for_entity(row) }"
+            )
+            print(f"  {preview}")
+            block_preview = _citation_preview_from_block_refs(row["block_refs"])
+            if block_preview:
+                print(f"  refs: {block_preview}")
+        print()
+
+    if chunk_rows:
+        print("## Supporting Chunks")
+        for row in chunk_rows[:limit]:
+            preview = cast(str, row["text_clean"] or "").replace("\n", " ").strip()
+            preview = preview[:260] + ("..." if len(preview) > 260 else "")
+            print(f"- chunk {int(row['id'])} ({_pages_label(cast(int | None, row['start_page']), cast(int | None, row['end_page']))}) { _citation_label_for_chunk(row) }")
+            print(f"  {preview}")
+            block_preview = _citation_preview_from_block_refs(row["block_refs"])
+            if block_preview:
+                print(f"  refs: {block_preview}")
+        print()
+
+    top_entity = exact_entities[0] if exact_entities else None
+    if top_entity is None and supporting_entities:
+        strongest = supporting_entities[0]
+        if _entity_name_relevance(cast(str, strongest["name"]), candidate_terms, query) >= 70:
+            top_entity = strongest
+    if top_entity is None and semantic_entities:
+        strongest_sem = semantic_entities[0]
+        if _entity_name_relevance(cast(str, strongest_sem["name"]), candidate_terms, query) >= 70:
+            top_entity = strongest_sem
+    if top_entity is not None:
+        print("## Best Evidence")
+        print(
+            f"{top_entity['type']}: {top_entity['name']} ({_pages_label(cast(int | None, top_entity['start_page']), cast(int | None, top_entity['end_page']))})"
+        )
+        print(f"Source: {_citation_label_for_entity(top_entity)}")
+        block_preview = _citation_preview_from_block_refs(top_entity["block_refs"], max_blocks=4)
+        if block_preview:
+            print(f"Refs: {block_preview}")
+        print("```text")
+        preview = cast(str, top_entity["text_clean"] or "")
+        print(preview[:2200] + ("\n... (truncated)" if len(preview) > 2200 else ""))
+        print("```")
+        return 0
+
+    if chunk_rows:
+        row = chunk_rows[0]
+        print("## Best Evidence")
+        print(f"chunk {int(row['id'])} ({_pages_label(cast(int | None, row['start_page']), cast(int | None, row['end_page']))})")
+        print(f"Source: {_citation_label_for_chunk(row)}")
+        block_preview = _citation_preview_from_block_refs(row["block_refs"], max_blocks=4)
+        if block_preview:
+            print(f"Refs: {block_preview}")
+        print("```text")
+        preview = cast(str, row["text_clean"] or "")
+        print(preview[:2200] + ("\n... (truncated)" if len(preview) > 2200 else ""))
+        print("```")
+        return 0
+
+    print("No evidence found.")
     return 0
 
 
@@ -3977,12 +4371,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_show.set_defaults(func=cmd_chunk_show)
 
     p_ent = sub.add_parser(
-        "entity-extract", help="Deterministically extract entities (v1: maneuvers, advantages, disadvantages, skills, spells, equipment)"
+        "entity-extract", help="Deterministically extract entities (v1: maneuvers, combat_rules, advantages, disadvantages, skills, spells, equipment)"
     )
     p_ent.add_argument(
         "--kind",
         default="maneuvers",
-        choices=["maneuvers", "advantages", "disadvantages", "skills", "spells", "equipment"],
+        choices=["maneuvers", "combat_rules", "advantages", "disadvantages", "skills", "spells", "equipment"],
         help="Entity kind to extract",
     )
     p_ent.add_argument("--mode", default="replace", choices=["replace", "append"], help="Default: replace")
@@ -4008,7 +4402,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_ent.add_argument(
         "--cluster",
         default="auto",
-        choices=["auto", "earliest", "latest"],
+        choices=["auto", "earliest", "latest", "all"],
         help="Which heading cluster to use (default: auto)",
     )
     p_ent.add_argument(
@@ -4070,6 +4464,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_agent.add_argument("--config", default=None, help="Config path (default: rules_db/config.toml)")
     p_agent.add_argument("--db", default=None, help="Path to sqlite db (overrides config db_path)")
     p_agent.set_defaults(func=cmd_agent_search)
+
+    p_qa = sub.add_parser("qa", help="Question-oriented retrieval for the assistant")
+    p_qa.add_argument("query", help="Natural-language rules question")
+    p_qa.add_argument("--limit", type=int, default=3, help="Max items per section (default: 3)")
+    p_qa.add_argument("--config", default=None, help="Config path (default: rules_db/config.toml)")
+    p_qa.add_argument("--db", default=None, help="Path to sqlite db (overrides config db_path)")
+    p_qa.add_argument("--book", default=None, help="Book key (e.g. basic_set)")
+    p_qa.set_defaults(func=cmd_qa)
 
     return p
 
