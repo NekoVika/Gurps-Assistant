@@ -71,6 +71,60 @@ CASES: tuple[QaCase, ...] = (
             "Source: (Basic Set, p. 375",
         ),
     ),
+    QaCase(
+        query="What does Alcoholism do?",
+        expected_substrings=(
+            "# RULES QA EVIDENCE: What does Alcoholism do?",
+            "Alcoholism",
+            "## Best Evidence",
+            "Source: (Basic Set, p. 124",
+        ),
+    ),
+    QaCase(
+        query="What is Karate?",
+        expected_substrings=(
+            "# RULES QA EVIDENCE: What is Karate?",
+            "Karate",
+            "## Best Evidence",
+            "Source: (Basic Set, p. 205",
+        ),
+    ),
+    QaCase(
+        query="How do hit locations work?",
+        expected_substrings=(
+            "# RULES QA EVIDENCE: How do hit locations work?",
+            "Hit Location",
+            "## Best Evidence",
+            "Source: (Basic Set, p. 338",
+        ),
+    ),
+    QaCase(
+        query="How does Retreat work?",
+        expected_substrings=(
+            "# RULES QA EVIDENCE: How does Retreat work?",
+            "Retreat",
+            "## Best Evidence",
+            "Source: (Basic Set, p. 395",
+        ),
+    ),
+    QaCase(
+        query="How does All-Out Defense work?",
+        expected_substrings=(
+            "# RULES QA EVIDENCE: How does All-Out Defense work?",
+            "All-Out Defense",
+            "## Best Evidence",
+            "Source: (Basic Set, p. 326",
+        ),
+    ),
+    QaCase(
+        query="How does Rapid Fire work?",
+        expected_substrings=(
+            "# RULES QA EVIDENCE: How does Rapid Fire work?",
+            "Rapid Fire",
+            "## Best Evidence",
+            "Source: (Basic Set, p. 377",
+        ),
+    ),
 )
 
 

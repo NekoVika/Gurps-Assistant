@@ -89,6 +89,78 @@ def entity_name_relevance(name: str, candidate_terms: list[str], query: str) -> 
     return score
 
 
+def query_looks_combat_rules(query: str, candidate_terms: list[str]) -> bool:
+    q = normalize_query_text(query)
+    combat_terms = {
+        "attack",
+        "defense",
+        "defence",
+        "dodge",
+        "parry",
+        "block",
+        "retreat",
+        "slam",
+        "suppression",
+        "rapid fire",
+        "hit location",
+        "all-out",
+        "maneuver",
+        "combat",
+        "fire",
+        "shoot",
+        "bullets",
+        "unarmed",
+    }
+    if any(term in q for term in combat_terms):
+        return True
+    return any(normalize_query_text(term) in combat_terms for term in candidate_terms)
+
+
+def entity_type_priority(entity_type: str, query: str, candidate_terms: list[str]) -> int:
+    q = normalize_query_text(query)
+    combatish = query_looks_combat_rules(query, candidate_terms)
+    if q.startswith("how does ") or q.startswith("how do "):
+        if combatish:
+            priorities = {
+                "rule": 0,
+                "skill": 1,
+                "advantage": 2,
+                "disadvantage": 3,
+                "table": 4,
+                "spell": 5,
+            }
+            return priorities.get(entity_type, 9)
+    priorities = {
+        "advantage": 0,
+        "disadvantage": 1,
+        "skill": 2,
+        "rule": 3,
+        "table": 4,
+        "spell": 5,
+    }
+    return priorities.get(entity_type, 9)
+
+
+def entity_rank_score(row: Mapping[str, object], candidate_terms: list[str], query: str) -> tuple[int, int, int, str]:
+    name = str(_row_value(row, "name") or "")
+    entity_type = str(_row_value(row, "type") or "")
+    relevance = entity_name_relevance(name, candidate_terms, query)
+    specificity = 0
+    n = normalize_query_text(name)
+    for term in candidate_terms:
+        t = normalize_query_text(term)
+        if not t:
+            continue
+        if n == t:
+            specificity = max(specificity, len(t.split()))
+        elif n.startswith(t) or t in n:
+            specificity = max(specificity, len(t.split()))
+    type_priority = entity_type_priority(entity_type, query, candidate_terms)
+    page_start = _row_value(row, "start_page")
+    page_num = int(page_start) if isinstance(page_start, int) else 9999
+    return (-relevance, -specificity, type_priority, page_num, name.lower())
+
+
 def parse_json_object(raw: object) -> dict[str, object]:
     if raw is None:
         return {}

@@ -13,6 +13,7 @@ from rulesdb_lib.qa_helpers import (
     citation_label_for_entity,
     citation_preview_from_block_refs,
     entity_name_relevance,
+    entity_rank_score,
     normalize_query_text,
     pages_label,
     qa_candidate_terms,
@@ -441,8 +442,6 @@ def cmd_qa(args: argparse.Namespace, deps: SearchCommandDeps) -> int:
                     continue
                 supporting_entities.append(row)
                 seen_entity_ids.add(entity_id)
-                if len(supporting_entities) >= limit:
-                    break
 
         semantic_entities: list[sqlite3.Row] = []
         semantic_chunks: list[sqlite3.Row] = []
@@ -482,6 +481,14 @@ def cmd_qa(args: argparse.Namespace, deps: SearchCommandDeps) -> int:
                     semantic_chunks = deps.fetch_chunk_rows_by_ids(
                         conn, book_id=book_id, chunk_ids=chunk_ids[:limit]
                     )
+
+        if supporting_entities:
+            supporting_entities.sort(key=lambda row: entity_rank_score(row, candidate_terms, query))
+            supporting_entities = supporting_entities[:limit]
+
+        if semantic_entities:
+            semantic_entities.sort(key=lambda row: entity_rank_score(row, candidate_terms, query))
+            semantic_entities = semantic_entities[:limit]
 
         chunk_rows: list[sqlite3.Row] = []
         seen_chunk_ids: set[int] = set()
@@ -559,7 +566,9 @@ def cmd_qa(args: argparse.Namespace, deps: SearchCommandDeps) -> int:
         print("## Supporting Entities")
         merged_entities: list[sqlite3.Row] = []
         seen_out_ids: set[int] = set()
-        for row in [*supporting_entities, *semantic_entities]:
+        merged_candidates = [*supporting_entities, *semantic_entities]
+        merged_candidates.sort(key=lambda row: entity_rank_score(row, candidate_terms, query))
+        for row in merged_candidates:
             eid = int(row["id"])
             if eid in seen_out_ids:
                 continue
@@ -593,11 +602,11 @@ def cmd_qa(args: argparse.Namespace, deps: SearchCommandDeps) -> int:
 
     top_entity = exact_entities[0] if exact_entities else None
     if top_entity is None and supporting_entities:
-        strongest = supporting_entities[0]
+        strongest = min(supporting_entities, key=lambda row: entity_rank_score(row, candidate_terms, query))
         if entity_name_relevance(cast(str, strongest["name"]), candidate_terms, query) >= 70:
             top_entity = strongest
     if top_entity is None and semantic_entities:
-        strongest_sem = semantic_entities[0]
+        strongest_sem = min(semantic_entities, key=lambda row: entity_rank_score(row, candidate_terms, query))
         if entity_name_relevance(cast(str, strongest_sem["name"]), candidate_terms, query) >= 70:
             top_entity = strongest_sem
     if top_entity is not None:
