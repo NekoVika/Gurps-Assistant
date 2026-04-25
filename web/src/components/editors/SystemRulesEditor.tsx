@@ -8,7 +8,7 @@ type Props = {
     documentPath?: string;
 };
 
-export function SystemRulesEditor({ value, onChange, documentPath = "" }: Props) {
+export function SystemRulesEditor({ value, onChange }: Props) {
     const [data, setData] = useState<SystemRulesJSON | null>(null);
 
     useEffect(() => {

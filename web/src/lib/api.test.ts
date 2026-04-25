@@ -13,13 +13,13 @@ describe('API functions', () => {
       download_url: 'http://example.com'
     };
 
-    global.fetch = vi.fn().mockResolvedValue({
+    globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: vi.fn().mockResolvedValue(mockResponse)
-    });
+    }) as any;
 
     const result = await checkUpdate();
     expect(result).toEqual(mockResponse);
-    expect(global.fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/update/check');
+    expect(globalThis.fetch).toHaveBeenCalledWith('http://127.0.0.1:8000/update/check');
   });
 });

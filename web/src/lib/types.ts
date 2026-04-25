@@ -166,6 +166,17 @@ export interface WorldDossierJSON {
     factions: string[];
     keyLocations: string[];
     images: string[];
+    
+    // Editor fields
+    worldName?: string;
+    genre?: string;
+    techLevel?: string;
+    manaLevel?: string;
+    generalOverview?: string;
+    recentHistory?: string;
+    keyFactions?: string[];
+    importantFigures?: string[];
+    customMechanics?: string[];
 }
 
 export interface CampaignOverviewJSON {
@@ -178,6 +189,15 @@ export interface CampaignOverviewJSON {
     synopsis: string;
     majorArcs: string[];
     images: string[];
+    
+    // Editor fields
+    startingPoints?: string;
+    techLevelMagic?: string;
+    playerCharacters?: string[];
+    genre?: string;
+    currentYear?: string;
+    coreThemes?: string;
+    premise?: string;
 }
 
 export interface SystemRulesJSON {
@@ -189,6 +209,12 @@ export interface SystemRulesJSON {
     forbiddenOptions: string;
     pointBudget: string;
     customMechanics: string;
+    
+    // Editor fields
+    corePrompt?: string;
+    formattingRules?: string;
+    mechanicsRules?: string;
+    toneAndStyle?: string;
 }
 
 export interface StateJSON {
@@ -198,6 +224,13 @@ export interface StateJSON {
     activeQuests: string[];
     recentEvents: string[];
     inventory: string[];
+    
+    // Editor fields
+    currentChapter?: string;
+    inGameDate?: string;
+    partyStatus?: string;
+    flags?: string[];
+    gmNotes?: string[];
     reputation: string;
     notes: string;
 }

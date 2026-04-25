@@ -57,24 +57,7 @@ export function ImageArrayEditor({ title, items, onChange, documentPath }: Props
     }
   };
 
-  const wrapperStyle: React.CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-    background: "rgba(0,0,0,0.2)",
-    padding: "12px",
-    borderRadius: "8px",
-    border: "1px solid rgba(255,255,255,0.1)",
-  };
 
-  const rowStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    padding: "8px",
-    background: "rgba(0,0,0,0.2)",
-    borderRadius: "6px",
-  };
 
   const thumbnailStyle: React.CSSProperties = {
     width: "48px",

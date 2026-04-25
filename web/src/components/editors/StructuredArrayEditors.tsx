@@ -1,8 +1,6 @@
 import { WorkspaceSelect } from './WorkspaceSelect';
 import { parseAttribute, serializeAttribute, parseTrait, serializeTrait, parseSkill, serializeSkill, parseGear, serializeGear, parseHitLocation, serializeHitLocation } from '../../lib/TraitFormatters';
 
-const inputStyle = { padding: "4px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", color: "white", borderRadius: "4px", width: "100%" };
-const labelStyle = { display: "block", fontSize: "0.75rem", opacity: 0.7, marginBottom: "2px", textTransform: "uppercase" as const };
 
 type ListProps = { title: string; items: string[]; onChange: (items: string[]) => void; };
 
@@ -357,7 +355,6 @@ export function EntityRelationEditorList({ title, items, onChange, targetCategor
                                 value={item.name}
                                 onChange={name => updateItem(i, "name", name)}
                                 category={targetCategory}
-                                allowCustom={true}
                                 placeholder={`Select ${targetCategory}...`}
                                 style={{ margin: 0, padding: "6px 8px", borderRadius: "6px", border: "1px solid rgba(149,181,255,0.2)", background: "rgba(8,15,30,0.6)", color: "white", width: "100%", fontSize: "0.95rem" }}
                             />

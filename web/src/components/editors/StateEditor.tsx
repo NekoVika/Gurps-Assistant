@@ -9,7 +9,7 @@ type Props = {
     documentPath?: string;
 };
 
-export function StateEditor({ value, onChange, documentPath = "" }: Props) {
+export function StateEditor({ value, onChange }: Props) {
     const [data, setData] = useState<StateJSON | null>(null);
 
     useEffect(() => {
@@ -48,11 +48,11 @@ export function StateEditor({ value, onChange, documentPath = "" }: Props) {
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div className="editor-field">
                     <label className="editor-label">Recent Events (Last Session Summary)</label>
-                    <MDEditor value={data.recentEvents} onChange={val => handleUpdate('recentEvents', val || "")} height={200} preview="edit" />
+                    <MDEditor value={Array.isArray(data.recentEvents) ? data.recentEvents.join('\n') : (data.recentEvents as unknown as string || "")} onChange={val => handleUpdate('recentEvents', val ? val.split('\n') : [])} height={200} preview="edit" />
                 </div>
                 <div className="editor-field">
                     <label className="editor-label">Active Quests / Objectives</label>
-                    <MDEditor value={data.activeQuests} onChange={val => handleUpdate('activeQuests', val || "")} height={150} preview="edit" />
+                    <MDEditor value={Array.isArray(data.activeQuests) ? data.activeQuests.join('\n') : (data.activeQuests as unknown as string || "")} onChange={val => handleUpdate('activeQuests', val ? val.split('\n') : [])} height={150} preview="edit" />
                 </div>
                 <div className="editor-field">
                     <label className="editor-label">Party Status (Health, Gear, Tension)</label>
