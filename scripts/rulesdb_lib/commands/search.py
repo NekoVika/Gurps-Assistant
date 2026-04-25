@@ -143,7 +143,8 @@ def cmd_search(args: argparse.Namespace, deps: SearchCommandDeps) -> int:
                 if r["start_page"] and r["end_page"]
                 else "p. ?"
             )
-            print(f"- chunk {int(r['id'])} ({pages}) {cast(str, r['snip']).replace('\\n', ' ')}…")
+            snip = cast(str, r['snip']).replace('\\n', ' ')
+            print(f"- chunk {int(r['id'])} ({pages}) {snip}…")
         return 0
 
 
