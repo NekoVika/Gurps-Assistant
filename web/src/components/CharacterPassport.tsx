@@ -161,9 +161,64 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
             </section>
           )}
           
+          {data.characterRelations && data.characterRelations.length > 0 && (
+            <section className="passport-block">
+              <h3>Character Relations</h3>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
+                {data.characterRelations.map((rel, i) => (
+                   <li key={i} style={{ fontSize: "0.9em" }}>
+                      <InternalLink target={rel.name} onNavigate={onNavigate} />
+                      <span style={{ opacity: 0.7, marginLeft: "6px" }}>— {rel.relation}</span>
+                   </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {data.factionRelations && data.factionRelations.length > 0 && (
+            <section className="passport-block">
+              <h3>Faction Relations</h3>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
+                {data.factionRelations.map((rel, i) => (
+                   <li key={i} style={{ fontSize: "0.9em" }}>
+                      <InternalLink target={rel.name} onNavigate={onNavigate} />
+                      <span style={{ opacity: 0.7, marginLeft: "6px" }}>— {rel.relation}</span>
+                   </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {data.locationRelations && data.locationRelations.length > 0 && (
+            <section className="passport-block">
+              <h3>Location Relations</h3>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
+                {data.locationRelations.map((rel, i) => (
+                   <li key={i} style={{ fontSize: "0.9em" }}>
+                      <InternalLink target={rel.name} onNavigate={onNavigate} />
+                      <span style={{ opacity: 0.7, marginLeft: "6px" }}>— {rel.relation}</span>
+                   </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {data.storyAppearances && data.storyAppearances.length > 0 && (
+            <section className="passport-block">
+              <h3>Story Appearances</h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {data.storyAppearances.map((loc, i) => (
+                   <span className="tag-pill" key={i}>
+                      <InternalLink target={loc} onNavigate={onNavigate} />
+                   </span>
+                ))}
+              </div>
+            </section>
+          )}
+
           {data.locations && data.locations.length > 0 && (
             <section className="passport-block">
-              <h3>Locations</h3>
+              <h3>Locations (Legacy)</h3>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                 {data.locations.map((loc, i) => (
                    <span className="tag-pill" key={i}>
@@ -173,10 +228,31 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
               </div>
             </section>
           )}
-          {data.location && (!data.locations || data.locations.length === 0) && (
+          
+          {data.relations && data.relations.length > 0 && (
             <section className="passport-block">
-              <h3>Base of Operations</h3>
-              <p><InternalLink target={data.location.replace(/\[|\]/g, "")} onNavigate={onNavigate} /></p>
+              <h3>Relations (Legacy)</h3>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
+                {data.relations.map((rel, i) => (
+                   <li key={i} style={{ fontSize: "0.9em" }}>
+                      <InternalLink target={rel.name.replace(/\[|\]/g, "")} onNavigate={onNavigate} />
+                      <span style={{ opacity: 0.7, marginLeft: "6px" }}>— {rel.relationship}</span>
+                   </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {data.appearances && data.appearances.length > 0 && (
+            <section className="passport-block">
+              <h3>Appearances (Legacy)</h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {data.appearances.map((app, i) => (
+                   <span className="tag-pill" key={i}>
+                      <InternalLink target={app.replace(/\[|\]/g, "")} onNavigate={onNavigate} />
+                   </span>
+                ))}
+              </div>
             </section>
           )}
         </aside>

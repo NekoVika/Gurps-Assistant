@@ -33,6 +33,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+          pip install pytest httpx
+          
+      - name: Run Backend Tests
+        run: python -m pytest tests/
+        
+      - name: Run Frontend Tests
+        working-directory: ./web
+        run: npm run test
           
       # Add Inno Setup to PATH
       - name: Add iscc to PATH

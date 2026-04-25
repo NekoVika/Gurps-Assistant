@@ -88,24 +88,24 @@ export function ImageArrayEditor({ title, items, onChange, documentPath }: Props
   const unselectedMedia = availableMedia.filter(m => !items.includes(m));
 
   return (
-    <div style={wrapperStyle}>
-      {title && <span style={{ fontWeight: 600, fontSize: "0.95em", opacity: 0.9 }}>{title}</span>}
+    <div className="editor-array-container">
+      {title && <span className="editor-label" style={{ color: "#a8c7fa" }}>{title}</span>}
       
       {items.length === 0 ? (
         <span style={{ fontSize: "0.85em", opacity: 0.5, fontStyle: "italic" }}>No images assigned.</span>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
           {items.map((item, idx) => (
-            <div key={idx} style={rowStyle}>
+            <div key={idx} className="editor-array-item">
               <img src={getMediaUrl(item, documentPath)} alt={item} style={thumbnailStyle} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               <div style={{ flexGrow: 1, fontSize: "0.9em", wordBreak: "break-all" }}>{item}</div>
               <button
                 type="button"
-                className="action-button danger"
+                className="editor-action-btn danger"
                 onClick={() => handleRemove(idx)}
                 style={{ padding: "4px 8px", fontSize: "0.8em" }}
               >
-                Remove
+                ✕ Remove
               </button>
             </div>
           ))}
@@ -116,8 +116,8 @@ export function ImageArrayEditor({ title, items, onChange, documentPath }: Props
         <select 
           onChange={handleSelectLocal} 
           defaultValue=""
-          className="search-input"
-          style={{ flexGrow: 1, padding: "8px", cursor: "pointer" }}
+          className="editor-select"
+          style={{ flexGrow: 1, cursor: "pointer" }}
         >
           <option value="" disabled>Select from folder...</option>
           {unselectedMedia.map(m => (
@@ -130,7 +130,7 @@ export function ImageArrayEditor({ title, items, onChange, documentPath }: Props
         
         <span style={{ fontSize: "0.9em", opacity: 0.6 }}>OR</span>
         
-        <label style={{ cursor: isUploading ? "wait" : "pointer" }} className="action-button primary">
+        <label style={{ cursor: isUploading ? "wait" : "pointer" }} className="editor-add-btn">
           {isUploading ? "Uploading..." : "Browse PC"}
           <input 
             type="file" 

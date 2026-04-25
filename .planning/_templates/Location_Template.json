@@ -39,5 +39,9 @@
   ],
   "plotHooks": [
     "A mysterious artifact was found here..."
-  ]
+  ],
+  "characterRelations": [],
+  "locationRelations": [],
+  "factionRelations": [],
+  "storyAppearances": []
 }

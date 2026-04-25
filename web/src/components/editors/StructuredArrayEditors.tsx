@@ -3,12 +3,11 @@ import { parseAttribute, serializeAttribute, parseTrait, serializeTrait, parseSk
 
 const inputStyle = { padding: "4px", background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", color: "white", borderRadius: "4px", width: "100%" };
 const labelStyle = { display: "block", fontSize: "0.75rem", opacity: 0.7, marginBottom: "2px", textTransform: "uppercase" as const };
-const containerStyle = { background: "rgba(255,255,255,0.05)", padding: "8px", borderRadius: "6px", marginBottom: "8px", display: "flex", gap: "8px", alignItems: "flex-start" };
 
 type ListProps = { title: string; items: string[]; onChange: (items: string[]) => void; };
 
 function Field({ label, children, flex, hideLabel }: { label: string, children: React.ReactNode, flex?: string, hideLabel?: boolean }) {
-    return <div style={{ flex: flex || 1 }}><label style={{...labelStyle, opacity: hideLabel ? 0 : 0.7}}>{label}</label>{children}</div>;
+    return <div className="editor-field" style={{ flex: flex || 1, opacity: hideLabel ? 0.6 : 1 }}><label className="editor-label" style={{ display: hideLabel ? "none" : "block" }}>{label}</label>{children}</div>;
 }
 
 export function AttributeEditorList({ title, items, onChange }: ListProps) {
@@ -60,22 +59,24 @@ export function AttributeEditorList({ title, items, onChange }: ListProps) {
     };
 
     return (
-        <div style={{ marginBottom: "16px" }}>
-            <h4 style={{ margin: "0 0 8px 0" }}>{title}</h4>
-            {coreData.map((attr, idx) => (
-                <div key={`core-${idx}`} style={containerStyle}>
-                    <Field label="Name" flex="2" hideLabel={idx > 0}><input style={{...inputStyle, opacity: 0.6}} value={attr.name} readOnly /></Field>
-                    <Field label="Level" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={attr.level} onChange={e => updateCore(idx, 'level', e.target.value)} /></Field>
-                    <Field label="Points" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={attr.points} onChange={e => updateCore(idx, 'points', e.target.value)} /></Field>
-                </div>
-            ))}
+        <div className="editor-array-container">
+            <h4 className="editor-label" style={{ margin: "0", color: "#a8c7fa" }}>{title}</h4>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px", marginTop: "12px" }}>
+                {coreData.map((attr, idx) => (
+                    <div key={`core-${idx}`} style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.03)", padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)", gap: "8px", transition: "transform 0.2s ease, background 0.2s ease" }}>
+                        <div style={{ fontSize: "0.85rem", color: "#c9dfff", width: "85px", fontWeight: "600", textTransform: "uppercase" }}>{attr.name}</div>
+                        <input className="editor-input" style={{ padding: "6px 8px", flex: 1, minWidth: 0 }} value={attr.level} onChange={e => updateCore(idx, 'level', e.target.value)} title="Level" placeholder="Level" />
+                        <input className="editor-input" style={{ padding: "6px 8px", width: "60px" }} value={attr.points} onChange={e => updateCore(idx, 'points', e.target.value)} type="number" title="Points" placeholder="Pts" />
+                    </div>
+                ))}
+            </div>
             {extras.length > 0 && (
-                <div style={{ marginTop: "16px", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "8px" }}>
-                    <h5 style={{ margin: "0 0 8px 0", color: "#ff7b72" }}>Unrecognized / Malformed Attributes</h5>
+                <div style={{ marginTop: "16px", borderTop: "1px dashed rgba(255,255,255,0.1)", paddingTop: "16px" }}>
+                    <h5 className="editor-label" style={{ margin: "0 0 12px 0", color: "#ff7b72" }}>Unrecognized / Malformed Attributes</h5>
                     {extras.map((ex, idx) => (
-                        <div key={`extra-${idx}`} style={containerStyle}>
-                            <Field label="Raw String" hideLabel={idx > 0}><input style={inputStyle} value={typeof ex === 'string' ? ex : serializeAttribute(ex)} onChange={e => updateExtra(idx, e.target.value)} /></Field>
-                            <button type="button" onClick={() => deleteExtra(idx)} style={{ background: "transparent", border: "none", color: "#ff7b72", cursor: "pointer", marginTop: "16px" }}>✖</button>
+                        <div key={`extra-${idx}`} className="editor-array-item" style={{ alignItems: "flex-start" }}>
+                            <Field label="Raw String" hideLabel={idx > 0}><input className="editor-input" value={typeof ex === 'string' ? ex : serializeAttribute(ex)} onChange={e => updateExtra(idx, e.target.value)} /></Field>
+                            <button type="button" onClick={() => deleteExtra(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
                     ))}
                 </div>
@@ -111,32 +112,34 @@ export function TraitEditorList({ title, items, onChange }: ListProps) {
     };
 
     return (
-        <div style={{ marginBottom: "16px" }}>
-            <h4 style={{ margin: "0 0 8px 0" }}>{title}</h4>
+        <div className="editor-array-container">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="editor-label" style={{ color: "#a8c7fa" }}>{title}</span>
+                <button type="button" className="editor-add-btn" onClick={addItem}>+ Add Trait</button>
+            </div>
             {parsed.map((trait, idx) => {
                 if (typeof trait === 'string') {
                     return (
-                        <div key={idx} style={containerStyle}>
-                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input style={inputStyle} value={trait} onChange={e => updateRaw(idx, e.target.value)} /></Field>
-                            <button type="button" onClick={() => deleteItem(idx)} style={{ background: "transparent", border: "none", color: "#ff7b72", cursor: "pointer", marginTop: "16px" }}>✖</button>
+                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start" }}>
+                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={trait} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
                     );
                 }
                 return (
-                    <div key={idx} style={{...containerStyle, flexWrap: "wrap"}}>
-                        <div style={{ display: "flex", gap: "8px", width: "100%" }}>
-                            <Field label="Name" flex="3" hideLabel={idx > 0}><input style={inputStyle} value={trait.name} onChange={e => updateItem(idx, 'name', e.target.value)} /></Field>
-                            <Field label="Points" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={trait.points} onChange={e => updateItem(idx, 'points', e.target.value)} /></Field>
-                            <button type="button" onClick={() => deleteItem(idx)} style={{ background: "transparent", border: "none", color: "#ff7b72", cursor: "pointer", marginTop: idx > 0 ? "4px" : "16px" }}>✖</button>
+                    <div key={idx} className="editor-array-item" style={{ flexDirection: "column", alignItems: "stretch", padding: "8px" }}>
+                        <div style={{ display: "flex", gap: "8px", width: "100%", alignItems: "center" }}>
+                            <input className="editor-input" style={{ flex: 3 }} placeholder="Trait Name" value={trait.name} onChange={e => updateItem(idx, 'name', e.target.value)} />
+                            <input className="editor-input" style={{ width: "80px" }} placeholder="Pts" value={trait.points} onChange={e => updateItem(idx, 'points', e.target.value)} type="number" />
+                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger">✕</button>
                         </div>
-                        <div style={{ display: "flex", gap: "8px", width: "100%" }}>
-                            <Field label="Notes" flex="3" hideLabel={idx > 0}><input style={inputStyle} value={trait.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} /></Field>
-                            <Field label="Ref" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={trait.reference} onChange={e => updateItem(idx, 'reference', e.target.value)} /></Field>
+                        <div style={{ display: "flex", gap: "8px", width: "100%", paddingRight: "36px" }}>
+                            <input className="editor-input" style={{ flex: 3 }} placeholder="Notes" value={trait.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} />
+                            <input className="editor-input" style={{ flex: 1 }} placeholder="Ref (e.g., B42)" value={trait.reference} onChange={e => updateItem(idx, 'reference', e.target.value)} />
                         </div>
                     </div>
                 );
             })}
-            <button type="button" onClick={addItem} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "white", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>+ Add Item</button>
         </div>
     );
 }
@@ -168,33 +171,35 @@ export function SkillEditorList({ title, items, onChange }: ListProps) {
     };
 
     return (
-        <div style={{ marginBottom: "16px" }}>
-            <h4 style={{ margin: "0 0 8px 0" }}>{title}</h4>
+        <div className="editor-array-container">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="editor-label" style={{ color: "#a8c7fa" }}>{title}</span>
+                <button type="button" className="editor-add-btn" onClick={addItem}>+ Add Skill</button>
+            </div>
             {parsed.map((skill, idx) => {
                 if (typeof skill === 'string') {
                     return (
-                        <div key={idx} style={containerStyle}>
-                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input style={inputStyle} value={skill} onChange={e => updateRaw(idx, e.target.value)} /></Field>
-                            <button type="button" onClick={() => deleteItem(idx)} style={{ background: "transparent", border: "none", color: "#ff7b72", cursor: "pointer", marginTop: "16px" }}>✖</button>
+                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start" }}>
+                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={skill} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
                     );
                 }
                 return (
-                    <div key={idx} style={{...containerStyle, flexWrap: "wrap"}}>
-                        <div style={{ display: "flex", gap: "8px", width: "100%" }}>
-                            <Field label="Name" flex="3" hideLabel={idx > 0}><input style={inputStyle} value={skill.name} onChange={e => updateItem(idx, 'name', e.target.value)} /></Field>
-                            <Field label="Base" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={skill.base} onChange={e => updateItem(idx, 'base', e.target.value)} /></Field>
-                            <Field label="Lvl" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={skill.level} onChange={e => updateItem(idx, 'level', e.target.value)} type="number" /></Field>
-                            <Field label="Pts" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={skill.points} onChange={e => updateItem(idx, 'points', e.target.value)} type="number" /></Field>
-                            <button type="button" onClick={() => deleteItem(idx)} style={{ background: "transparent", border: "none", color: "#ff7b72", cursor: "pointer", marginTop: idx > 0 ? "4px" : "16px" }}>✖</button>
+                    <div key={idx} className="editor-array-item" style={{ flexDirection: "column", alignItems: "stretch", padding: "8px" }}>
+                        <div style={{ display: "flex", gap: "8px", width: "100%", alignItems: "center" }}>
+                            <input className="editor-input" style={{ flex: 3 }} placeholder="Skill Name" value={skill.name} onChange={e => updateItem(idx, 'name', e.target.value)} />
+                            <input className="editor-input" style={{ width: "60px" }} placeholder="Base" value={skill.base} onChange={e => updateItem(idx, 'base', e.target.value)} />
+                            <input className="editor-input" style={{ width: "60px" }} placeholder="Lvl" value={skill.level} onChange={e => updateItem(idx, 'level', e.target.value)} type="number" />
+                            <input className="editor-input" style={{ width: "60px" }} placeholder="Pts" value={skill.points} onChange={e => updateItem(idx, 'points', e.target.value)} type="number" />
+                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger">✕</button>
                         </div>
-                        <div style={{ display: "flex", gap: "8px", width: "100%" }}>
-                            <Field label="Notes" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={skill.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} /></Field>
+                        <div style={{ display: "flex", gap: "8px", width: "100%", paddingRight: "36px" }}>
+                            <input className="editor-input" style={{ flex: 1 }} placeholder="Notes" value={skill.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} />
                         </div>
                     </div>
                 );
             })}
-            <button type="button" onClick={addItem} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "white", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>+ Add Skill</button>
         </div>
     );
 }
@@ -226,33 +231,35 @@ export function GearEditorList({ title, items, onChange }: ListProps) {
     };
 
     return (
-        <div style={{ marginBottom: "16px" }}>
-            <h4 style={{ margin: "0 0 8px 0" }}>{title}</h4>
+        <div className="editor-array-container">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="editor-label" style={{ color: "#a8c7fa" }}>{title}</span>
+                <button type="button" className="editor-add-btn" onClick={addItem}>+ Add Gear</button>
+            </div>
             {parsed.map((gear, idx) => {
                 if (typeof gear === 'string') {
                     return (
-                        <div key={idx} style={containerStyle}>
-                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input style={inputStyle} value={gear} onChange={e => updateRaw(idx, e.target.value)} /></Field>
-                            <button type="button" onClick={() => deleteItem(idx)} style={{ background: "transparent", border: "none", color: "#ff7b72", cursor: "pointer", marginTop: "16px" }}>✖</button>
+                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start" }}>
+                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={gear} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
                     );
                 }
                 return (
-                    <div key={idx} style={{...containerStyle, flexWrap: "wrap"}}>
-                        <div style={{ display: "flex", gap: "8px", width: "100%" }}>
-                            <Field label="Name" flex="3" hideLabel={idx > 0}><input style={inputStyle} value={gear.name} onChange={e => updateItem(idx, 'name', e.target.value)} /></Field>
-                            <Field label="Qty" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={gear.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 1)} type="number" /></Field>
-                            <Field label="Weight" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={gear.weight} onChange={e => updateItem(idx, 'weight', e.target.value)} /></Field>
-                            <Field label="Cost" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={gear.cost} onChange={e => updateItem(idx, 'cost', e.target.value)} /></Field>
-                            <button type="button" onClick={() => deleteItem(idx)} style={{ background: "transparent", border: "none", color: "#ff7b72", cursor: "pointer", marginTop: idx > 0 ? "4px" : "16px" }}>✖</button>
+                    <div key={idx} className="editor-array-item" style={{ flexDirection: "column", alignItems: "stretch", padding: "8px" }}>
+                        <div style={{ display: "flex", gap: "8px", width: "100%", alignItems: "center" }}>
+                            <input className="editor-input" style={{ flex: 3 }} placeholder="Gear Name" value={gear.name} onChange={e => updateItem(idx, 'name', e.target.value)} />
+                            <input className="editor-input" style={{ width: "60px" }} placeholder="Qty" value={gear.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 1)} type="number" />
+                            <input className="editor-input" style={{ width: "80px" }} placeholder="Wt" value={gear.weight} onChange={e => updateItem(idx, 'weight', e.target.value)} />
+                            <input className="editor-input" style={{ width: "80px" }} placeholder="Cost" value={gear.cost} onChange={e => updateItem(idx, 'cost', e.target.value)} />
+                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger">✕</button>
                         </div>
-                        <div style={{ display: "flex", gap: "8px", width: "100%" }}>
-                            <Field label="Notes" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={gear.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} /></Field>
+                        <div style={{ display: "flex", gap: "8px", width: "100%", paddingRight: "36px" }}>
+                            <input className="editor-input" style={{ flex: 1 }} placeholder="Notes (e.g., sw+1 cut)" value={gear.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} />
                         </div>
                     </div>
                 );
             })}
-            <button type="button" onClick={addItem} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "white", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>+ Add Gear</button>
         </div>
     );
 }
@@ -284,42 +291,49 @@ export function HitLocationEditorList({ title, items, onChange }: ListProps) {
     };
 
     return (
-        <div style={{ marginBottom: "16px" }}>
-            <h4 style={{ margin: "0 0 8px 0" }}>{title}</h4>
+        <div className="editor-array-container">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="editor-label" style={{ color: "#a8c7fa" }}>{title}</span>
+                <button type="button" className="editor-add-btn" onClick={addItem}>+ Add Location</button>
+            </div>
             {parsed.map((loc, idx) => {
                 if (typeof loc === 'string') {
                     return (
-                        <div key={idx} style={containerStyle}>
-                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input style={inputStyle} value={loc} onChange={e => updateRaw(idx, e.target.value)} /></Field>
-                            <button type="button" onClick={() => deleteItem(idx)} style={{ background: "transparent", border: "none", color: "#ff7b72", cursor: "pointer", marginTop: "16px" }}>✖</button>
+                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start" }}>
+                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={loc} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
                     );
                 }
                 return (
-                    <div key={idx} style={{...containerStyle, flexWrap: "wrap"}}>
-                        <div style={{ display: "flex", gap: "8px", width: "100%" }}>
-                            <Field label="Location" flex="2" hideLabel={idx > 0}><input style={inputStyle} value={loc.location} onChange={e => updateItem(idx, 'location', e.target.value)} /></Field>
-                            <Field label="Roll" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={loc.roll} onChange={e => updateItem(idx, 'roll', e.target.value)} /></Field>
-                            <Field label="DR" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={loc.dr} onChange={e => updateItem(idx, 'dr', parseInt(e.target.value) || 0)} type="number" /></Field>
-                            <button type="button" onClick={() => deleteItem(idx)} style={{ background: "transparent", border: "none", color: "#ff7b72", cursor: "pointer", marginTop: idx > 0 ? "4px" : "16px" }}>✖</button>
+                    <div key={idx} className="editor-array-item" style={{ flexDirection: "column", alignItems: "stretch", padding: "8px" }}>
+                        <div style={{ display: "flex", gap: "8px", width: "100%", alignItems: "center" }}>
+                            <input className="editor-input" style={{ flex: 2 }} placeholder="Location" value={loc.location} onChange={e => updateItem(idx, 'location', e.target.value)} />
+                            <input className="editor-input" style={{ flex: 1 }} placeholder="Roll" value={loc.roll} onChange={e => updateItem(idx, 'roll', e.target.value)} />
+                            <input className="editor-input" style={{ width: "80px" }} placeholder="DR" value={loc.dr} onChange={e => updateItem(idx, 'dr', e.target.value)} type="number" />
+                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger">✕</button>
                         </div>
-                        <div style={{ display: "flex", gap: "8px", width: "100%" }}>
-                            <Field label="Notes" flex="1" hideLabel={idx > 0}><input style={inputStyle} value={loc.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} /></Field>
+                        <div style={{ display: "flex", gap: "8px", width: "100%", paddingRight: "36px" }}>
+                            <input className="editor-input" style={{ flex: 1 }} placeholder="Notes" value={loc.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} />
                         </div>
                     </div>
                 );
             })}
-            <button type="button" onClick={addItem} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.2)", color: "white", padding: "4px 8px", borderRadius: "4px", cursor: "pointer" }}>+ Add Location</button>
         </div>
     );
 }
 
-type RelationListProps = { title: string; items: any[]; onChange: (items: any[]) => void; };
-export function RelationEditorList({ title, items, onChange }: RelationListProps) {
+type EntityRelationListProps = { 
+    title: string; 
+    items: any[]; 
+    onChange: (items: any[]) => void; 
+    targetCategory: "Character" | "Location" | "Story" | "Faction" | "All";
+};
+export function EntityRelationEditorList({ title, items, onChange, targetCategory }: EntityRelationListProps) {
     const handleAdd = () => {
-        onChange([...items, { name: "New Relation", relationship: "Description" }]);
+        onChange([...items, { name: "", relation: "" }]);
     };
-    const handleRemove = (index: number) => {
+    const deleteItem = (index: number) => {
         onChange(items.filter((_, i) => i !== index));
     };
     const updateItem = (index: number, field: string, value: string) => {
@@ -329,32 +343,33 @@ export function RelationEditorList({ title, items, onChange }: RelationListProps
     };
 
     return (
-        <div style={{ marginBottom: "16px", padding: "12px", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                <span style={{ fontWeight: "bold", fontSize: "0.9em", color: "var(--color-primary, #a8c7fa)" }}>{title}</span>
-                <button type="button" className="ghost-button" style={{ padding: "4px 8px", fontSize: "0.8em" }} onClick={handleAdd}>+ Add Item</button>
+        <div className="editor-array-container">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="editor-label" style={{ color: "#a8c7fa" }}>{title}</span>
+                <button type="button" className="editor-add-btn" onClick={handleAdd}>+ Add {targetCategory}</button>
             </div>
             {items.length === 0 && <p style={{ fontSize: "0.85em", opacity: 0.5, fontStyle: "italic", margin: 0 }}>No items.</p>}
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {items.map((item, i) => (
-                    <div key={i} style={{ display: "flex", flexDirection: "column", gap: "4px", background: "rgba(255,255,255,0.05)", padding: "8px", borderRadius: "6px" }}>
-                        <div style={{ display: "flex", gap: "8px" }}>
-                            <WorkspaceSelect 
-                                category="Character"
-                                value={item.name || ""} 
-                                onChange={(val) => updateItem(i, "name", val)} 
-                                placeholder="Select Character..."
-                                style={{ flex: 1, margin: 0 }}
+                    <div key={i} className="editor-array-item" style={{ display: "flex", gap: "8px", alignItems: "center", padding: "8px" }}>
+                        <div style={{ flex: 1 }}>
+                            <WorkspaceSelect
+                                value={item.name}
+                                onChange={name => updateItem(i, "name", name)}
+                                category={targetCategory}
+                                allowCustom={true}
+                                placeholder={`Select ${targetCategory}...`}
+                                style={{ margin: 0, padding: "6px 8px", borderRadius: "6px", border: "1px solid rgba(149,181,255,0.2)", background: "rgba(8,15,30,0.6)", color: "white", width: "100%", fontSize: "0.95rem" }}
                             />
-                            <button type="button" style={{ background: "none", border: "none", color: "#ff6b6b", cursor: "pointer", padding: "0 8px" }} onClick={() => handleRemove(i)} title="Remove">✕</button>
                         </div>
-                        <input 
-                            type="text" 
-                            value={item.relationship || ""} 
-                            onChange={(e) => updateItem(i, "relationship", e.target.value)} 
-                            placeholder="Relationship" 
-                            style={{ width: "100%", padding: "6px 12px", borderRadius: "4px", border: "1px solid rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.5)", color: "white" }}
+                        <input
+                            className="editor-input"
+                            style={{ flex: 1, padding: "6px 8px" }}
+                            placeholder="Relationship / Description"
+                            value={item.relation || item.relationship || ""}
+                            onChange={e => updateItem(i, "relation", e.target.value)}
                         />
+                        <button type="button" onClick={() => deleteItem(i)} className="editor-action-btn danger">✕</button>
                     </div>
                 ))}
             </div>

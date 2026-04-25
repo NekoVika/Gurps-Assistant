@@ -106,9 +106,64 @@ export function LocationPassport({ data, documentPath, onNavigate }: Props) {
               <h3>Entities & Control</h3>
             </div>
             
+            {data.characterRelations && data.characterRelations.length > 0 && (
+              <div className="mechanics-section">
+                <span className="eyebrow">Character Relations</span>
+                <ul className="traits-list">
+                  {data.characterRelations.map((rel, idx) => (
+                      <li key={idx}>
+                         <InternalLink target={rel.name} onNavigate={onNavigate} />
+                         <span style={{ opacity: 0.7, marginLeft: "6px" }}>— {rel.relation}</span>
+                      </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {data.factionRelations && data.factionRelations.length > 0 && (
+              <div className="mechanics-section">
+                <span className="eyebrow">Faction Relations</span>
+                <ul className="traits-list">
+                  {data.factionRelations.map((rel, idx) => (
+                      <li key={idx}>
+                         <InternalLink target={rel.name} onNavigate={onNavigate} />
+                         <span style={{ opacity: 0.7, marginLeft: "6px" }}>— {rel.relation}</span>
+                      </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {data.locationRelations && data.locationRelations.length > 0 && (
+              <div className="mechanics-section">
+                <span className="eyebrow">Location Relations</span>
+                <ul className="traits-list">
+                  {data.locationRelations.map((rel, idx) => (
+                      <li key={idx}>
+                         <InternalLink target={rel.name} onNavigate={onNavigate} />
+                         <span style={{ opacity: 0.7, marginLeft: "6px" }}>— {rel.relation}</span>
+                      </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {data.storyAppearances && data.storyAppearances.length > 0 && (
+              <div className="mechanics-section">
+                <span className="eyebrow">Story Appearances</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
+                  {data.storyAppearances.map((loc, idx) => (
+                     <span className="tag-pill" key={idx}>
+                        <InternalLink target={loc} onNavigate={onNavigate} />
+                     </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {data.factions && data.factions.length > 0 && (
               <div className="mechanics-section">
-                <span className="eyebrow">Factions</span>
+                <span className="eyebrow">Factions (Legacy)</span>
                 <ul className="traits-list">
                   {data.factions.map((fac: string, idx: number) => <li key={idx}><InternalLink target={fac} onNavigate={onNavigate} /></li>)}
                 </ul>
@@ -117,7 +172,7 @@ export function LocationPassport({ data, documentPath, onNavigate }: Props) {
 
             {data.notableNpcs && data.notableNpcs.length > 0 && (
               <div className="mechanics-section">
-                <span className="eyebrow">Notable NPCs</span>
+                <span className="eyebrow">Notable NPCs (Legacy)</span>
                 <ul className="traits-list skills-list">
                   {data.notableNpcs.map((npc: string, idx: number) => <li key={idx}><InternalLink target={npc} onNavigate={onNavigate} /></li>)}
                 </ul>

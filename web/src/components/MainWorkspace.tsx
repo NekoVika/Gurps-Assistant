@@ -16,6 +16,11 @@ import { WizardModal } from "./WizardModal";
 import { CharacterEditor } from "./editors/CharacterEditor";
 import { LocationEditor } from "./editors/LocationEditor";
 import { StoryEditor } from "./editors/StoryEditor";
+import { FactionEditor } from "./editors/FactionEditor";
+import { WorldDossierEditor } from "./editors/WorldDossierEditor";
+import { CampaignOverviewEditor } from "./editors/CampaignOverviewEditor";
+import { SystemRulesEditor } from "./editors/SystemRulesEditor";
+import { StateEditor } from "./editors/StateEditor";
 import { RulesPanel } from "./RulesPanel";
 import { ActivityPanel } from "./ActivityPanel";
 import { TrashbinPanel } from "./TrashbinPanel";
@@ -1096,53 +1101,70 @@ export function MainWorkspace() {
                  />
               ) : selectedFile ? (
                 <div className="file-preview-wrapper" style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
-                  <div className="file-preview-meta" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                    <div>
-                      <span className="section-label">{selectedFile.path}</span>
-                      {selectedFile.truncated ? (
-                        <span className="status-pill pending" style={{ marginLeft: "12px" }}>Preview truncated</span>
-                      ) : null}
-                    </div>
-                    {isEditing ? (
-                       <div style={{ display: "flex", gap: "8px" }}>
-                          <button type="button" className="ghost-button" onClick={() => setIsEditing(false)} disabled={isSaving}>Cancel</button>
-                          <button type="button" className="primary-button" onClick={handleSaveEdit} disabled={isSaving}>
-                            {isSaving ? "Saving..." : "Save Document"}
+                  {!isEditing && (
+                    <div className="file-preview-meta" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                      <div>
+                        <span className="section-label">{selectedFile.path}</span>
+                        {selectedFile.truncated ? (
+                          <span className="status-pill pending" style={{ marginLeft: "12px" }}>Preview truncated</span>
+                        ) : null}
+                      </div>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        {(() => {
+                          const showDeepMend = selectedFile.path.includes("02_Characters") || selectedFile.path.includes("Locations") || selectedFile.path.includes("03_Story") || selectedFile.path.includes("Episode") || selectedFile.path.includes("sessions");
+                          const mendTargetType = selectedFile.path.includes("02_Characters") ? "Character" : (selectedFile.path.includes("Locations") ? "Location" : "Story");
+                          if (showDeepMend && (selectedFile.path.endsWith('.json') || selectedFile.path.endsWith('.md'))) {
+                              return (
+                                <button type="button" className="chip-button" style={{ borderColor: "rgba(255, 183, 0, 0.4)", color: "#ffb700" }} onClick={() => handleMendFile(mendTargetType)} disabled={isMendingFile}>
+                                  {isMendingFile ? "Mending..." : "🪄 Deep Mend File"}
+                                </button>
+                              );
+                          }
+                          return null;
+                        })()}
+                        {fileUndoStack.length > 0 && (
+                          <button type="button" className="chip-button" style={{ borderColor: "rgba(255, 183, 0, 0.4)", color: "#ffb700" }} onClick={handleUndoFileAction}>
+                            ⎌ Undo Last Action
                           </button>
-                       </div>
-                    ) : (
-                       <div style={{ display: "flex", gap: "8px" }}>
-                         {(() => {
-                            const showDeepMend = selectedFile.path.includes("02_Characters") || selectedFile.path.includes("Locations") || selectedFile.path.includes("03_Story") || selectedFile.path.includes("Episode") || selectedFile.path.includes("sessions");
-                            const mendTargetType = selectedFile.path.includes("02_Characters") ? "Character" : (selectedFile.path.includes("Locations") ? "Location" : "Story");
-                            if (showDeepMend && (selectedFile.path.endsWith('.json') || selectedFile.path.endsWith('.md'))) {
-                               return (
-                                 <button type="button" className="chip-button" style={{ borderColor: "rgba(255, 183, 0, 0.4)", color: "#ffb700" }} onClick={() => handleMendFile(mendTargetType)} disabled={isMendingFile}>
-                                   {isMendingFile ? "Mending..." : "🪄 Deep Mend File"}
-                                 </button>
-                               );
-                            }
-                            return null;
-                         })()}
-                         {fileUndoStack.length > 0 && (
-                            <button type="button" className="chip-button" style={{ borderColor: "rgba(255, 183, 0, 0.4)", color: "#ffb700" }} onClick={handleUndoFileAction}>
-                              ⎌ Undo Last Action
-                            </button>
-                         )}
-                         <button type="button" className="chip-button" onClick={() => setIsEditing(true)}>
-                           📝 Edit
-                         </button>
-                         <button type="button" className="chip-button" style={{ borderColor: "rgba(255, 60, 60, 0.4)", color: "#ff7b72" }} onClick={handleDeleteFile}>
-                           🗑️ Delete
-                         </button>
-                       </div>
-                    )}
-                  </div>
+                        )}
+                        <button type="button" className="chip-button" onClick={() => setIsEditing(true)}>
+                          📝 Edit
+                        </button>
+                        <button type="button" className="chip-button" style={{ borderColor: "rgba(255, 60, 60, 0.4)", color: "#ff7b72" }} onClick={handleDeleteFile}>
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {isEditing && (
+                    <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginBottom: "16px" }}>
+                      <button type="button" className="ghost-button" style={{ width: "auto", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px 16px", fontSize: "0.95rem" }} onClick={() => setIsEditing(false)} disabled={isSaving}>Cancel</button>
+                      <button type="button" className="primary-button" style={{ width: "auto", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px 20px", fontSize: "0.95rem", boxShadow: "0 0 12px rgba(88,166,255,0.2)" }} onClick={handleSaveEdit} disabled={isSaving}>
+                        {isSaving ? "Saving..." : "💾 Save Changes"}
+                      </button>
+                    </div>
+                  )}
                   
                   <div className="file-content-container" style={{ flexGrow: 1, paddingBottom: "32px", display: "flex", flexDirection: "column" }}>
                     {isEditing ? (
                        <div style={{ flexGrow: 1, borderRadius: "8px", overflow: "hidden", minHeight: "75vh" }} data-color-mode="dark">
                           {(() => {
+                             if (selectedFile.path.includes("00_System_Rules")) {
+                                return <SystemRulesEditor value={editedContent} onChange={setEditedContent} documentPath={selectedFile.path} />;
+                             }
+                             if (selectedFile.path.includes("state.md") || selectedFile.path.includes("state.json")) {
+                                return <StateEditor value={editedContent} onChange={setEditedContent} documentPath={selectedFile.path} />;
+                             }
+                             if (selectedFile.path.includes("Campaign_Overview")) {
+                                return <CampaignOverviewEditor value={editedContent} onChange={setEditedContent} documentPath={selectedFile.path} />;
+                             }
+                             if (selectedFile.path.includes("World_Dossier")) {
+                                return <WorldDossierEditor value={editedContent} onChange={setEditedContent} documentPath={selectedFile.path} />;
+                             }
+                             if (selectedFile.path.includes("Factions")) {
+                                return <FactionEditor value={editedContent} onChange={setEditedContent} documentPath={selectedFile.path} />;
+                             }
                              if (selectedFile.path.includes("02_Characters")) {
                                 return <CharacterEditor value={editedContent} onChange={setEditedContent} documentPath={selectedFile.path} />;
                              }
@@ -1219,6 +1241,14 @@ export function MainWorkspace() {
                              );
                           })()}
                        </div>
+                    )}
+                    {isEditing && (
+                      <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "16px", paddingBottom: "24px" }}>
+                        <button type="button" className="ghost-button" style={{ width: "auto", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px 16px", fontSize: "0.95rem" }} onClick={() => setIsEditing(false)} disabled={isSaving}>Cancel</button>
+                        <button type="button" className="primary-button" style={{ width: "auto", display: "flex", alignItems: "center", justifyContent: "center", padding: "6px 20px", fontSize: "0.95rem", boxShadow: "0 0 12px rgba(88,166,255,0.2)" }} onClick={handleSaveEdit} disabled={isSaving}>
+                          {isSaving ? "Saving..." : "💾 Save Changes"}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

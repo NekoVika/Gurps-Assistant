@@ -3,6 +3,7 @@ import MDEditor from '@uiw/react-md-editor';
 import type { LocationJSON } from '../../lib/types';
 import { StringArrayEditor } from './StringArrayEditor';
 import { ImageArrayEditor } from './ImageArrayEditor';
+import { EntityRelationEditorList } from './StructuredArrayEditors';
 
 type Props = {
     value: string;
@@ -32,39 +33,33 @@ export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
 
     if (!data) return <div style={{ padding: "20px" }}>Invalid JSON data. Cannot render editor.</div>;
 
-    const inputStyle = {
-        width: "100%", padding: "8px 12px", borderRadius: "6px", 
-        border: "1px solid rgba(255,255,255,0.2)", background: "rgba(0,0,0,0.5)", color: "white",
-        marginBottom: "16px"
-    };
-    const labelStyle = { display: "block", fontSize: "0.85em", fontWeight: "bold", textTransform: "uppercase" as const, opacity: 0.7, marginBottom: "4px" };
-
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px", padding: "16px", background: "var(--color-surface, #1e1e1e)", borderRadius: "8px" }} data-color-mode="dark">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                <div>
-                    <label style={labelStyle}>Name</label>
-                    <input type="text" style={inputStyle} value={data.name} onChange={e => handleUpdate('name', e.target.value)} />
+        <div className="editor-glass-panel" data-color-mode="dark">
+            <h2 className="editor-section-title">Location Core</h2>
+            <div className="editor-grid-3">
+                <div className="editor-field">
+                    <label className="editor-label">Name</label>
+                    <input type="text" className="editor-input" value={data.name} onChange={e => handleUpdate('name', e.target.value)} />
                 </div>
-                <div>
-                    <label style={labelStyle}>Type</label>
-                    <input type="text" style={inputStyle} value={data.type} onChange={e => handleUpdate('type', e.target.value)} />
+                <div className="editor-field">
+                    <label className="editor-label">Type</label>
+                    <input type="text" className="editor-input" value={data.type} onChange={e => handleUpdate('type', e.target.value)} />
                 </div>
-                <div>
-                    <label style={labelStyle}>Region</label>
-                    <input type="text" style={inputStyle} value={data.region} onChange={e => handleUpdate('region', e.target.value)} />
+                <div className="editor-field">
+                    <label className="editor-label">Region</label>
+                    <input type="text" className="editor-input" value={data.region} onChange={e => handleUpdate('region', e.target.value)} />
                 </div>
-                <div>
-                    <label style={labelStyle}>Tech Level</label>
-                    <select style={inputStyle} value={data.techLevel} onChange={e => handleUpdate('techLevel', e.target.value)}>
+                <div className="editor-field">
+                    <label className="editor-label">Tech Level</label>
+                    <select className="editor-select" value={data.techLevel} onChange={e => handleUpdate('techLevel', e.target.value)}>
                         <option value="">Select Tech Level</option>
                         {Array.from({ length: 13 }, (_, i) => <option key={i} value={String(i)}>{`TL ${i}`}</option>)}
                         {!Array.from({ length: 13 }, (_, i) => String(i)).includes(data.techLevel) && data.techLevel !== "" && <option value={data.techLevel}>{data.techLevel}</option>}
                     </select>
                 </div>
-                <div>
-                    <label style={labelStyle}>Mana Level</label>
-                    <select style={inputStyle} value={data.manaLevel} onChange={e => handleUpdate('manaLevel', e.target.value)}>
+                <div className="editor-field">
+                    <label className="editor-label">Mana Level</label>
+                    <select className="editor-select" value={data.manaLevel} onChange={e => handleUpdate('manaLevel', e.target.value)}>
                         <option value="">Select Mana Range</option>
                         <option value="No Mana">No Mana</option>
                         <option value="Low Mana">Low Mana</option>
@@ -76,27 +71,34 @@ export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
                 </div>
             </div>
 
-            <hr style={{ borderColor: "rgba(255,255,255,0.1)", margin: "8px 0" }} />
-
-            <div>
-                <label style={labelStyle}>Overview</label>
+            <h2 className="editor-section-title">Overview</h2>
+            <div className="editor-field">
                 <MDEditor value={data.overview} onChange={val => handleUpdate('overview', val || "")} height={200} preview="edit" />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                <StringArrayEditor title="Landmarks" items={data.landmarks} onChange={(val) => handleUpdate('landmarks', val)} />
-                <StringArrayEditor title="Factions" items={data.factions} onChange={(val) => handleUpdate('factions', val)} />
-                <StringArrayEditor title="Notable NPCs" items={data.notableNpcs} onChange={(val) => handleUpdate('notableNpcs', val)} />
-                <StringArrayEditor title="Plot Hooks" items={data.plotHooks} onChange={(val) => handleUpdate('plotHooks', val)} />
-                <ImageArrayEditor title="Image Links" items={data.images} onChange={(val) => handleUpdate('images', val)} documentPath={documentPath} />
+            <h2 className="editor-section-title">Details & Connections</h2>
+            <div className="editor-grid-2">
+                <EntityRelationEditorList title="Character Relations" items={data.characterRelations || []} onChange={items => handleUpdate('characterRelations', items)} targetCategory="Character" />
+                <EntityRelationEditorList title="Faction Relations" items={data.factionRelations || []} onChange={items => handleUpdate('factionRelations', items)} targetCategory="Faction" />
+                <EntityRelationEditorList title="Location Relations" items={data.locationRelations || []} onChange={items => handleUpdate('locationRelations', items)} targetCategory="Location" />
+                <StringArrayEditor title="Story Appearances" items={data.storyAppearances || []} onChange={items => handleUpdate('storyAppearances', items)} category="Story" />
+                
+                {data.factions && data.factions.length > 0 && (
+                    <StringArrayEditor title="Factions (Legacy)" items={data.factions} onChange={(val) => handleUpdate('factions', val)} />
+                )}
+                {data.notableNpcs && data.notableNpcs.length > 0 && (
+                    <StringArrayEditor title="Notable NPCs (Legacy)" items={data.notableNpcs} onChange={(val) => handleUpdate('notableNpcs', val)} category="Character" />
+                )}
+                
+                <StringArrayEditor title="Landmarks" items={data.landmarks || []} onChange={(val) => handleUpdate('landmarks', val)} />
+                <StringArrayEditor title="Plot Hooks" items={data.plotHooks || []} onChange={(val) => handleUpdate('plotHooks', val)} />
             </div>
 
-            <hr style={{ borderColor: "rgba(255,255,255,0.1)", margin: "8px 0" }} />
-            
+            <h2 className="editor-section-title">Internal Zones & Maps</h2>
             <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                    <label style={{...labelStyle, marginBottom: 0}}>Internal Structure</label>
-                    <button type="button" className="ghost-button" style={{ padding: "4px 8px", fontSize: "0.8em" }} onClick={() => handleUpdate('internalStructure', [...data.internalStructure, { title: "New Zone", items: [] }])}>
+                    <label className="editor-label" style={{ marginBottom: 0 }}>Internal Structure</label>
+                    <button type="button" className="editor-add-btn" onClick={() => handleUpdate('internalStructure', [...data.internalStructure, { title: "New Zone", items: [] }])}>
                         + Add Zone
                     </button>
                 </div>
@@ -105,11 +107,12 @@ export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     {data.internalStructure.map((zone, zIndex) => (
-                        <div key={zIndex} style={{ border: "1px solid rgba(255,255,255,0.1)", padding: "12px", borderRadius: "8px", background: "rgba(0,0,0,0.2)" }}>
+                        <div key={zIndex} className="editor-array-container">
                             <div style={{ display: "flex", gap: "12px", marginBottom: "12px" }}>
                                 <input 
                                     type="text" 
-                                    style={{ ...inputStyle, marginBottom: 0, fontWeight: "bold" }} 
+                                    className="editor-input" 
+                                    style={{ marginBottom: 0, fontWeight: "bold" }} 
                                     placeholder="Zone Title"
                                     value={zone.title} 
                                     onChange={e => {
@@ -118,11 +121,11 @@ export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
                                         handleUpdate('internalStructure', next);
                                     }} 
                                 />
-                                <button type="button" style={{ background: "none", border: "none", color: "#ff6b6b", cursor: "pointer" }} onClick={() => {
+                                <button type="button" className="editor-action-btn danger" onClick={() => {
                                     const next = [...data.internalStructure];
                                     next.splice(zIndex, 1);
                                     handleUpdate('internalStructure', next);
-                                }}>Delete Zone</button>
+                                }}>✕ Delete Zone</button>
                             </div>
                             <StringArrayEditor 
                                 title="Rooms / Contents" 
@@ -137,6 +140,9 @@ export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
                     ))}
                 </div>
             </div>
+
+            <h2 className="editor-section-title">Media</h2>
+            <ImageArrayEditor title="Image Links" items={data.images} onChange={(val) => handleUpdate('images', val)} documentPath={documentPath} />
         </div>
     );
 }

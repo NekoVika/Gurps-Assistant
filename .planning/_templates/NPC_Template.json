@@ -10,6 +10,10 @@
   "personality": "Personality traits and demeanor...",
   "motivation": "What drives them...",
   "speech": "A characteristic quote...",
+  "characterRelations": [],
+  "locationRelations": [],
+  "factionRelations": [],
+  "storyAppearances": [],
   "pointTotal": "150",
   "attributes": [
     "ST 10 [0]",

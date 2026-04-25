@@ -63,6 +63,45 @@ export function StoryPassport({ data, documentPath, onNavigate }: Props) {
             </div>
           )}
 
+          {data.characters && data.characters.length > 0 && (
+            <section className="passport-block">
+              <h3>Characters</h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {data.characters.map((char, i) => (
+                   <span className="tag-pill" key={i}>
+                      <InternalLink target={char} onNavigate={onNavigate} />
+                   </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {data.factions && data.factions.length > 0 && (
+            <section className="passport-block">
+              <h3>Factions</h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {data.factions.map((fac, i) => (
+                   <span className="tag-pill" key={i}>
+                      <InternalLink target={fac} onNavigate={onNavigate} />
+                   </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {data.locations && data.locations.length > 0 && (
+            <section className="passport-block">
+              <h3>Locations</h3>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {data.locations.map((loc, i) => (
+                   <span className="tag-pill" key={i}>
+                      <InternalLink target={loc} onNavigate={onNavigate} />
+                   </span>
+                ))}
+              </div>
+            </section>
+          )}
+
           {data.objectives && (
             <section className="passport-block">
               <h3>Objectives</h3>

@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from gurpsai.api.schemas.files import FileContentResponse, FileTreeNodeResponse, FileWriteRequest, FileWriteResponse
 from gurpsai.app.services.files import CampaignFileService, FileTreeNode
+from gurpsai.app.services.relation_sync import RelationSyncService
 from gurpsai.domain.campaign import CharacterData, LocationData, StoryData
 
 router = APIRouter(prefix="/files", tags=["files"])
@@ -114,7 +115,21 @@ def file_write(request: FileWriteRequest) -> FileWriteResponse:
     try:
         # Phase 5: Fast Backend Mender/Validator intercept
         validate_file_data(request.path, request.content)
+        
+        try:
+            old_content = service.read_file(request.path).content
+        except FileNotFoundError:
+            old_content = ""
+            
         service.write_file(request.path, request.content)
+        
+        # Fire and forget sync (synchronous for now, fast enough)
+        try:
+            RelationSyncService().sync_file(request.path, old_content, request.content)
+        except Exception as sync_exc:
+            import logging
+            logging.getLogger(__name__).error(f"Relation sync failed: {sync_exc}")
+
         return FileWriteResponse(success=True, path=request.path, message="File updated successfully.")
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

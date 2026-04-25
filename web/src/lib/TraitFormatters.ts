@@ -1,6 +1,6 @@
 export function parseAttribute(attr: any) {
   if (typeof attr !== 'string') return attr;
-  const match = attr.match(/^([a-zA-Z\s]+?)\s+([\d\w\(\)\s\.\-]+?)\s+\[(-?\d+)\]$/);
+  const match = attr.match(/^([a-zA-Z\s]+?)\s+([-\d][\d\w\(\)\s\.\-]*?)\s+\[(-?\d+)\]$/);
   if (match) return { name: match[1].trim(), level: match[2].trim(), points: match[3] };
   return attr;
 }

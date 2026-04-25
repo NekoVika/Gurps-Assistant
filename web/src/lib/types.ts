@@ -39,9 +39,9 @@ export interface HitLocationJSON {
     notes: string;
 }
 
-export interface RelationJSON {
+export interface RelationItem {
     name: string;
-    relationship: string;
+    relation: string;
 }
 
 export interface CharacterJSON {
@@ -49,7 +49,7 @@ export interface CharacterJSON {
     concept: string;
     significance: string;
     role: string;
-    location: string;
+    location?: string;
     locations?: string[];
     status: string;
     
@@ -59,7 +59,12 @@ export interface CharacterJSON {
     motivation: string;
     speech: string;
 
-    relations?: RelationJSON[];
+    relations?: { name: string; relationship: string }[];
+    
+    characterRelations?: RelationItem[];
+    locationRelations?: RelationItem[];
+    factionRelations?: RelationItem[];
+    storyAppearances?: string[];
 
     pointTotal: string;
     attributes: AttributeJSON[];
@@ -89,9 +94,14 @@ export interface LocationJSON {
     
     internalStructure: InternalStructureJSON[];
     
-    factions: string[];
-    notableNpcs: string[];
-    plotHooks: string[];
+    factions?: string[];
+    notableNpcs?: string[];
+    plotHooks?: string[];
+
+    characterRelations?: RelationItem[];
+    locationRelations?: RelationItem[];
+    factionRelations?: RelationItem[];
+    storyAppearances?: string[];
 }
 
 export interface StoryJSON {
@@ -119,4 +129,75 @@ export interface StoryJSON {
     pcHooks: string;
     assumptions: string;
     openQuestions: string;
+
+    characters?: string[];
+    locations?: string[];
+    factions?: string[];
+}
+
+export interface FactionJSON {
+    name: string;
+    type: string;
+    status: string;
+    headquarters: string;
+    leader: string;
+    allies?: string[];
+    enemies?: string[];
+    overview: string;
+    goals: string;
+    assets: string[];
+    notableMembers?: string[];
+    images: string[];
+
+    characterRelations?: RelationItem[];
+    locationRelations?: RelationItem[];
+    factionRelations?: RelationItem[];
+    storyAppearances?: string[];
+}
+
+export interface WorldDossierJSON {
+    name: string;
+    setting: string;
+    themes: string[];
+    overview: string;
+    coreConflicts: string;
+    cosmology: string;
+    magicOrTech: string;
+    factions: string[];
+    keyLocations: string[];
+    images: string[];
+}
+
+export interface CampaignOverviewJSON {
+    title: string;
+    concept: string;
+    tone: string;
+    players: string[];
+    pcs: string[];
+    currentStatus: string;
+    synopsis: string;
+    majorArcs: string[];
+    images: string[];
+}
+
+export interface SystemRulesJSON {
+    title: string;
+    baseSystem: string;
+    coreBooks: string[];
+    houseRules: string;
+    allowedOptions: string;
+    forbiddenOptions: string;
+    pointBudget: string;
+    customMechanics: string;
+}
+
+export interface StateJSON {
+    campaignName: string;
+    currentDate: string;
+    currentLocation: string;
+    activeQuests: string[];
+    recentEvents: string[];
+    inventory: string[];
+    reputation: string;
+    notes: string;
 }

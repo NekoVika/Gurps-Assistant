@@ -20,5 +20,8 @@
   "outcomes": "Success/Failure results...",
   "pcHooks": "Why the party cares...",
   "assumptions": "What you assume the PCs will do...",
-  "openQuestions": "Things you still need to prep..."
+  "openQuestions": "Things you still need to prep...",
+  "characters": [],
+  "locations": [],
+  "factions": []
 }
