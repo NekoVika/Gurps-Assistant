@@ -52,7 +52,10 @@ import {
   type HealthStatus,
   type ProviderSettings,
   type ProviderStatus,
-  type RulesQaResult
+  type RulesQaResult,
+  checkUpdate,
+  applyUpdate,
+  type UpdateCheckResponse
 } from "../lib/api";
 
 type ReadBlock = {
