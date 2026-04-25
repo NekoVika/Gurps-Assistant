@@ -3,9 +3,9 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
-
-
 ROOT = Path(__file__).resolve().parents[1]
+RULES_DB_FILE = ROOT / "rules_db" / "rules.db"
+
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
@@ -14,6 +14,7 @@ from rulesdb_lib.qa_regression import CASES, run_case  # noqa: E402
 
 
 class RulesDbRegressionTests(unittest.TestCase):
+    @unittest.skipUnless(RULES_DB_FILE.exists(), "rules.db not found")
     def test_qa_cases(self) -> None:
         failures: list[str] = []
         for case in CASES:
