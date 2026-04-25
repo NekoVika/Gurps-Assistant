@@ -53,18 +53,17 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
     - **Coverage check (critical):** Compare the final NPC writeup against the interview answers and the Visual Anchor. If anything is missing or contradicted (especially appearance), stop and ask the GM to correct it before saving the file.
 
 5.  **Output Format:**
-    Present the stat block in the standard text format defined by the RulesLawyer, making it easy for the GM to read or input into GCS.
+    Present the stat block in the strict JSON format matching the template. Do not use Markdown text blocks for the final file.
 
 6.  **Narrative Integration (WorldBuilder Mode):**
     Switch to the **WorldBuilder** persona. Provide appearance, a personality quirk, a motivation tied to existing lore, and a short speech snippet. Add PC hooks by consulting `02_Characters/PCs/` where relevant. Preserve GM-provided narrative details with light edits for clarity only.
     - **Appearance rule (critical):** If the GM provided a Visual Anchor, paste it into the NPC file's appearance section **verbatim** (or with only minimal formatting fixes), and only add extra flavor in a clearly separated "Additional notes" line that does not contradict the anchor.
 
 7.  **File Creation:**
-     Ask the GM if they approve of the NPC. Then save the Markdown file based on Significance:
-     *   If **Significance = 0 (Common Variant)**: save in `02_Characters/Bestiary/`
-     *   If **Significance = 1-5**: save in `02_Characters/Main_Cast/`
+     Ask the GM if they approve of the NPC. Then save the JSON file based on Significance:
+     *   If **Significance = 0 (Common Variant)**: save in `02_Characters/Bestiary/` as `.json`
+     *   If **Significance = 1-5**: save in `02_Characters/Main_Cast/` as `.json`
     Use the correct template as the base:
-    - If **Significance = 0 (Common Variant)**: use `.planning/_templates/Bestiary_Entry_Template.md`
-    - If **Significance = 1-5**: use `.planning/_templates/NPC_Template.md`
-    - Do not mix templates: **Main Cast/individual NPCs must not include a Variations section**, and **Bestiary entries must not include Status**.
-    - Populate “Assumptions & Open Questions” with any deferred choices and TODOs to confirm later, and include the Visual Anchor in the narrative section (verbatim).
+    - If **Significance = 0 (Common Variant)**: use `.planning/_templates/NPC_Template.json` (populate appropriately for Bestiary)
+    - If **Significance = 1-5**: use `.planning/_templates/NPC_Template.json`
+    - Output your draft EXCLUSIVELY as a strictly formatted JSON block matching these templates. Do not output Markdown text blocks.

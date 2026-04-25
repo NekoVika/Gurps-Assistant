@@ -24,7 +24,7 @@ To create a localized structural block for the next phase of the adventure withi
 4.  **Generate Structure:**
     Create a new folder (e.g., `Chapter_01`) inside the *Target* `Episode_XX` folder.
     Inside the new Chapter folder, create two sub-folders: `Encounters/` and `Battle_Maps/`.
-    **Create `Chapter_Overview.md`** inside the Chapter folder using `.planning/_templates/Chapter_Template.md`. Preserve the GM's provided text **in full** within the "GM Summary" section.
+    **Create `Chapter_Overview.json`** inside the Chapter folder using `.planning/_templates/Story_Template.json`. Preserve the GM's provided text **in full** within the "GM Summary" section.
 
 5.  **Smart Extraction (Identify & Confirm):**
     Analyze the GM's provided pitch/file to identify potential sub-components. **Do not create files yet.** Instead, present a list to the GM:
@@ -35,22 +35,22 @@ To create a localized structural block for the next phase of the adventure withi
 
 6.  **Smart Generation (Procedural):**
     Once confirmed, generate **each file individually** following these strict template rules:
-    - **Locations**: Create in `01_World_Bible/Locations/` using `.planning/_templates/Location_Template.md`.
+    - **Locations**: Create in `01_World_Bible/Locations/` using `.planning/_templates/Location_Template.json`.
     - **NPCs**: Generate using the correct character template (follow `/create_npc`):
-        - Individual NPCs (Significance 1-5): `02_Characters/Main_Cast/` using `.planning/_templates/NPC_Template.md`.
-        - Bestiary types (Significance 0): `02_Characters/Bestiary/` using `.planning/_templates/Bestiary_Entry_Template.md`.
-    - **Multiple Encounters**: Create separate files in `Encounters/` using `.planning/_templates/Encounter_Template.md`.
+        - Individual NPCs (Significance 1-5): `02_Characters/Main_Cast/` using `.planning/_templates/NPC_Template.json`.
+        - Bestiary types (Significance 0): `02_Characters/Bestiary/` using `.planning/_templates/NPC_Template.json`.
+    - **Multiple Encounters**: Create separate files in `Encounters/` using `.planning/_templates/Story_Template.json`.
     **CRITICAL:** Every generated file MUST contain all sections of its template. Do not truncate sections or summarize unless the GM explicitly asks for a "Quick/Empty" version.
 
 7.  **Update Episode Overview:**
-    Add a link to the new `Chapter_Overview.md` in the *Target* `Episode_Overview.md` file. Include the GM’s chapter summary (truncated for the Episode level if very long, but linking to the full text in the Chapter file).
+    Add a link to the new `Chapter_Overview.json` in the *Target* `Episode_Overview.json` file. Include the GM’s chapter summary (truncated for the Episode level if very long, but linking to the full text in the Chapter file).
 
 7.  **Update Global State (Conditional):**
     If the GM is creating a chapter for the *current active* Episode, ask: "Would you like to set this as the active Current Chapter in `state.md` now?" If they agree, update the "Current Chapter" field in `state.md`. If they decline or are prepping ahead, leave `state.md` alone.
 
 8.  **Divergent Updates (Refinement):**
-    - If the GM provides an update to an existing chapter that constitutes a "Variant" or "Path B" rather than a replacement, **do not overwrite** Section 6.
-    - Instead, add a new section `## 6B. Variant [Name]` and preserve the new narrative pitch in full within the `## GM Summary` section (appending it with a "Variant" header if necessary).
+    - If the GM provides an update to an existing chapter that constitutes a "Variant" or "Path B" rather than a replacement, **do not overwrite** the mainOutline field.
+    - Instead, add a new section `the branchingPath field in the JSON` and preserve the new narrative pitch in full within the `## GM Summary` section (appending it with a "Variant" header if necessary).
     - **CRITICAL:** Do not summarize the new narrative. If it's a branching path, keep both versions accessible to the GM.
 
 9.  **Finalise Session Prep:**

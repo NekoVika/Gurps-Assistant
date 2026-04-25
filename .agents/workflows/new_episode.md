@@ -24,13 +24,12 @@ To generate the necessary scaffolding for a major new story arc within an active
     Create a new directory in `03_Story/` with the appropriate number (e.g., `Episode_02/`).
 
 4.  **Draft Overview (Use Template, Preserve All Information):**
-    Create `Episode_Overview.md` in the new folder using `.planning/_templates/Episode_Overview_Template.md` as the base.
-    - Add a section “GM Brief (preserved; lightly edited for clarity)” at the top and include the GM’s narrative with light grammar/formatting edits and optional wording polish while keeping all details intact.
-    - Populate the remaining sections by reorganizing or quoting only the GM’s content. Do not invent or compress. If a section is not covered by the GM’s brief, leave the placeholder and a short TODO note rather than fabricating details.
-    - When the GM provides extensive material, include it in full; prefer structure and headings over shortening.
+    Create `Episode_Overview.json` in the new folder using `.planning/_templates/Story_Template.json` as the base. Make sure to set `"type": "Episode"`.
+    - Add a section “GM Brief (preserved; lightly edited for clarity)” at the top of the `"gmBrief"` block and include the GM’s narrative with light grammar/formatting edits and optional wording polish while keeping all details intact.
+    - Populate the remaining sections of the JSON object by reorganizing or quoting only the GM’s content. Do not output Markdown text blocks outside the JSON structure.
 
 5.  **Create Locations (If Requested):**
-    If the GM requests new Locations during episode planning, create them under `01_World_Bible/Locations/` using `.planning/_templates/Location_Template.md`. Do not place locations inside Episode or Chapter folders. Add links to these locations in the Episode overview (and later in relevant Chapters).
+    If the GM requests new Locations during episode planning, create them under `01_World_Bible/Locations/` using `.planning/_templates/Location_Template.json`. Do not place locations inside Episode or Chapter folders. Add links to these locations in the Episode overview (and later in relevant Chapters).
 
 5.  **Update Campaign Overview:**
     Modify the `03_Story/Campaign_Overview.md` file to add a link to the new Episode in the Episode Index.

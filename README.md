@@ -2,10 +2,42 @@
 
 This is a structured AI-assisted environment for running GURPS 4th Edition campaigns with reusable personas, workflows, and a consistent folder architecture.
 
-Status: Active development on `develop` focuses on AI GM personas/workflows and local rules retrieval. The broad app-style CLI remains incomplete, but the local `rulesdb` tooling is active and used by the rules persona.
+Status: Active development on `develop` focuses on AI GM personas/workflows, local rules retrieval, and the first steps toward a standalone local app. The broad app-style CLI remains incomplete, but the local `rulesdb` tooling is active and used by the rules persona.
 
 ## Project Purpose
 The system is a co-pilot for GMs. It offloads rules crunching, tracking, and organization so the GM can focus on pacing, improvisation, and player-facing narrative.
+
+## Current app direction
+The next major product direction is a local-first standalone GM app:
+- Python backend
+- local web UI
+- pluggable model providers
+- first-class local LLM support via Ollama
+
+Current stack decision:
+- backend: `FastAPI` + `Uvicorn` + `Pydantic`
+- frontend: `React` + `Vite` + `TypeScript`
+- local model adapter target: `Ollama`
+- optional desktop packaging later: `Tauri`
+
+Planned repo layout:
+- `src/gurpsai/` for backend/app code
+- `web/` for the frontend
+
+The goal is to preserve the existing campaign/workflow/rules-db architecture while making the assistant usable without depending on Antigravity as the primary interface.
+
+## Local app configuration
+The standalone app reads local provider settings from a repo-root `.env` file.
+
+Recommended setup:
+- copy `.env.example` to `.env`
+- put API keys there instead of setting shell environment variables manually
+- keep `.env` local only; it is gitignored
+
+Current keys/settings used by the app:
+- `GEMINI_API_KEY`
+- optional `GEMINI_BASE_URL`
+- optional `GEMINI_TIMEOUT_SECONDS`
 
 ## Core Philosophy
 - System Supremacy (GURPS 4e): Use official 4e rules and avoid fabricated mechanics.

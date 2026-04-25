@@ -1,0 +1,43 @@
+{
+  "_INSTRUCTION": "CRITICAL AI INSTRUCTION: This is an EXAMPLE JSON for Locations. DO NOT output a JSON schema. Output a valid JSON object that perfectly mimics this exact structure and depth.",
+  "name": "Example Location Name",
+  "type": "City, Dungeon, Building",
+  "region": "Geographic region",
+  "techLevel": "TL8",
+  "manaLevel": "Normal",
+  "images": [
+    "map.png"
+  ],
+  "overview": "General description of the location...",
+  "landmarks": [
+    "Landmark 1",
+    "Landmark 2"
+  ],
+  "internalStructure": [
+    {
+      "title": "Ground Floor",
+      "items": [
+        "Main Hall",
+        "Kitchen"
+      ]
+    },
+    {
+      "title": "Basement",
+      "items": [
+        "Dungeon Cells",
+        "Armory"
+      ]
+    }
+  ],
+  "factions": [
+    "Local Militia",
+    "Thieves Guild"
+  ],
+  "notableNpcs": [
+    "Mayor Bob",
+    "Guard Captain Jane"
+  ],
+  "plotHooks": [
+    "A mysterious artifact was found here..."
+  ]
+}

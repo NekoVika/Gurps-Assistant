@@ -34,3 +34,25 @@ Campaign/**/*
 !Campaign/**/
 !Campaign/**/.keep
 !Campaign/README.md
+
+# Frontend
+web/node_modules/
+web/dist/
+web/.eslintcache
+web/*.tsbuildinfo
+
+# Python / Build
+.venv/
+venv/
+env/
+*.spec
+GURPS Assistant.spec
+
+# OS / IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# My campaign for development
+AnomalyHuntersCampaign/

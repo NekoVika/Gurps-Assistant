@@ -15,6 +15,12 @@ setup(
     package_dir={"": "src"},
     packages=find_packages(where="src"),
     include_package_data=True,
+    install_requires=[
+        "fastapi>=0.110,<1",
+        "pydantic>=2,<3",
+        "uvicorn>=0.29,<1",
+        "python-multipart",
+    ],
     entry_points={
         "console_scripts": [
             "gurpsai=gurpsai.cli:console_main",
