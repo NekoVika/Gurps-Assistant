@@ -62,9 +62,7 @@ def perform_update(download_url: str):
             out_file.write(response.read())
             
         # Spawn the installer detached and silent. 
-        # CREATE_NEW_CONSOLE = 0x00000010
-        # DETACHED_PROCESS = 0x00000008
-        creationflags = 0x00000018
+        creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
         subprocess.Popen(
             [str(installer_path), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/FORCECLOSEAPPLICATIONS"],
             creationflags=creationflags
