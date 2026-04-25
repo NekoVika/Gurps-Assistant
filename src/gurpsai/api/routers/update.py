@@ -18,7 +18,7 @@ class UpdateCheckResponse(BaseModel):
 @router.get("/check", response_model=UpdateCheckResponse)
 def check_update() -> UpdateCheckResponse:
     from gurpsai.__version__ import __version__
-    url = "https://api.github.com/repos/VikA/AnomalyHunter_v2/releases/latest"
+    url = "https://api.github.com/repos/NekoVika/Gurps-Assistant/releases/latest"
     
     req = urllib.request.Request(url, headers={"User-Agent": "GURPS-Assistant"})
     try:
