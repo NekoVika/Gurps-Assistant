@@ -35,12 +35,16 @@ export function StateEditor({ value, onChange }: Props) {
             <h2 className="editor-section-title">Current Campaign State</h2>
             <div className="editor-grid-3">
                 <div className="editor-field" style={{ gridColumn: "span 2" }}>
-                    <label className="editor-label">Current Chapter</label>
-                    <input type="text" className="editor-input" style={{ fontSize: "1.2em" }} value={data.currentChapter} onChange={e => handleUpdate('currentChapter', e.target.value)} />
+                    <label className="editor-label">Campaign Name</label>
+                    <input type="text" className="editor-input" style={{ fontSize: "1.2em" }} value={data.campaignName || ""} onChange={e => handleUpdate('campaignName', e.target.value)} />
                 </div>
                 <div className="editor-field">
-                    <label className="editor-label">In-Game Date</label>
-                    <input type="text" className="editor-input" value={data.inGameDate} onChange={e => handleUpdate('inGameDate', e.target.value)} />
+                    <label className="editor-label">Current Date</label>
+                    <input type="text" className="editor-input" value={data.currentDate || ""} onChange={e => handleUpdate('currentDate', e.target.value)} />
+                </div>
+                <div className="editor-field" style={{ gridColumn: "span 3" }}>
+                    <label className="editor-label">Current Location</label>
+                    <input type="text" className="editor-input" value={data.currentLocation || ""} onChange={e => handleUpdate('currentLocation', e.target.value)} />
                 </div>
             </div>
 
@@ -54,16 +58,20 @@ export function StateEditor({ value, onChange }: Props) {
                     <label className="editor-label">Active Quests / Objectives</label>
                     <MDEditor value={Array.isArray(data.activeQuests) ? data.activeQuests.join('\n') : (data.activeQuests as unknown as string || "")} onChange={val => handleUpdate('activeQuests', val ? val.split('\n') : [])} height={150} preview="edit" />
                 </div>
-                <div className="editor-field">
-                    <label className="editor-label">Party Status (Health, Gear, Tension)</label>
-                    <MDEditor value={data.partyStatus} onChange={val => handleUpdate('partyStatus', val || "")} height={150} preview="edit" />
-                </div>
             </div>
 
-            <h2 className="editor-section-title">Flags & Notes</h2>
+            <h2 className="editor-section-title">Party Status</h2>
             <div className="editor-grid-2">
-                <StringArrayEditor title="Active Flags/Triggers" items={data.flags || []} onChange={(val) => handleUpdate('flags', val)} />
-                <StringArrayEditor title="GM Notes" items={data.gmNotes || []} onChange={(val) => handleUpdate('gmNotes', val)} />
+                <StringArrayEditor title="Inventory / Shared Gear" items={data.inventory || []} onChange={(val) => handleUpdate('inventory', val)} />
+                <div className="editor-field">
+                    <label className="editor-label">Reputation</label>
+                    <MDEditor value={data.reputation || ""} onChange={val => handleUpdate('reputation', val || "")} height={150} preview="edit" />
+                </div>
+            </div>
+            
+            <h2 className="editor-section-title">Notes</h2>
+            <div className="editor-field">
+                <MDEditor value={data.notes || ""} onChange={val => handleUpdate('notes', val || "")} height={200} preview="edit" />
             </div>
         </div>
     );

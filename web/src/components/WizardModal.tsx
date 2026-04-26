@@ -10,17 +10,21 @@ type WizardModalProps = {
 
 export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSubmitPrompt, onCreateStub }) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
   // Reset anytime wizard changes
   useEffect(() => {
     if (wizard) {
+      setCurrentStepIndex(0);
       const initial: Record<string, string> = {};
-      wizard.fields.forEach(f => {
-        if (f.type === "select" && f.options && f.options.length > 0) {
-          initial[f.id] = f.options[0];
-        } else {
-          initial[f.id] = "";
-        }
+      wizard.steps.forEach(step => {
+        step.fields.forEach(f => {
+          if (f.type === "select" && f.options && f.options.length > 0) {
+            initial[f.id] = f.options[0];
+          } else {
+            initial[f.id] = "";
+          }
+        });
       });
       setAnswers(initial);
     }
@@ -49,12 +53,16 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
     onCreateStub(targetPath, wizard!.stubTemplatePath, answers);
   }
 
-  const allRequiredMet = wizard.fields.every(f => {
+  const currentStep = wizard.steps[currentStepIndex];
+
+  const currentStepRequiredMet = currentStep.fields.every(f => {
     if (f.required) {
       return (answers[f.id] !== undefined && answers[f.id].trim().length > 0);
     }
     return true;
   });
+
+  const isLastStep = currentStepIndex === wizard.steps.length - 1;
 
   return (
     <div style={{
@@ -78,7 +86,15 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
         </div>
 
         <div style={{ flexGrow: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px", paddingRight: "8px" }}>
-          {wizard.fields.map(f => (
+          {wizard.steps.length > 1 && (
+             <div style={{ fontSize: "0.85em", color: "#8b949e", marginBottom: "0px" }}>
+               Step {currentStepIndex + 1} of {wizard.steps.length}
+             </div>
+          )}
+          {currentStep.title && <h3 style={{ margin: "0 0 4px 0", fontSize: "1.1em", color: "#c9dfff" }}>{currentStep.title}</h3>}
+          {currentStep.description && <p style={{ margin: "0 0 16px 0", fontSize: "0.9em", color: "#8b949e" }}>{currentStep.description}</p>}
+
+          {currentStep.fields.map(f => (
             <div key={f.id} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <label style={{ fontSize: "0.85em", fontWeight: 600, color: "#c9dfff" }}>
                 {f.label} {f.required && <span style={{ color: "#f85149" }}>*</span>}
@@ -90,7 +106,7 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
                   value={answers[f.id] || ""}
                   onChange={e => setAnswers({...answers, [f.id]: e.target.value})}
                   placeholder={f.placeholder}
-                  style={{ padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white" }}
                 />
               )}
 
@@ -100,7 +116,7 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
                   onChange={e => setAnswers({...answers, [f.id]: e.target.value})}
                   placeholder={f.placeholder}
                   rows={4}
-                  style={{ padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white", resize: "vertical" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white", resize: "vertical" }}
                 />
               )}
 
@@ -108,7 +124,7 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
                 <select 
                   value={answers[f.id] || ""}
                   onChange={e => setAnswers({...answers, [f.id]: e.target.value})}
-                  style={{ padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white" }}
                 >
                   {f.options.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
@@ -117,24 +133,51 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
           ))}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", paddingTop: "20px", borderTop: "1px solid rgba(149, 181, 255, 0.12)", marginTop: "16px" }}>
-          <button 
-             onClick={handleStubSubmit}
-             disabled={!allRequiredMet}
-             className="chip-button ghost-button"
-             style={{ padding: "8px 16px", width: "auto" }}
-          >
-            📝 Generate Manual Stub
-          </button>
+        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", paddingTop: "20px", borderTop: "1px solid rgba(149, 181, 255, 0.12)", marginTop: "16px" }}>
+          <div>
+            {currentStepIndex > 0 && (
+              <button 
+                onClick={() => setCurrentStepIndex(i => i - 1)}
+                className="chip-button ghost-button"
+                style={{ padding: "8px 16px", width: "auto" }}
+              >
+                Back
+              </button>
+            )}
+          </div>
 
-          <button 
-             onClick={handleAiSubmit}
-             disabled={!allRequiredMet}
-             className="chip-button primary-button"
-             style={{ padding: "8px 16px", width: "auto" }}
-          >
-            ✨ Run AI Workflow
-          </button>
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "flex-end", flex: 1 }}>
+            {!isLastStep ? (
+              <button 
+                onClick={() => setCurrentStepIndex(i => i + 1)}
+                disabled={!currentStepRequiredMet}
+                className="chip-button primary-button"
+                style={{ padding: "8px 16px", width: "auto" }}
+              >
+                Next
+              </button>
+            ) : (
+              <>
+                <button 
+                  onClick={handleStubSubmit}
+                  disabled={!currentStepRequiredMet}
+                  className="chip-button ghost-button"
+                  style={{ padding: "8px 16px", width: "auto" }}
+                >
+                  📝 Generate Manual Stub
+                </button>
+
+                <button 
+                  onClick={handleAiSubmit}
+                  disabled={!currentStepRequiredMet}
+                  className="chip-button primary-button"
+                  style={{ padding: "8px 16px", width: "auto" }}
+                >
+                  ✨ Run AI Workflow
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

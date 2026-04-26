@@ -79,7 +79,7 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
   function walk(node: FileTreeNode) {
      if (node.node_type === "file" && (node.path.endsWith(".md") || node.path.endsWith(".json"))) {
         const p = node.path;
-        if (p === "Campaign/state.md" || p === "Campaign/00_System_Rules.md" || p.includes("/Campaign_Overview.md") || p.includes("/World_Dossier.md")) {
+        if (p.endsWith("state.json") || p.endsWith("00_System_Rules.json") || p.includes("/Campaign_Overview.json") || p.includes("/World_Dossier.json")) {
             data.core.push(node);
         } else if (p.includes("/02_Characters/PCs/")) {
             data.pcs.push(node);

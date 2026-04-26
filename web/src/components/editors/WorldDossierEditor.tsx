@@ -37,44 +37,67 @@ export function WorldDossierEditor({ value, onChange, documentPath = "" }: Props
             <div className="editor-grid-3">
                 <div className="editor-field" style={{ gridColumn: "span 2" }}>
                     <label className="editor-label">World Name</label>
-                    <input type="text" className="editor-input" style={{ fontSize: "1.2em" }} value={data.worldName} onChange={e => handleUpdate('worldName', e.target.value)} />
+                    <input type="text" className="editor-input" style={{ fontSize: "1.2em" }} value={data.name || ""} onChange={e => handleUpdate('name', e.target.value)} />
                 </div>
                 <div className="editor-field">
-                    <label className="editor-label">Genre</label>
-                    <input type="text" className="editor-input" value={data.genre} onChange={e => handleUpdate('genre', e.target.value)} />
+                    <label className="editor-label">World Type</label>
+                    <input type="text" className="editor-input" value={data.worldType || ""} onChange={e => handleUpdate('worldType', e.target.value)} />
                 </div>
                 <div className="editor-field">
-                    <label className="editor-label">Tech Level (TL)</label>
-                    <input type="text" className="editor-input" value={data.techLevel} onChange={e => handleUpdate('techLevel', e.target.value)} />
+                    <label className="editor-label">Scale of Play</label>
+                    <input type="text" className="editor-input" value={data.scaleOfPlay || ""} onChange={e => handleUpdate('scaleOfPlay', e.target.value)} />
                 </div>
                 <div className="editor-field">
-                    <label className="editor-label">Mana Level</label>
-                    <input type="text" className="editor-input" value={data.manaLevel} onChange={e => handleUpdate('manaLevel', e.target.value)} />
+                    <label className="editor-label">Baseline TL</label>
+                    <input type="text" className="editor-input" value={data.baselineTL || ""} onChange={e => handleUpdate('baselineTL', e.target.value)} />
+                </div>
+                <div className="editor-field">
+                    <label className="editor-label">Baseline Mana</label>
+                    <input type="text" className="editor-input" value={data.baselineMana || ""} onChange={e => handleUpdate('baselineMana', e.target.value)} />
+                </div>
+                <div className="editor-field" style={{ gridColumn: "span 3" }}>
+                    <label className="editor-label">Tone & Genre</label>
+                    <input type="text" className="editor-input" value={data.toneAndGenre || ""} onChange={e => handleUpdate('toneAndGenre', e.target.value)} />
                 </div>
             </div>
 
-            <h2 className="editor-section-title">Lore & History</h2>
+            <h2 className="editor-section-title">Core Identity</h2>
+            <div className="editor-field" style={{ marginBottom: "16px" }}>
+                <label className="editor-label">Elevator Pitch</label>
+                <MDEditor value={data.elevatorPitch || ""} onChange={val => handleUpdate('elevatorPitch', val || "")} height={150} preview="edit" />
+            </div>
+
+            <h2 className="editor-section-title">Lore & Details</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div className="editor-field">
-                    <label className="editor-label">General Overview</label>
-                    <MDEditor value={data.generalOverview} onChange={val => handleUpdate('generalOverview', val || "")} height={200} preview="edit" />
+                    <label className="editor-label">World Meta (GM Notes)</label>
+                    <MDEditor value={data.worldMeta || ""} onChange={val => handleUpdate('worldMeta', val || "")} height={200} preview="edit" />
                 </div>
                 <div className="editor-field">
-                    <label className="editor-label">Cosmology</label>
-                    <MDEditor value={data.cosmology} onChange={val => handleUpdate('cosmology', val || "")} height={150} preview="edit" />
+                    <label className="editor-label">Physical Reality & Constraints</label>
+                    <MDEditor value={data.physicalReality || ""} onChange={val => handleUpdate('physicalReality', val || "")} height={150} preview="edit" />
                 </div>
                 <div className="editor-field">
-                    <label className="editor-label">Recent History</label>
-                    <MDEditor value={data.recentHistory} onChange={val => handleUpdate('recentHistory', val || "")} height={150} preview="edit" />
+                    <label className="editor-label">Metaphysics & The Weird</label>
+                    <MDEditor value={data.metaphysics || ""} onChange={val => handleUpdate('metaphysics', val || "")} height={150} preview="edit" />
+                </div>
+                <div className="editor-field">
+                    <label className="editor-label">People, Culture & Everyday Life</label>
+                    <MDEditor value={data.peopleAndCulture || ""} onChange={val => handleUpdate('peopleAndCulture', val || "")} height={150} preview="edit" />
+                </div>
+                <div className="editor-field">
+                    <label className="editor-label">Deep Lore (Secrets)</label>
+                    <MDEditor value={data.deepLore || ""} onChange={val => handleUpdate('deepLore', val || "")} height={200} preview="edit" />
                 </div>
             </div>
 
-            <h2 className="editor-section-title">Key Entities</h2>
+            <h2 className="editor-section-title">Tags & Arrays</h2>
             <div className="editor-grid-2">
-                <StringArrayEditor title="Key Factions" items={data.keyFactions || []} onChange={(val) => handleUpdate('keyFactions', val)} category="Faction" />
-                <StringArrayEditor title="Key Locations" items={data.keyLocations || []} onChange={(val) => handleUpdate('keyLocations', val)} category="Location" />
-                <StringArrayEditor title="Important Figures" items={data.importantFigures || []} onChange={(val) => handleUpdate('importantFigures', val)} category="Character" />
-                <StringArrayEditor title="Custom Mechanics" items={data.customMechanics || []} onChange={(val) => handleUpdate('customMechanics', val)} />
+                <StringArrayEditor title="Themes" items={data.themes || []} onChange={(val) => handleUpdate('themes', val)} compact={true} />
+                <StringArrayEditor title="Tags" items={data.tags || []} onChange={(val) => handleUpdate('tags', val)} compact={true} />
+                <div style={{ gridColumn: "span 2" }}>
+                    <StringArrayEditor title="Core Premises & Truths" items={data.corePremises || []} onChange={(val) => handleUpdate('corePremises', val)} />
+                </div>
             </div>
 
             <h2 className="editor-section-title">Media</h2>

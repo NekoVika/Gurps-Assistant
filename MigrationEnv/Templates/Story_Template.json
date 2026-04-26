@@ -1,0 +1,27 @@
+{
+  "_INSTRUCTION": "CRITICAL AI INSTRUCTION: This is an EXAMPLE JSON for Story elements. DO NOT output a JSON schema. Output a valid JSON object that perfectly mimics this exact structure and depth.",
+  "title": "Example Title",
+  "type": "Episode",
+  "status": "Draft or Active",
+  "primaryLocation": "Main setting",
+  "images": [
+    "scene.png"
+  ],
+  "gmBrief": "Secret GM summary of what really happens...",
+  "premise": "Starting situation and setup...",
+  "objectives": "What the PCs need to achieve...",
+  "stakesAndAntagonists": "Who opposes them and what happens if they fail...",
+  "mechanicsAndHazards": "Key skill checks or environmental dangers...",
+  "cluesAndProps": "Information to uncover...",
+  "rewards": "Loot, points, or favors...",
+  "mainOutline": "Beat 1: ...\nBeat 2: ...",
+  "branchingPath": "If the PCs do X instead of Y...",
+  "childLinks": "Links to Encounters or Chapters...",
+  "outcomes": "Success/Failure results...",
+  "pcHooks": "Why the party cares...",
+  "assumptions": "What you assume the PCs will do...",
+  "openQuestions": "Things you still need to prep...",
+  "characters": [],
+  "locations": [],
+  "factions": []
+}

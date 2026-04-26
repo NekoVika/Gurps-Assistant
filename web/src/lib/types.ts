@@ -157,47 +157,36 @@ export interface FactionJSON {
 
 export interface WorldDossierJSON {
     name: string;
-    setting: string;
+    worldType: string;
+    scaleOfPlay: string;
+    baselineTL: string;
+    baselineMana: string;
+    toneAndGenre: string;
     themes: string[];
-    overview: string;
-    coreConflicts: string;
-    cosmology: string;
-    magicOrTech: string;
-    factions: string[];
-    keyLocations: string[];
+    elevatorPitch: string;
+    worldMeta: string;
+    corePremises: string[];
+    physicalReality: string;
+    metaphysics: string;
+    peopleAndCulture: string;
+    deepLore: string;
+    tags: string[];
     images: string[];
-    
-    // Editor fields
-    worldName?: string;
-    genre?: string;
-    techLevel?: string;
-    manaLevel?: string;
-    generalOverview?: string;
-    recentHistory?: string;
-    keyFactions?: string[];
-    importantFigures?: string[];
-    customMechanics?: string[];
 }
 
 export interface CampaignOverviewJSON {
     title: string;
-    concept: string;
-    tone: string;
+    status: string;
+    toneAndGenre: string;
+    techAndMana: string;
     players: string[];
     pcs: string[];
-    currentStatus: string;
     synopsis: string;
-    majorArcs: string[];
+    episodeIndex: string;
+    currentArcSummary: string;
+    timelineBeats: string;
+    openThreads: string;
     images: string[];
-    
-    // Editor fields
-    startingPoints?: string;
-    techLevelMagic?: string;
-    playerCharacters?: string[];
-    genre?: string;
-    currentYear?: string;
-    coreThemes?: string;
-    premise?: string;
 }
 
 export interface SystemRulesJSON {

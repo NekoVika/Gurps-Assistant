@@ -6,11 +6,11 @@ from pathlib import Path
 from gurpsai.app.config import load_app_config, ROOT
 
 REQUIRED_CONTEXT_FILES = [
-    Path("Campaign/state.md"),
+    Path("Campaign/state.json"),
     Path("SYSTEM.md"),
     Path("master_philosophy.md"),
     Path(".planning/MAP.md"),
-    Path("Campaign/00_System_Rules.md"),
+    Path("Campaign/00_System_Rules.json"),
 ]
 
 

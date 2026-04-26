@@ -11,6 +11,8 @@ import { LocationPassport } from "./LocationPassport";
 import { parseLocation } from "../lib/LocationParser";
 import { StoryPassport } from "./StoryPassport";
 import { parseStory } from "../lib/StoryParser";
+import { FactionPassport } from "./FactionPassport";
+import { parseFaction } from "../lib/FactionParser";
 import { WIZARDS, type WizardDef } from "../lib/wizards";
 import { WizardModal } from "./WizardModal";
 import { CharacterEditor } from "./editors/CharacterEditor";
@@ -21,6 +23,10 @@ import { WorldDossierEditor } from "./editors/WorldDossierEditor";
 import { CampaignOverviewEditor } from "./editors/CampaignOverviewEditor";
 import { SystemRulesEditor } from "./editors/SystemRulesEditor";
 import { StateEditor } from "./editors/StateEditor";
+import { StatePassport } from "./StatePassport";
+import { CampaignOverviewPassport } from "./CampaignOverviewPassport";
+import { WorldDossierPassport } from "./WorldDossierPassport";
+import { SystemRulesPassport } from "./SystemRulesPassport";
 import { RulesPanel } from "./RulesPanel";
 import { ActivityPanel } from "./ActivityPanel";
 import { TrashbinPanel } from "./TrashbinPanel";
@@ -388,7 +394,7 @@ export function MainWorkspace() {
         if (node.name === ".planning" || node.name === ".agents" || node.name === "_reports" || node.name === "_templates") return;
         node.children.forEach(traverse);
       } else {
-        if (!(node.path.endsWith(".md") || node.path.endsWith(".json")) || ["SYSTEM.md", "state.md", "AGENTS.md", "00_System_Rules.md", "README.md", "TODO.md", ".gurpsai_state.json"].includes(node.name)) return;
+        if (!(node.path.endsWith(".md") || node.path.endsWith(".json")) || ["SYSTEM.md", "state.md", "state.json", "AGENTS.md", "00_System_Rules.md", "00_System_Rules.json", "README.md", "TODO.md", ".gurpsai_state.json"].includes(node.name)) return;
         
         let type = "Note";
         if (node.path.includes("02_Characters") || node.path.includes("Bestiary")) type = "Character";
@@ -1188,10 +1194,44 @@ export function MainWorkspace() {
                     ) : (
                        <div className="file-preview-content" style={{ flexGrow: 1 }}>
                           {(() => {
+                             if (selectedFile.path.includes("state.json")) {
+                                try {
+                                   const parsed = JSON.parse(selectedFile.content);
+                                   return <StatePassport data={parsed} />;
+                                } catch (e) {}
+                             }
+                             
+                             if (selectedFile.path.includes("00_System_Rules.json")) {
+                                try {
+                                   const parsed = JSON.parse(selectedFile.content);
+                                   return <SystemRulesPassport data={parsed} />;
+                                } catch (e) {}
+                             }
+                             
+                             if (selectedFile.path.includes("Campaign_Overview.json")) {
+                                try {
+                                   const parsed = JSON.parse(selectedFile.content);
+                                   return <CampaignOverviewPassport data={parsed} />;
+                                } catch (e) {}
+                             }
+                             
+                             if (selectedFile.path.includes("World_Dossier.json")) {
+                                try {
+                                   const parsed = JSON.parse(selectedFile.content);
+                                   return <WorldDossierPassport data={parsed} />;
+                                } catch (e) {}
+                             }
+                             
                              if (selectedFile.path.includes("02_Characters")) {
                                const parsed = parseCharacter(selectedFile.content);
                                if (parsed && parsed.name && parsed.name !== "Unknown Character") {
                                   return <CharacterPassport data={parsed} documentPath={selectedFile.path} onUpdate={handleSaveParsedData} onNavigate={handleNavigateTo} />;
+                               }
+                             }
+                             if (selectedFile.path.includes("Factions")) {
+                               const parsed = parseFaction(selectedFile.content);
+                               if (parsed && parsed.name && parsed.name !== "Unknown Faction") {
+                                  return <FactionPassport data={parsed} documentPath={selectedFile.path} onNavigate={handleNavigateTo} />;
                                }
                              }
                              if (selectedFile.path.includes("Locations")) {

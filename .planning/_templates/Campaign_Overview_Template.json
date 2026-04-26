@@ -1,11 +1,14 @@
 {
   "title": "",
-  "concept": "",
-  "tone": "",
+  "status": "",
+  "toneAndGenre": "",
+  "techAndMana": "",
   "players": [],
   "pcs": [],
-  "currentStatus": "",
   "synopsis": "",
-  "majorArcs": [],
+  "episodeIndex": "",
+  "currentArcSummary": "",
+  "timelineBeats": "",
+  "openThreads": "",
   "images": []
 }

@@ -14,6 +14,13 @@ type Props = {
 export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
     const [data, setData] = useState<LocationJSON | null>(null);
 
+    const KNOWN_KEYS = new Set([
+        'name', 'type', 'region', 'techLevel', 'manaLevel', 
+        'images', 'overview', 'landmarks', 'internalStructure', 
+        'factions', 'notableNpcs', 'plotHooks', 
+        'characterRelations', 'locationRelations', 'factionRelations', 'storyAppearances'
+    ]);
+
     useEffect(() => {
         try {
             const parsed = JSON.parse(value) as LocationJSON;
@@ -143,6 +150,39 @@ export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
 
             <h2 className="editor-section-title">Media</h2>
             <ImageArrayEditor title="Image Links" items={data.images} onChange={(val) => handleUpdate('images', val)} documentPath={documentPath} />
+
+            {Object.keys(data).filter(k => !KNOWN_KEYS.has(k)).length > 0 && (
+                <>
+                    <h2 className="editor-section-title" style={{ color: "#ff7b72" }}>Unrecognized / Legacy Fields</h2>
+                    <div style={{ padding: "16px", background: "rgba(248, 81, 73, 0.1)", border: "1px solid rgba(248, 81, 73, 0.3)", borderRadius: "8px", marginBottom: "16px" }}>
+                        <p style={{ fontSize: "0.85em", opacity: 0.8, marginBottom: "12px", color: "#ff7b72" }}>
+                            These fields exist in the file but do not map to the current standard Location template. They are preserved here.
+                        </p>
+                        {Object.keys(data).filter(k => !KNOWN_KEYS.has(k)).map(key => (
+                            <div key={key} className="editor-field" style={{ marginBottom: "12px" }}>
+                                <label className="editor-label" style={{ fontFamily: "monospace", color: "#ff7b72" }}>{key}</label>
+                                <textarea 
+                                    className="editor-input" 
+                                    style={{ fontFamily: "monospace", fontSize: "0.85em", minHeight: "80px", background: "rgba(0,0,0,0.2)" }} 
+                                    value={typeof (data as any)[key] === 'string' ? (data as any)[key] : JSON.stringify((data as any)[key], null, 2)}
+                                    onChange={e => {
+                                        try {
+                                            const val = e.target.value;
+                                            if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+                                                handleUpdate(key as any, JSON.parse(val));
+                                            } else {
+                                                handleUpdate(key as any, val);
+                                            }
+                                        } catch(err) {
+                                            handleUpdate(key as any, e.target.value);
+                                        }
+                                    }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
         </div>
     );
 }

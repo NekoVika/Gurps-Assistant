@@ -37,45 +37,50 @@ export function CampaignOverviewEditor({ value, onChange, documentPath = "" }: P
             <div className="editor-grid-3">
                 <div className="editor-field" style={{ gridColumn: "span 2" }}>
                     <label className="editor-label">Campaign Title</label>
-                    <input type="text" className="editor-input" style={{ fontSize: "1.2em" }} value={data.title} onChange={e => handleUpdate('title', e.target.value)} />
+                    <input type="text" className="editor-input" style={{ fontSize: "1.2em" }} value={data.title || ""} onChange={e => handleUpdate('title', e.target.value)} />
                 </div>
                 <div className="editor-field">
-                    <label className="editor-label">Genre</label>
-                    <input type="text" className="editor-input" value={data.genre} onChange={e => handleUpdate('genre', e.target.value)} />
+                    <label className="editor-label">Current Status</label>
+                    <input type="text" className="editor-input" value={data.status || ""} onChange={e => handleUpdate('status', e.target.value)} />
+                </div>
+                <div className="editor-field" style={{ gridColumn: "span 2" }}>
+                    <label className="editor-label">Tone & Genre</label>
+                    <input type="text" className="editor-input" value={data.toneAndGenre || ""} onChange={e => handleUpdate('toneAndGenre', e.target.value)} />
                 </div>
                 <div className="editor-field">
-                    <label className="editor-label">Current Year / Date</label>
-                    <input type="text" className="editor-input" value={data.currentYear} onChange={e => handleUpdate('currentYear', e.target.value)} />
+                    <label className="editor-label">Tech & Mana Baseline</label>
+                    <input type="text" className="editor-input" value={data.techAndMana || ""} onChange={e => handleUpdate('techAndMana', e.target.value)} />
                 </div>
-                <div className="editor-field">
-                    <label className="editor-label">Tone</label>
-                    <input type="text" className="editor-input" value={data.tone} onChange={e => handleUpdate('tone', e.target.value)} />
-                </div>
+            </div>
+
+            <h2 className="editor-section-title">Party & Players</h2>
+            <div className="editor-grid-2">
+                <StringArrayEditor title="Player Names" items={data.players || []} onChange={(val) => handleUpdate('players', val)} compact={true} />
+                <StringArrayEditor title="Player Characters" items={data.pcs || []} onChange={(val) => handleUpdate('pcs', val)} category="Character" />
             </div>
 
             <h2 className="editor-section-title">Campaign Details</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div className="editor-field">
-                    <label className="editor-label">Premise</label>
-                    <MDEditor value={data.premise} onChange={val => handleUpdate('premise', val || "")} height={150} preview="edit" />
+                    <label className="editor-label">Synopsis / Premise</label>
+                    <MDEditor value={data.synopsis || ""} onChange={val => handleUpdate('synopsis', val || "")} height={150} preview="edit" />
                 </div>
                 <div className="editor-field">
-                    <label className="editor-label">Core Themes</label>
-                    <MDEditor value={data.coreThemes} onChange={val => handleUpdate('coreThemes', val || "")} height={150} preview="edit" />
-                </div>
-            </div>
-
-            <h2 className="editor-section-title">Party & Mechanics</h2>
-            <div className="editor-grid-2">
-                <div className="editor-field">
-                    <label className="editor-label">Starting Points</label>
-                    <input type="text" className="editor-input" value={data.startingPoints} onChange={e => handleUpdate('startingPoints', e.target.value)} />
+                    <label className="editor-label">Current Arc Summary</label>
+                    <MDEditor value={data.currentArcSummary || ""} onChange={val => handleUpdate('currentArcSummary', val || "")} height={150} preview="edit" />
                 </div>
                 <div className="editor-field">
-                    <label className="editor-label">Tech Level / Magic</label>
-                    <input type="text" className="editor-input" value={data.techLevelMagic} onChange={e => handleUpdate('techLevelMagic', e.target.value)} />
+                    <label className="editor-label">Episode Index</label>
+                    <MDEditor value={data.episodeIndex || ""} onChange={val => handleUpdate('episodeIndex', val || "")} height={200} preview="edit" />
                 </div>
-                <StringArrayEditor title="Player Characters" items={data.playerCharacters || []} onChange={(val) => handleUpdate('playerCharacters', val)} category="Character" />
+                <div className="editor-field">
+                    <label className="editor-label">Timeline Beats</label>
+                    <MDEditor value={data.timelineBeats || ""} onChange={val => handleUpdate('timelineBeats', val || "")} height={150} preview="edit" />
+                </div>
+                <div className="editor-field">
+                    <label className="editor-label">Open Threads & Hooks</label>
+                    <MDEditor value={data.openThreads || ""} onChange={val => handleUpdate('openThreads', val || "")} height={150} preview="edit" />
+                </div>
             </div>
 
             <h2 className="editor-section-title">Media</h2>
