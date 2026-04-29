@@ -1,0 +1,29 @@
+{
+  "_INSTRUCTION": "CRITICAL AI INSTRUCTION: This is an EXAMPLE JSON for Episode elements. DO NOT output a JSON schema. Output a valid JSON object that perfectly mimics this exact structure and depth.",
+  "title": "Episode Title",
+  "type": "Episode",
+  "status": "Draft",
+  "primaryLocation": "Main setting",
+  "images": [
+    "scene.png"
+  ],
+  "gmBrief": "Secret GM summary of what really happens in this episode...",
+  "premise": "Starting situation and setup for the entire episode...",
+  "objectives": "What the PCs need to achieve in this episode...",
+  "stakesAndAntagonists": "Key antagonists, their motivations, and what happens if the PCs fail...",
+  "mainOutline": "Beat 1: ...\nBeat 2: ...",
+  "branchingPath": "If the PCs do X instead of Y...",
+  "childLinks": [
+    "Target Chapter Name or Filename"
+  ],
+  "mechanicsAndHazards": "Key skill checks or environmental dangers...",
+  "cluesAndProps": "Information to uncover...",
+  "rewards": "Loot, points, or favors...",
+  "pcHooks": "Why the party cares...",
+  "outcomes": "Resolution & Consequences of the episode...",
+  "assumptions": "What you assume the PCs will do...",
+  "openQuestions": "Things you still need to prep...",
+  "characters": ["Target Character Name or Filename"],
+  "locations": ["Target Location Name or Filename"],
+  "factions": ["Target Faction Name or Filename"]
+}

@@ -71,6 +71,7 @@ type Props = {
 export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: Props) {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const images = data.images || [];
+  const safeImageIdx = images.length > 0 && activeImageIdx < images.length ? activeImageIdx : 0;
 
   const parsedAttributes = (data.attributes || []).map(parseAttribute);
   const parsedAdvantages = (data.advantages || []).map(parseTrait);
@@ -84,12 +85,13 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
 
   return (
     <div className="character-passport">
-      <header className="passport-header">
-        <div className="passport-title-area">
-          <h1>{data.name || "Unknown Identity"}</h1>
-          {data.concept && <h2>{data.concept}</h2>}
-        </div>
-        <div className="passport-meta">
+      <header className="passport-header" style={{ paddingBottom: "16px", borderBottom: "none", alignItems: "center" }}>
+        {data.concept ? (
+          <div className="passport-title-area" style={{ flexGrow: 1 }}>
+            <div style={{ fontSize: "1.35rem", color: "#c9dfff", fontStyle: "italic", letterSpacing: "1px", borderLeft: "3px solid rgba(149, 181, 255, 0.4)", paddingLeft: "16px", textTransform: "uppercase" }}>{data.concept}</div>
+          </div>
+        ) : <div style={{ flexGrow: 1 }} />}
+        <div className="passport-meta" style={{ display: "flex", gap: "16px" }}>
           <div className="meta-badge significance-badge">
             <span className="eyebrow">Significance</span>
             <span className="value">{data.significance || "?"}</span>
@@ -115,14 +117,14 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
           {images.length > 0 && (
             <div className="passport-gallery">
               <div className="gallery-main-image">
-                 <img src={getMediaUrl(images[activeImageIdx], documentPath)} alt="Character Portrait" />
+                 <img src={getMediaUrl(images[safeImageIdx], documentPath)} alt="Character Portrait" />
               </div>
               {images.length > 1 && (
                  <div className="gallery-thumbnails">
                     {images.map((img: string, idx: number) => (
                        <button 
                          key={idx} 
-                         className={`thumb-button ${idx === activeImageIdx ? 'active' : ''}`}
+                         className={`thumb-button ${idx === safeImageIdx ? 'active' : ''}`}
                          onClick={() => setActiveImageIdx(idx)}
                        >
                          <img src={getMediaUrl(img, documentPath)} alt={`Thumbnail ${idx+1}`} />

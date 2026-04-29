@@ -13,14 +13,12 @@ type Props = {
 export function FactionPassport({ data, documentPath, onNavigate }: Props) {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const images = data.images || [];
+  const safeImageIdx = images.length > 0 && activeImageIdx < images.length ? activeImageIdx : 0;
 
   return (
     <div className="character-passport">
-      <header className="passport-header">
-        <div className="passport-title-area">
-          <h1>{data.name || "Unknown Faction"}</h1>
-        </div>
-        <div className="passport-meta">
+      <header className="passport-header" style={{ paddingBottom: "16px", borderBottom: "none" }}>
+        <div className="passport-meta" style={{ width: "100%", display: "flex", gap: "16px" }}>
           <div className="meta-badge">
             <span className="eyebrow">Type</span>
             <span className="value">{data.type || "?"}</span>
@@ -46,14 +44,14 @@ export function FactionPassport({ data, documentPath, onNavigate }: Props) {
           {images.length > 0 && (
             <div className="passport-gallery">
               <div className="gallery-main-image">
-                 <img src={getMediaUrl(images[activeImageIdx], documentPath)} alt="Faction Image" />
+                 <img src={getMediaUrl(images[safeImageIdx], documentPath)} alt="Faction Image" />
               </div>
               {images.length > 1 && (
                  <div className="gallery-thumbnails">
                     {images.map((img: string, idx: number) => (
                        <button 
                          key={idx} 
-                         className={`thumb-button ${idx === activeImageIdx ? 'active' : ''}`}
+                         className={`thumb-button ${idx === safeImageIdx ? 'active' : ''}`}
                          onClick={() => setActiveImageIdx(idx)}
                        >
                          <img src={getMediaUrl(img, documentPath)} alt={`Thumbnail ${idx+1}`} />

@@ -16,12 +16,20 @@
   "rewards": "Loot, points, or favors...",
   "mainOutline": "Beat 1: ...\nBeat 2: ...",
   "branchingPath": "If the PCs do X instead of Y...",
-  "childLinks": "Links to Encounters or Chapters...",
+  "childLinks": [
+    "Target Child Name or Filename"
+  ],
   "outcomes": "Success/Failure results...",
   "pcHooks": "Why the party cares...",
   "assumptions": "What you assume the PCs will do...",
   "openQuestions": "Things you still need to prep...",
-  "characters": [],
-  "locations": [],
-  "factions": []
+  "characters": [
+    "Target Character Name or Filename"
+  ],
+  "locations": [
+    "Target Location Name or Filename"
+  ],
+  "factions": [
+    "Target Faction Name or Filename"
+  ]
 }

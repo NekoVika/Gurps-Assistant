@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FileTreeNode } from "../lib/api";
+import { getFileContent } from "../lib/api";
 
 type CollapsibleProps = {
   title: string;
@@ -13,7 +14,7 @@ function CollapsibleSection({ title, defaultOpen = true, onAdd, addLabel, childr
   const [isOpen, setIsOpen] = useState(defaultOpen);
   
   return (
-    <div className="registry-section" style={{ marginBottom: "12px", border: "1px solid rgba(149, 181, 255, 0.1)", borderRadius: "6px", overflow: "hidden", background: "var(--color-bg-light)" }}>
+    <div className="registry-section" style={{ marginBottom: "12px", border: "1px solid rgba(149, 181, 255, 0.1)", borderRadius: "6px", overflow: "hidden", background: "rgba(16, 28, 49, 0.3)" }}>
       <div 
         className="registry-section-header" 
         onClick={() => setIsOpen(!isOpen)}
@@ -66,6 +67,44 @@ function formatEntityName(pathStr: string) {
 }
 
 export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizard }: Props) {
+  const [orderMap, setOrderMap] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+     let mounted = true;
+     const newOrderMap: Record<string, string[]> = {};
+     
+     async function loadOrders() {
+        const fetchPromises: Promise<void>[] = [];
+        
+        function walkTree(node: FileTreeNode) {
+           if (node.node_type === "file" && node.name.endsWith("_Overview.json")) {
+               fetchPromises.push(
+                  getFileContent(node.path).then(res => {
+                      try {
+                          const data = JSON.parse(res.content);
+                          if (Array.isArray(data.childLinks)) {
+                              const parentPath = node.path.replace(/\/[^/]+$/, "");
+                              newOrderMap[parentPath] = data.childLinks.map(String);
+                          }
+                      } catch { /* ignore */ }
+                  }).catch(() => {})
+               );
+           } else if (node.node_type === "directory") {
+               node.children.forEach(walkTree);
+           }
+        }
+        
+        tree.forEach(walkTree);
+        await Promise.all(fetchPromises);
+        if (mounted) {
+           setOrderMap(newOrderMap);
+        }
+     }
+     
+     loadOrders();
+     return () => { mounted = false; };
+  }, [tree]);
+
   const data: RegistryData = {
     core: [],
     pcs: [],
@@ -94,9 +133,20 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
         }
      } else if (node.node_type === "directory" && node.name.startsWith("Episode_") && node.path.includes("/03_Story/")) {
         const files = node.children.filter((c: FileTreeNode) => c.node_type === "file" && (c.path.endsWith(".md") || c.path.endsWith(".json")));
-        files.sort((a: FileTreeNode, b: FileTreeNode) => a.name.localeCompare(b.name));
         
-        const chapters: { name: string; files: FileTreeNode[] }[] = [];
+        const epOrder = orderMap[node.path] || [];
+        files.sort((a, b) => {
+            const aName = formatEntityName(a.path);
+            const bName = formatEntityName(b.path);
+            const aIdx = epOrder.indexOf(aName);
+            const bIdx = epOrder.indexOf(bName);
+            if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+            if (aIdx !== -1) return -1;
+            if (bIdx !== -1) return 1;
+            return a.name.localeCompare(b.name);
+        });
+        
+        const chapters: { name: string; files: FileTreeNode[]; path: string }[] = [];
         const chapterDirs = node.children.filter((c: FileTreeNode) => c.node_type === "directory" && c.name.startsWith("Chapter_"));
         
         chapterDirs.forEach(chDir => {
@@ -109,11 +159,30 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
                 }
             }
             chDir.children.forEach(walkCh);
-            chFiles.sort((a,b) => a.name.localeCompare(b.name));
-            chapters.push({ name: formatEntityName(chDir.name), files: chFiles });
+            
+            const chOrder = orderMap[chDir.path] || [];
+            chFiles.sort((a, b) => {
+                const aName = formatEntityName(a.path);
+                const bName = formatEntityName(b.path);
+                const aIdx = chOrder.indexOf(aName);
+                const bIdx = chOrder.indexOf(bName);
+                if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                if (aIdx !== -1) return -1;
+                if (bIdx !== -1) return 1;
+                return a.name.localeCompare(b.name);
+            });
+            
+            chapters.push({ name: formatEntityName(chDir.name), files: chFiles, path: chDir.path });
         });
         
-        chapters.sort((a,b) => a.name.localeCompare(b.name));
+        chapters.sort((a, b) => {
+            const aIdx = epOrder.indexOf(a.name);
+            const bIdx = epOrder.indexOf(b.name);
+            if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+            if (aIdx !== -1) return -1;
+            if (bIdx !== -1) return 1;
+            return a.name.localeCompare(b.name);
+        });
         
         data.episodes.push({ name: formatEntityName(node.name), files, chapters });
      }
@@ -125,6 +194,7 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
 
   tree.forEach(walk);
 
+  // Default Episodes sort can just be alphabetical for now, or we could support a global Story array later.
   data.episodes.sort((a, b) => a.name.localeCompare(b.name));
 
   const renderItem = (node: FileTreeNode) => (
@@ -140,7 +210,7 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
   );
 
   return (
-    <div className="campaign-registry" style={{ padding: "8px" }}>
+    <div className="campaign-registry">
       <CollapsibleSection title="📌 Core Docs" defaultOpen={true}>
         <div className="registry-list">
           {data.core.map(renderItem)}
@@ -158,7 +228,7 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
          {data.factions.length > 0 && <div className="registry-group"><p className="eyebrow">Factions</p><div className="registry-list">{data.factions.map(renderItem)}</div></div>}
       </CollapsibleSection>
 
-      <CollapsibleSection title="📖 Story Arcs" defaultOpen={true} onAdd={onActivateWizard ? () => onActivateWizard("prep_session") : undefined} addLabel="Prep Session">
+      <CollapsibleSection title="📖 Story Arcs" defaultOpen={true} onAdd={onActivateWizard ? () => onActivateWizard("story_wizard") : undefined} addLabel="Create Element">
          {data.episodes.map(ep => (
            <div key={ep.name} className="registry-group" style={{ marginBottom: "12px" }}>
               <p className="eyebrow">{ep.name}</p>

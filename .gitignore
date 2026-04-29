@@ -56,3 +56,9 @@ Thumbs.db
 
 # My campaign for development
 AnomalyHuntersCampaign/
+
+# Archived Scripts
+scripts/archive/
+
+# MigrationEnv Subtool
+MigrationEnvTool/

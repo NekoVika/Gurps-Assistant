@@ -1,18 +1,47 @@
 {
-  "name": "",
-  "type": "",
-  "status": "",
-  "headquarters": "",
-  "leader": "",
-  "allies": [],
-  "enemies": [],
-  "overview": "",
-  "goals": "",
-  "assets": [],
-  "notableMembers": [],
-  "images": [],
-  "characterRelations": [],
-  "locationRelations": [],
-  "factionRelations": [],
-  "storyAppearances": []
+  "_INSTRUCTION": "CRITICAL AI INSTRUCTION: This is an EXAMPLE JSON for Factions. DO NOT output a JSON schema. Output a valid JSON object that perfectly mimics this exact structure and depth.",
+  "name": "Example Faction Name",
+  "type": "Guild, Cult, Megacorp, Government",
+  "status": "Active, Destroyed, Secret",
+  "headquarters": "Where they are based",
+  "leader": "Name of the leader or ruling council",
+  "allies": [
+    "Name of allied faction 1"
+  ],
+  "enemies": [
+    "Name of enemy faction 1"
+  ],
+  "overview": "A general description of the faction, its history, and public perception...",
+  "goals": "What the faction is trying to achieve...",
+  "assets": [
+    "Significant wealth, magical artifacts, political influence..."
+  ],
+  "notableMembers": [
+    "Key NPC 1",
+    "Key NPC 2"
+  ],
+  "images": [
+    "symbol.png"
+  ],
+  "characterRelations": [
+    {
+      "name": "Target Character Name or Filename",
+      "relation": "Description of relationship (e.g. 'Leader', 'Traitor', 'Target')"
+    }
+  ],
+  "locationRelations": [
+    {
+      "name": "Target Location Name or Filename",
+      "relation": "Description of relationship (e.g. 'Headquarters', 'Contested territory')"
+    }
+  ],
+  "factionRelations": [
+    {
+      "name": "Target Faction Name or Filename",
+      "relation": "Description of relationship (e.g. 'Allied with', 'At war with')"
+    }
+  ],
+  "storyAppearances": [
+    "Episode_01/Chapter_01/Scene_Name.json"
+  ]
 }

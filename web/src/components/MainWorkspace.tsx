@@ -47,6 +47,7 @@ import {
   initCampaign, validateCampaign, type CampaignValidateResponse,
   browseCampaignFolder,
   deleteCampaignFile,
+  renameCampaignEntity,
 
   getSessions,
   getSession,
@@ -411,6 +412,36 @@ export function MainWorkspace() {
     if (campaignNode) traverse(campaignNode);
     return results;
   }, [fileTree]);
+
+  const dynamicWizardOptions = useMemo(() => {
+    const episodes: string[] = [];
+    const chapters: string[] = [];
+    const encounters: string[] = [];
+    
+    function traverse(node: FileTreeNode) {
+      if (node.node_type === "directory") {
+        if (node.name.startsWith("Episode_")) episodes.push(node.name);
+        if (node.name.startsWith("Chapter_")) chapters.push(node.name);
+        if (node.name === "Encounters") {
+          node.children.forEach(c => {
+             if (c.node_type === "file" && c.name.endsWith(".json")) {
+               encounters.push(c.name.replace(".json", ""));
+             }
+          });
+        }
+        node.children.forEach(traverse);
+      }
+    }
+    
+    const campaignNode = fileTree.find(n => n.node_type === "directory" && n.path === "Campaign");
+    if (campaignNode) traverse(campaignNode);
+    
+    return {
+      episodes: Array.from(new Set(episodes)).sort(),
+      chapters: Array.from(new Set(chapters)).sort(),
+      encounters: Array.from(new Set(encounters)).sort()
+    };
+  }, [fileTree]);
   
   const filteredMentionFiles = useMemo(() => {
      if (!mentionQuery) return availableContextFiles.slice(0, 10);
@@ -427,9 +458,33 @@ export function MainWorkspace() {
     setIsSaving(true);
     setFileContentError(null);
     try {
-      await writeFileContent(selectedFile.path, editedContent);
-      setSelectedFile({ ...selectedFile, content: editedContent });
-      setIsEditing(false);
+      let oldName = null;
+      let newName = null;
+      let newData = null;
+      if (selectedFile.path.endsWith('.json')) {
+        try {
+          const oldData = JSON.parse(selectedFile.content);
+          newData = JSON.parse(editedContent);
+          oldName = oldData.title || oldData.name;
+          newName = newData.title || newData.name;
+        } catch (e) {}
+      }
+
+      if (oldName && newName && oldName !== newName && newData) {
+        const res = await renameCampaignEntity({
+          old_path: selectedFile.path,
+          new_name: newName,
+          updated_content: newData
+        });
+        const updatedTree = await getFileTree();
+        setFileTree(updatedTree);
+        setSelectedPath(res.new_path);
+        setIsEditing(false);
+      } else {
+        await writeFileContent(selectedFile.path, editedContent);
+        setSelectedFile({ ...selectedFile, content: editedContent });
+        setIsEditing(false);
+      }
     } catch (err: any) {
       setFileContentError(err.message || "Failed to save file.");
     } finally {
@@ -441,11 +496,35 @@ export function MainWorkspace() {
     if (!selectedFile) return;
     try {
       setFileUndoStack(prev => [...prev, selectedFile.content]);
-      const newContent = JSON.stringify(newData, null, 2);
-      await writeFileContent(selectedFile.path, newContent);
-      setSelectedFile({ ...selectedFile, content: newContent });
-      // Update editedContent so if user switches to Edit mode it's correct
-      setEditedContent(newContent);
+      
+      let oldName = null;
+      let newName = null;
+      if (selectedFile.path.endsWith('.json')) {
+        try {
+          const oldData = JSON.parse(selectedFile.content);
+          oldName = oldData.title || oldData.name;
+          newName = newData.title || newData.name;
+        } catch (e) {}
+      }
+
+      if (oldName && newName && oldName !== newName) {
+        const res = await renameCampaignEntity({
+          old_path: selectedFile.path,
+          new_name: newName,
+          updated_content: newData
+        });
+        const updatedTree = await getFileTree();
+        setFileTree(updatedTree);
+        setSelectedPath(res.new_path);
+        // The file is saved during the rename, so we just update UI state to match
+        const newContent = JSON.stringify(newData, null, 2);
+        setEditedContent(newContent);
+      } else {
+        const newContent = JSON.stringify(newData, null, 2);
+        await writeFileContent(selectedFile.path, newContent);
+        setSelectedFile({ ...selectedFile, content: newContent });
+        setEditedContent(newContent);
+      }
     } catch (err: any) {
       setFileContentError(err.message || "Failed to save mended file.");
     }
@@ -1078,13 +1157,8 @@ export function MainWorkspace() {
           </aside>
 
           {/* Center Main Panel (File Preview) */}
-          <main className="panel main-panel" style={{ overflowY: "auto" }}>
-            <div className="panel-header">
-              <p className="eyebrow">Workspace</p>
-              <h2>File Viewer</h2>
-            </div>
-            
-            <section style={{ marginTop: "24px", display: "flex", flexDirection: "column" }}>
+          <main className="panel main-panel" style={{ overflowY: "auto", display: "flex", flexDirection: "column" }}>
+            <section style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
               {fileContentError ? <div className="error-copy" style={{ whiteSpace: "pre-wrap", padding: "12px", background: "rgba(255, 60, 60, 0.1)", border: "1px solid rgba(255, 60, 60, 0.4)", borderRadius: "6px" }}>{fileContentError}</div> : null}
               {pendingDraft ? (
                  <DiffEditorPanel 
@@ -1107,15 +1181,23 @@ export function MainWorkspace() {
                  />
               ) : selectedFile ? (
                 <div className="file-preview-wrapper" style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
-                  {!isEditing && (
-                    <div className="file-preview-meta" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                      <div>
-                        <span className="section-label">{selectedFile.path}</span>
-                        {selectedFile.truncated ? (
-                          <span className="status-pill pending" style={{ marginLeft: "12px" }}>Preview truncated</span>
-                        ) : null}
-                      </div>
-                      <div style={{ display: "flex", gap: "8px" }}>
+                  {!isEditing && (() => {
+                    let displayTitle = selectedFile.path.split(/[/\\]/).pop() || selectedFile.path;
+                    if (selectedFile.path.endsWith('.json')) {
+                      try {
+                         const d = JSON.parse(selectedFile.content);
+                         displayTitle = d.title || d.name || displayTitle;
+                      } catch(e){}
+                    }
+                    return (
+                      <div className="workspace-document-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid rgba(89, 137, 219, 0.3)", paddingBottom: "16px", marginBottom: "24px" }}>
+                        <div>
+                          <h1 style={{ fontSize: "2rem", color: "#f3f4f6", margin: 0, fontWeight: 700, letterSpacing: "0.5px" }}>{displayTitle}</h1>
+                        </div>
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          {selectedFile.truncated ? (
+                            <span className="status-pill pending">Preview truncated</span>
+                          ) : null}
                         {(() => {
                           const showDeepMend = selectedFile.path.includes("02_Characters") || selectedFile.path.includes("Locations") || selectedFile.path.includes("03_Story") || selectedFile.path.includes("Episode") || selectedFile.path.includes("sessions");
                           const mendTargetType = selectedFile.path.includes("02_Characters") ? "Character" : (selectedFile.path.includes("Locations") ? "Location" : "Story");
@@ -1141,7 +1223,7 @@ export function MainWorkspace() {
                         </button>
                       </div>
                     </div>
-                  )}
+                  ); })()}
                   
                   {isEditing && (
                     <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginBottom: "16px" }}>
@@ -1943,6 +2025,7 @@ export function MainWorkspace() {
 
       <WizardModal 
          wizard={activeWizard}
+         dynamicOptions={dynamicWizardOptions}
          onClose={() => setActiveWizard(null)}
          onSubmitPrompt={async (compiledPrompt, modalSystemAugment) => {
             const tempWizard = activeWizard;
@@ -2012,6 +2095,28 @@ export function MainWorkspace() {
 
                const writeResponse = await writeFileContent(targetPath, templateContent);
                if (writeResponse.success) {
+                  try {
+                      let parentPath = "";
+                      if (variables["Parent Chapter"] && targetPath.includes("Encounters")) {
+                          parentPath = `Campaign/03_Story/${variables["Parent Episode"]}/${variables["Parent Chapter"]}/Chapter_Overview.json`;
+                      } else if (variables["Parent Episode"] && targetPath.includes("Chapter_Overview.json")) {
+                          parentPath = `Campaign/03_Story/${variables["Parent Episode"]}/Episode_Overview.json`;
+                      }
+                      
+                      if (parentPath && variables["Name"]) {
+                          const pFile = await getFileContent(parentPath);
+                          const pData = JSON.parse(pFile.content);
+                          if (Array.isArray(pData.childLinks)) {
+                              if (!pData.childLinks.includes(variables["Name"])) {
+                                  pData.childLinks.push(variables["Name"]);
+                                  await writeFileContent(parentPath, JSON.stringify(pData, null, 2));
+                              }
+                          }
+                      }
+                  } catch (e) {
+                      console.error("Failed to update parent childLinks", e);
+                  }
+
                   const updatedTree = await getFileTree();
                   setFileTree(updatedTree);
                   setSelectedPath(targetPath);

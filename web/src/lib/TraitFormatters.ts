@@ -27,7 +27,7 @@ export function serializeTrait(trait: any): string {
 
 export function parseSkill(skill: any) {
   if (typeof skill !== 'string') return skill;
-  const match = skill.match(/^(.*?)\s*\(([^()]+)\)-(\d+)\s*\[(-?\d+)\](?:\s*-\s*(.*))?$/);
+  const match = skill.match(/^(.*?)\s*\(([^()]*)\)-(\d+)\s*\[(-?\d+)\](?:\s*-\s*(.*))?$/);
   if (match) return { name: match[1].trim(), base: match[2].trim(), level: parseInt(match[3]), points: parseInt(match[4]), notes: match[5] ? match[5].trim() : '' };
   return skill;
 }

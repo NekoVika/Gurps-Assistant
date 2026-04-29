@@ -105,8 +105,17 @@ export function TraitEditorList({ title, items, onChange }: ListProps) {
         onChange(newParsed.map(serializeTrait));
     };
 
+    const moveItem = (idx: number, direction: -1 | 1) => {
+        if (idx + direction < 0 || idx + direction >= parsed.length) return;
+        const newParsed = [...parsed];
+        const temp = newParsed[idx];
+        newParsed[idx] = newParsed[idx + direction];
+        newParsed[idx + direction] = temp;
+        onChange(newParsed.map(serializeTrait));
+    };
+
     const addItem = () => {
-        onChange([...parsed.map(serializeTrait), "New Trait [0] - Notes"]);
+        onChange([...parsed.map(serializeTrait), " [0]"]);
     };
 
     return (
@@ -118,14 +127,25 @@ export function TraitEditorList({ title, items, onChange }: ListProps) {
             {parsed.map((trait, idx) => {
                 if (typeof trait === 'string') {
                     return (
-                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start" }}>
-                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={trait} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start", display: "flex", gap: "8px" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: idx > 0 ? "4px" : "26px" }}>
+                                <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
+                                <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={trait} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                            </div>
                             <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
                     );
                 }
                 return (
-                    <div key={idx} className="editor-array-item" style={{ flexDirection: "column", alignItems: "stretch", padding: "8px" }}>
+                    <div key={idx} className="editor-array-item" style={{ display: "flex", alignItems: "flex-start", padding: "8px", gap: "8px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px", paddingTop: "4px" }}>
+                            <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
+                            <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
+                        </div>
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
                         <div style={{ display: "flex", gap: "8px", width: "100%", alignItems: "center" }}>
                             <input className="editor-input" style={{ flex: 3 }} placeholder="Trait Name" value={trait.name} onChange={e => updateItem(idx, 'name', e.target.value)} />
                             <input className="editor-input" style={{ width: "80px" }} placeholder="Pts" value={trait.points} onChange={e => updateItem(idx, 'points', e.target.value)} type="number" />
@@ -134,6 +154,7 @@ export function TraitEditorList({ title, items, onChange }: ListProps) {
                         <div style={{ display: "flex", gap: "8px", width: "100%", paddingRight: "36px" }}>
                             <input className="editor-input" style={{ flex: 3 }} placeholder="Notes" value={trait.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} />
                             <input className="editor-input" style={{ flex: 1 }} placeholder="Ref (e.g., B42)" value={trait.reference} onChange={e => updateItem(idx, 'reference', e.target.value)} />
+                        </div>
                         </div>
                     </div>
                 );
@@ -164,8 +185,17 @@ export function SkillEditorList({ title, items, onChange }: ListProps) {
         onChange(newParsed.map(serializeSkill));
     };
 
+    const moveItem = (idx: number, direction: -1 | 1) => {
+        if (idx + direction < 0 || idx + direction >= parsed.length) return;
+        const newParsed = [...parsed];
+        const temp = newParsed[idx];
+        newParsed[idx] = newParsed[idx + direction];
+        newParsed[idx + direction] = temp;
+        onChange(newParsed.map(serializeSkill));
+    };
+
     const addItem = () => {
-        onChange([...parsed.map(serializeSkill), "New Skill (DX)-10 [1]"]);
+        onChange([...parsed.map(serializeSkill), " ()-0 [0]"]);
     };
 
     return (
@@ -177,14 +207,25 @@ export function SkillEditorList({ title, items, onChange }: ListProps) {
             {parsed.map((skill, idx) => {
                 if (typeof skill === 'string') {
                     return (
-                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start" }}>
-                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={skill} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start", display: "flex", gap: "8px" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: idx > 0 ? "4px" : "26px" }}>
+                                <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
+                                <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={skill} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                            </div>
                             <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
                     );
                 }
                 return (
-                    <div key={idx} className="editor-array-item" style={{ flexDirection: "column", alignItems: "stretch", padding: "8px" }}>
+                    <div key={idx} className="editor-array-item" style={{ display: "flex", alignItems: "flex-start", padding: "8px", gap: "8px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px", paddingTop: "4px" }}>
+                            <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
+                            <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
+                        </div>
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
                         <div style={{ display: "flex", gap: "8px", width: "100%", alignItems: "center" }}>
                             <input className="editor-input" style={{ flex: 3 }} placeholder="Skill Name" value={skill.name} onChange={e => updateItem(idx, 'name', e.target.value)} />
                             <input className="editor-input" style={{ width: "60px" }} placeholder="Base" value={skill.base} onChange={e => updateItem(idx, 'base', e.target.value)} />
@@ -194,6 +235,7 @@ export function SkillEditorList({ title, items, onChange }: ListProps) {
                         </div>
                         <div style={{ display: "flex", gap: "8px", width: "100%", paddingRight: "36px" }}>
                             <input className="editor-input" style={{ flex: 1 }} placeholder="Notes" value={skill.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} />
+                        </div>
                         </div>
                     </div>
                 );
@@ -224,8 +266,17 @@ export function GearEditorList({ title, items, onChange }: ListProps) {
         onChange(newParsed.map(serializeGear));
     };
 
+    const moveItem = (idx: number, direction: -1 | 1) => {
+        if (idx + direction < 0 || idx + direction >= parsed.length) return;
+        const newParsed = [...parsed];
+        const temp = newParsed[idx];
+        newParsed[idx] = newParsed[idx + direction];
+        newParsed[idx + direction] = temp;
+        onChange(newParsed.map(serializeGear));
+    };
+
     const addItem = () => {
-        onChange([...parsed.map(serializeGear), "New Item [1] (0 lbs, $0)"]);
+        onChange([...parsed.map(serializeGear), " (0, 0)"]);
     };
 
     return (
@@ -237,14 +288,25 @@ export function GearEditorList({ title, items, onChange }: ListProps) {
             {parsed.map((gear, idx) => {
                 if (typeof gear === 'string') {
                     return (
-                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start" }}>
-                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={gear} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start", display: "flex", gap: "8px" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: idx > 0 ? "4px" : "26px" }}>
+                                <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
+                                <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={gear} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                            </div>
                             <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
                     );
                 }
                 return (
-                    <div key={idx} className="editor-array-item" style={{ flexDirection: "column", alignItems: "stretch", padding: "8px" }}>
+                    <div key={idx} className="editor-array-item" style={{ display: "flex", alignItems: "flex-start", padding: "8px", gap: "8px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px", paddingTop: "4px" }}>
+                            <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
+                            <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
+                        </div>
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
                         <div style={{ display: "flex", gap: "8px", width: "100%", alignItems: "center" }}>
                             <input className="editor-input" style={{ flex: 3 }} placeholder="Gear Name" value={gear.name} onChange={e => updateItem(idx, 'name', e.target.value)} />
                             <input className="editor-input" style={{ width: "60px" }} placeholder="Qty" value={gear.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 1)} type="number" />
@@ -254,6 +316,7 @@ export function GearEditorList({ title, items, onChange }: ListProps) {
                         </div>
                         <div style={{ display: "flex", gap: "8px", width: "100%", paddingRight: "36px" }}>
                             <input className="editor-input" style={{ flex: 1 }} placeholder="Notes (e.g., sw+1 cut)" value={gear.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} />
+                        </div>
                         </div>
                     </div>
                 );
@@ -284,8 +347,17 @@ export function HitLocationEditorList({ title, items, onChange }: ListProps) {
         onChange(newParsed.map(serializeHitLocation));
     };
 
+    const moveItem = (idx: number, direction: -1 | 1) => {
+        if (idx + direction < 0 || idx + direction >= parsed.length) return;
+        const newParsed = [...parsed];
+        const temp = newParsed[idx];
+        newParsed[idx] = newParsed[idx + direction];
+        newParsed[idx + direction] = temp;
+        onChange(newParsed.map(serializeHitLocation));
+    };
+
     const addItem = () => {
-        onChange([...parsed.map(serializeHitLocation), "Skull (3-4): DR 2"]);
+        onChange([...parsed.map(serializeHitLocation), " (): DR 0"]);
     };
 
     return (
@@ -297,14 +369,25 @@ export function HitLocationEditorList({ title, items, onChange }: ListProps) {
             {parsed.map((loc, idx) => {
                 if (typeof loc === 'string') {
                     return (
-                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start" }}>
-                            <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={loc} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start", display: "flex", gap: "8px" }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: idx > 0 ? "4px" : "26px" }}>
+                                <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
+                                <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={loc} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                            </div>
                             <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
                     );
                 }
                 return (
-                    <div key={idx} className="editor-array-item" style={{ flexDirection: "column", alignItems: "stretch", padding: "8px" }}>
+                    <div key={idx} className="editor-array-item" style={{ display: "flex", alignItems: "flex-start", padding: "8px", gap: "8px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px", paddingTop: "4px" }}>
+                            <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
+                            <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
+                        </div>
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
                         <div style={{ display: "flex", gap: "8px", width: "100%", alignItems: "center" }}>
                             <input className="editor-input" style={{ flex: 2 }} placeholder="Location" value={loc.location} onChange={e => updateItem(idx, 'location', e.target.value)} />
                             <input className="editor-input" style={{ flex: 1 }} placeholder="Roll" value={loc.roll} onChange={e => updateItem(idx, 'roll', e.target.value)} />
@@ -313,6 +396,7 @@ export function HitLocationEditorList({ title, items, onChange }: ListProps) {
                         </div>
                         <div style={{ display: "flex", gap: "8px", width: "100%", paddingRight: "36px" }}>
                             <input className="editor-input" style={{ flex: 1 }} placeholder="Notes" value={loc.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} />
+                        </div>
                         </div>
                     </div>
                 );
@@ -340,6 +424,15 @@ export function EntityRelationEditorList({ title, items, onChange, targetCategor
         onChange(newItems);
     };
 
+    const moveItem = (index: number, direction: -1 | 1) => {
+        if (index + direction < 0 || index + direction >= items.length) return;
+        const newItems = [...items];
+        const temp = newItems[index];
+        newItems[index] = newItems[index + direction];
+        newItems[index + direction] = temp;
+        onChange(newItems);
+    };
+
     return (
         <div className="editor-array-container">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -350,6 +443,10 @@ export function EntityRelationEditorList({ title, items, onChange, targetCategor
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {items.map((item, i) => (
                     <div key={i} className="editor-array-item" style={{ display: "flex", gap: "8px", alignItems: "center", padding: "8px" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                            <button type="button" onClick={() => moveItem(i, -1)} style={{ background: "none", border: "none", color: "white", cursor: i === 0 ? "default" : "pointer", opacity: i === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
+                            <button type="button" onClick={() => moveItem(i, 1)} style={{ background: "none", border: "none", color: "white", cursor: i === items.length - 1 ? "default" : "pointer", opacity: i === items.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
+                        </div>
                         <div style={{ flex: 1 }}>
                             <WorkspaceSelect
                                 value={item.name}

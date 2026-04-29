@@ -15,6 +15,8 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(149, 181, 255, 0.2) rgba(0, 0, 0, 0.1);
 }
 
 html,
@@ -226,10 +228,6 @@ button {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  background: rgba(10, 16, 28, 0.9);
-  border: 1px solid rgba(89, 137, 219, 0.15);
-  border-radius: 12px;
-  padding: 32px;
   color: #d1d5db;
 }
 
@@ -237,7 +235,6 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  border-bottom: 2px solid rgba(89, 137, 219, 0.3);
   padding-bottom: 24px;
 }
 
@@ -1139,4 +1136,24 @@ button {
 .editor-add-btn:hover {
   background: rgba(88, 166, 255, 0.2);
   transform: translateY(-1px);
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(149, 181, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(149, 181, 255, 0.4);
 }

@@ -40,8 +40,25 @@
   "plotHooks": [
     "A mysterious artifact was found here..."
   ],
-  "characterRelations": [],
-  "locationRelations": [],
-  "factionRelations": [],
-  "storyAppearances": []
+  "characterRelations": [
+    {
+      "name": "Target Character Name or Filename",
+      "relation": "Description of relationship (e.g. 'Mayor', 'Regular patron')"
+    }
+  ],
+  "locationRelations": [
+    {
+      "name": "Target Location Name or Filename",
+      "relation": "Description of relationship (e.g. 'Located inside', 'Connected by secret tunnel')"
+    }
+  ],
+  "factionRelations": [
+    {
+      "name": "Target Faction Name or Filename",
+      "relation": "Description of relationship (e.g. 'Controlled by', 'Headquarters of')"
+    }
+  ],
+  "storyAppearances": [
+    "Episode_01/Chapter_01/Scene_Name.json"
+  ]
 }

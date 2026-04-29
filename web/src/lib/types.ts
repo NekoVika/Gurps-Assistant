@@ -123,7 +123,7 @@ export interface StoryJSON {
     mainOutline: string;
     branchingPath: string;
     
-    childLinks: string;
+    childLinks?: string[] | string;
 
     outcomes: string;
     pcHooks: string;

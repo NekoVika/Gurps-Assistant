@@ -12,15 +12,12 @@ type Props = {
 export function LocationPassport({ data, documentPath, onNavigate }: Props) {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const images = data.images || [];
+  const safeImageIdx = images.length > 0 && activeImageIdx < images.length ? activeImageIdx : 0;
 
   return (
     <div className="character-passport">
-      <header className="passport-header">
-        <div className="passport-title-area">
-          <h1>{data.name || "Unknown Location"}</h1>
-          {data.region && <h2>{data.region}</h2>}
-        </div>
-        <div className="passport-meta">
+      <header className="passport-header" style={{ paddingBottom: "16px", borderBottom: "none" }}>
+        <div className="passport-meta" style={{ width: "100%", display: "flex", gap: "16px" }}>
           <div className="meta-badge significance-badge">
             <span className="eyebrow">Type</span>
             <span className="value">{data.type || "?"}</span>
@@ -46,14 +43,14 @@ export function LocationPassport({ data, documentPath, onNavigate }: Props) {
           {images.length > 0 && (
             <div className="passport-gallery" style={{ aspectRatio: "16 / 9" }}>
               <div className="gallery-main-image" style={{ aspectRatio: "16 / 9" }}>
-                 <img src={getMediaUrl(images[activeImageIdx], documentPath)} alt="Location Geography" />
+                 <img src={getMediaUrl(images[safeImageIdx], documentPath)} alt="Location Geography" />
               </div>
               {images.length > 1 && (
                  <div className="gallery-thumbnails">
                     {images.map((img: string, idx: number) => (
                        <button 
                          key={idx} 
-                         className={`thumb-button ${idx === activeImageIdx ? 'active' : ''}`}
+                         className={`thumb-button ${idx === safeImageIdx ? 'active' : ''}`}
                          onClick={() => setActiveImageIdx(idx)}
                        >
                          <img src={getMediaUrl(img, documentPath)} alt={`Thumbnail ${idx+1}`} />

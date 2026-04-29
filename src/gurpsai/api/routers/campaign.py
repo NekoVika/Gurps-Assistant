@@ -118,7 +118,7 @@ Mechanical guidelines and specific rulings for this campaign.
     return InitCampaignResponse(success=True, message="Campaign initialized with stub files.")
 
 from pydantic import ValidationError
-from gurpsai.domain.campaign import CharacterData, LocationData, StoryData
+from gurpsai.domain.campaign import CharacterData, LocationData, StoryData, FactionData
 
 class CampaignValidateResponse(BaseModel):
     scanned_files: int
@@ -155,6 +155,9 @@ def validate_campaign() -> CampaignValidateResponse:
             elif "Locations" in rel_path:
                 scanned += 1
                 LocationData.model_validate_json(content)
+            elif "04_Factions" in rel_path or "Factions" in rel_path:
+                scanned += 1
+                FactionData.model_validate_json(content)
             elif "03_Story" in rel_path or "Episodes" in rel_path or "sessions" in rel_path:
                 scanned += 1
                 StoryData.model_validate_json(content)
@@ -250,13 +253,15 @@ def mend_string(request: MendRequest) -> MendResponse:
 @router.post("/mend-file", response_model=MendFileResponse)
 def mend_file(request: MendFileRequest) -> MendFileResponse:
     import json
-    from gurpsai.domain.campaign import CharacterData, LocationData, StoryData
+    from gurpsai.domain.campaign import CharacterData, LocationData, StoryData, FactionData
     
     target_type = request.target_type.lower()
     if "character" in target_type:
         schema_dict = CharacterData.model_json_schema()
     elif "location" in target_type:
         schema_dict = LocationData.model_json_schema()
+    elif "faction" in target_type:
+        schema_dict = FactionData.model_json_schema()
     else:
         schema_dict = StoryData.model_json_schema()
         
@@ -312,6 +317,94 @@ import json
 import uuid
 import shutil
 import datetime
+
+class RenameEntityRequest(BaseModel):
+    old_path: str
+    new_name: str
+    updated_content: dict
+
+class RenameEntityResponse(BaseModel):
+    success: bool
+    new_path: str
+    refactored_files: int
+
+@router.post("/rename-entity", response_model=RenameEntityResponse)
+def rename_entity(request: RenameEntityRequest) -> RenameEntityResponse:
+    config = load_app_config()
+    if not config.campaign.active_path:
+        raise HTTPException(status_code=400, detail="No active campaign.")
+    campaign_path = Path(config.campaign.active_path)
+    
+    normalized_path = request.old_path.replace("\\", "/")
+    if normalized_path.startswith("Campaign/"):
+        normalized_path = normalized_path[len("Campaign/"):]
+        
+    old_target = campaign_path / normalized_path
+    if not old_target.exists() or not old_target.is_file():
+        raise HTTPException(status_code=404, detail="Original file not found.")
+        
+    old_name = old_target.stem
+    new_name = request.new_name
+    
+    if not new_name.strip():
+        raise HTTPException(status_code=400, detail="New name cannot be empty.")
+        
+    safe_name = "".join(c for c in new_name if c.isalnum() or c in (" ", "-", "_")).strip()
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="New name has no valid characters for a filename.")
+        
+    new_target = old_target.parent / f"{safe_name}.json"
+    
+    if new_target.exists() and new_target.resolve() != old_target.resolve():
+         raise HTTPException(status_code=400, detail="A file with that name already exists.")
+
+    with open(new_target, "w", encoding="utf-8") as f:
+        json.dump(request.updated_content, f, indent=2)
+        
+    if new_target.resolve() != old_target.resolve():
+        old_target.unlink()
+        
+    refactored_count = 0
+    if old_name != new_name:
+        for json_file in campaign_path.rglob("*.json"):
+            if json_file.resolve() == new_target.resolve():
+                continue
+                
+            try:
+                with open(json_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                continue
+                
+            def refactor_json_node(node) -> bool:
+                changed = False
+                if isinstance(node, dict):
+                    for k, v in node.items():
+                        if isinstance(v, str):
+                            if v == old_name:
+                                node[k] = new_name
+                                changed = True
+                        else:
+                            if refactor_json_node(v):
+                                changed = True
+                elif isinstance(node, list):
+                    for i, v in enumerate(node):
+                        if isinstance(v, str):
+                            if v == old_name:
+                                node[i] = new_name
+                                changed = True
+                        else:
+                            if refactor_json_node(v):
+                                changed = True
+                return changed
+
+            if refactor_json_node(data):
+                with open(json_file, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2)
+                refactored_count += 1
+                
+    rel_new_path = new_target.relative_to(campaign_path).as_posix()
+    return RenameEntityResponse(success=True, new_path=rel_new_path, refactored_files=refactored_count)
 
 def get_trash_dir() -> Path:
     config = load_app_config()

@@ -10,10 +10,27 @@
   "personality": "Personality traits and demeanor...",
   "motivation": "What drives them...",
   "speech": "A characteristic quote...",
-  "characterRelations": [],
-  "locationRelations": [],
-  "factionRelations": [],
-  "storyAppearances": [],
+  "characterRelations": [
+    {
+      "name": "Target Character Name or Filename",
+      "relation": "Description of relationship (e.g. 'Sibling', 'Rival')"
+    }
+  ],
+  "locationRelations": [
+    {
+      "name": "Target Location Name or Filename",
+      "relation": "Description of relationship (e.g. 'Born there', 'Owns a shop')"
+    }
+  ],
+  "factionRelations": [
+    {
+      "name": "Target Faction Name or Filename",
+      "relation": "Description of relationship (e.g. 'Leader', 'Hunted by them')"
+    }
+  ],
+  "storyAppearances": [
+    "Episode_01/Chapter_01/Scene_Name.json"
+  ],
   "pointTotal": "150",
   "attributes": [
     "ST 10 [0]",

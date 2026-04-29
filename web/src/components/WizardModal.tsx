@@ -3,12 +3,13 @@ import type { WizardDef } from "../lib/wizards";
 
 type WizardModalProps = {
   wizard: WizardDef | null;
+  dynamicOptions?: { episodes: string[]; chapters: string[]; encounters: string[] };
   onClose: () => void;
   onSubmitPrompt: (compiledPrompt: string, systemAugment?: string) => void;
   onCreateStub: (targetPath: string, templatePath: string, variables: Record<string, string>) => void;
 };
 
-export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSubmitPrompt, onCreateStub }) => {
+export const WizardModal: React.FC<WizardModalProps> = ({ wizard, dynamicOptions, onClose, onSubmitPrompt, onCreateStub }) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
@@ -21,6 +22,8 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
         step.fields.forEach(f => {
           if (f.type === "select" && f.options && f.options.length > 0) {
             initial[f.id] = f.options[0];
+          } else if (f.type === "dynamic-select" && f.optionsSource && dynamicOptions && dynamicOptions[f.optionsSource] && dynamicOptions[f.optionsSource].length > 0) {
+            initial[f.id] = dynamicOptions[f.optionsSource][0];
           } else {
             initial[f.id] = "";
           }
@@ -32,8 +35,8 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
 
   if (!wizard) return null;
 
-  function interpolate(template: string) {
-    let result = template;
+  function interpolate(template: string | ((ans: Record<string, string>) => string)) {
+    let result = typeof template === "function" ? template(answers) : template;
     for (const [key, val] of Object.entries(answers)) {
       result = result.replace(new RegExp(`{{${key}}}`, "g"), val || `[${key}]`);
     }
@@ -53,16 +56,19 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
     onCreateStub(targetPath, wizard!.stubTemplatePath, answers);
   }
 
-  const currentStep = wizard.steps[currentStepIndex];
+  const visibleSteps = wizard.steps.filter(step => !step.condition || step.condition(answers));
+  const currentStep = visibleSteps[currentStepIndex];
 
-  const currentStepRequiredMet = currentStep.fields.every(f => {
+  const visibleFields = currentStep ? currentStep.fields.filter(f => !f.condition || f.condition(answers)) : [];
+
+  const currentStepRequiredMet = visibleFields.every(f => {
     if (f.required) {
       return (answers[f.id] !== undefined && answers[f.id].trim().length > 0);
     }
     return true;
   });
 
-  const isLastStep = currentStepIndex === wizard.steps.length - 1;
+  const isLastStep = currentStepIndex === visibleSteps.length - 1;
 
   return (
     <div style={{
@@ -85,16 +91,16 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
           <button onClick={onClose} style={{ background: "transparent", border: "none", color: "#8b949e", cursor: "pointer", fontSize: "1.2rem", padding: "4px 8px" }}>✕</button>
         </div>
 
-        <div style={{ flexGrow: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px", paddingRight: "8px" }}>
-          {wizard.steps.length > 1 && (
+        <div style={{ flexGrow: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px", padding: "4px 12px 4px 4px", margin: "0 -4px" }}>
+          {visibleSteps.length > 1 && (
              <div style={{ fontSize: "0.85em", color: "#8b949e", marginBottom: "0px" }}>
-               Step {currentStepIndex + 1} of {wizard.steps.length}
+               Step {currentStepIndex + 1} of {visibleSteps.length}
              </div>
           )}
-          {currentStep.title && <h3 style={{ margin: "0 0 4px 0", fontSize: "1.1em", color: "#c9dfff" }}>{currentStep.title}</h3>}
-          {currentStep.description && <p style={{ margin: "0 0 16px 0", fontSize: "0.9em", color: "#8b949e" }}>{currentStep.description}</p>}
+          {currentStep?.title && <h3 style={{ margin: "0 0 4px 0", fontSize: "1.1em", color: "#c9dfff" }}>{currentStep.title}</h3>}
+          {currentStep?.description && <p style={{ margin: "0 0 16px 0", fontSize: "0.9em", color: "#8b949e" }}>{currentStep.description}</p>}
 
-          {currentStep.fields.map(f => (
+          {visibleFields.map(f => (
             <div key={f.id} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <label style={{ fontSize: "0.85em", fontWeight: 600, color: "#c9dfff" }}>
                 {f.label} {f.required && <span style={{ color: "#f85149" }}>*</span>}
@@ -106,7 +112,7 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
                   value={answers[f.id] || ""}
                   onChange={e => setAnswers({...answers, [f.id]: e.target.value})}
                   placeholder={f.placeholder}
-                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white", outlineOffset: "-1px" }}
                 />
               )}
 
@@ -116,7 +122,7 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
                   onChange={e => setAnswers({...answers, [f.id]: e.target.value})}
                   placeholder={f.placeholder}
                   rows={4}
-                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white", resize: "vertical" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white", resize: "vertical", outlineOffset: "-1px" }}
                 />
               )}
 
@@ -124,9 +130,19 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, onClose, onSub
                 <select 
                   value={answers[f.id] || ""}
                   onChange={e => setAnswers({...answers, [f.id]: e.target.value})}
-                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white", outlineOffset: "-1px" }}
                 >
                   {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              )}
+
+              {f.type === "dynamic-select" && f.optionsSource && dynamicOptions && (
+                <select 
+                  value={answers[f.id] || ""}
+                  onChange={e => setAnswers({...answers, [f.id]: e.target.value})}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "8px 12px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(149,181,255,0.2)", borderRadius: "4px", color: "white", outlineOffset: "-1px" }}
+                >
+                  {dynamicOptions[f.optionsSource]?.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               )}
             </div>

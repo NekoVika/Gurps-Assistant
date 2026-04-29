@@ -1,16 +1,19 @@
 export type WizardField = {
   id: string;
   label: string;
-  type: "text" | "textarea" | "select" | "number";
+  type: "text" | "textarea" | "select" | "number" | "dynamic-select";
   options?: string[];
+  optionsSource?: "episodes" | "chapters" | "encounters";
   placeholder?: string;
   required?: boolean;
+  condition?: (answers: Record<string, string>) => boolean;
 };
 
 export type WizardStep = {
   title?: string;
   description?: string;
   fields: WizardField[];
+  condition?: (answers: Record<string, string>) => boolean;
 };
 
 export type WizardDef = {
@@ -18,13 +21,97 @@ export type WizardDef = {
   title: string;
   description: string;
   steps: WizardStep[];
-  aiPromptTemplate: string;
-  stubTargetPath: string;    // E.g., "Campaign/02_Characters/Main_Cast/{{Name}}.md"
-  stubTemplatePath: string;  // E.g., "Campaign/.planning/_templates/NPC_Template.md"
-  workflowPath?: string;     // E.g., ".agents/workflows/create_npc.md"
+  aiPromptTemplate: string | ((answers: Record<string, string>) => string);
+  stubTargetPath: string | ((answers: Record<string, string>) => string);
+  stubTemplatePath: string | ((answers: Record<string, string>) => string);
+  workflowPath?: string | ((answers: Record<string, string>) => string);
 };
 
 export const WIZARDS: WizardDef[] = [
+  {
+    id: "story_wizard",
+    title: "Create Story Element",
+    description: "Create an Episode, Chapter, or Encounter.",
+    stubTargetPath: (answers) => {
+      const type = answers.ElementType;
+      const name = answers.Name ? answers.Name.replace(/ /g, "_") : "Untitled";
+      if (type === "Episode") return `Campaign/03_Story/${name}/Episode_Overview.json`;
+      if (type === "Chapter") return `Campaign/03_Story/${answers.ParentEpisode || "Unknown_Episode"}/${name}/Chapter_Overview.json`;
+      if (type === "Encounter") return `Campaign/03_Story/${answers.ParentEpisode || "Unknown_Episode"}/${answers.ParentChapter || "Unknown_Chapter"}/Encounters/${name}.json`;
+      return "Campaign/03_Story/Unknown.json";
+    },
+    stubTemplatePath: (answers) => {
+      const type = answers.ElementType;
+      if (type === "Episode") return ".planning/_templates/Episode_Template.json";
+      if (type === "Chapter") return ".planning/_templates/Chapter_Template.json";
+      return ".planning/_templates/Encounter_Template.json";
+    },
+    aiPromptTemplate: "Run the Create Story workflow.\n\nType: {{ElementType}}\nName: {{Name}}\n\nPremise: {{Premise}}\nObjectives: {{Objectives}}\nStakes: {{Stakes}}\nHazards: {{Hazards}}\nOutcomes: {{Outcomes}}\n\nPlease execute the workflow and provide a Draft.",
+    steps: [
+      {
+        title: "Step 1: Element Type & Placement",
+        fields: [
+          {
+            id: "ElementType",
+            label: "What are you creating?",
+            type: "select",
+            options: ["Episode", "Chapter", "Encounter"],
+            required: true
+          },
+          {
+            id: "ParentEpisode",
+            label: "Parent Episode",
+            type: "dynamic-select",
+            optionsSource: "episodes",
+            required: true,
+            condition: (answers) => answers.ElementType === "Chapter" || answers.ElementType === "Encounter"
+          },
+          {
+            id: "ParentChapter",
+            label: "Parent Chapter",
+            type: "dynamic-select",
+            optionsSource: "chapters",
+            required: true,
+            condition: (answers) => answers.ElementType === "Encounter"
+          },
+          {
+            id: "Name",
+            label: "Element Name",
+            type: "text",
+            required: true,
+            placeholder: "Enter name..."
+          }
+        ]
+      },
+      {
+        title: "Episode Context",
+        condition: (answers) => answers.ElementType === "Episode",
+        fields: [
+          { id: "Premise", label: "Premise & Setup", type: "textarea", placeholder: "Starting situation..." },
+          { id: "Stakes", label: "Stakes & Antagonists", type: "textarea", placeholder: "Who opposes them?" },
+          { id: "Objectives", label: "Objectives", type: "textarea", placeholder: "What must be achieved?" }
+        ]
+      },
+      {
+        title: "Chapter Context",
+        condition: (answers) => answers.ElementType === "Chapter",
+        fields: [
+          { id: "Premise", label: "Starting Situation & Purpose", type: "textarea", placeholder: "Where does it start?" },
+          { id: "Objectives", label: "Key Objectives", type: "textarea", placeholder: "Chapter goals..." },
+          { id: "Hazards", label: "Mechanics & Hazards", type: "textarea", placeholder: "Environmental dangers..." }
+        ]
+      },
+      {
+        title: "Encounter Context",
+        condition: (answers) => answers.ElementType === "Encounter",
+        fields: [
+          { id: "Premise", label: "Trigger / Scene start", type: "textarea", placeholder: "How does it start?" },
+          { id: "Hazards", label: "Mechanics & Hazards", type: "textarea", placeholder: "Skill checks, DC, attacks..." },
+          { id: "Outcomes", label: "Outcomes", type: "textarea", placeholder: "Success / Failure results..." }
+        ]
+      }
+    ]
+  },
   {
     id: "create_npc",
     title: "Create Entity",

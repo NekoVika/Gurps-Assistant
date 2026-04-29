@@ -644,6 +644,37 @@ export type TrashItem = {
   name: string;
 };
 
+export type RenameEntityRequest = {
+  old_path: string;
+  new_name: string;
+  updated_content: any;
+};
+
+export type RenameEntityResponse = {
+  success: boolean;
+  new_path: string;
+  refactored_files: number;
+};
+
+export async function renameCampaignEntity(request: RenameEntityRequest): Promise<RenameEntityResponse> {
+  const response = await fetch(`${apiBaseUrl()}/campaign/rename-entity`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request)
+  });
+  if (!response.ok) {
+    let detail = `Rename entity failed (HTTP ${response.status})`;
+    try {
+      const body = await response.json();
+      if (body && body.detail) {
+        detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+      }
+    } catch { }
+    throw new Error(detail);
+  }
+  return await response.json();
+}
+
 export async function deleteCampaignFile(path: string): Promise<{ success: boolean; trash_id: string }> {
   const response = await fetch(`${apiBaseUrl()}/campaign/file`, {
     method: "DELETE",

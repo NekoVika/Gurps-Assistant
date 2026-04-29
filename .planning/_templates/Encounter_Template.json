@@ -1,0 +1,27 @@
+{
+  "_INSTRUCTION": "CRITICAL AI INSTRUCTION: This is an EXAMPLE JSON for Encounter elements. DO NOT output a JSON schema. Output a valid JSON object that perfectly mimics this exact structure and depth.",
+  "title": "Encounter Title",
+  "type": "Encounter",
+  "status": "Draft",
+  "primaryLocation": "Location Name",
+  "images": [
+    "scene.png"
+  ],
+  "gmBrief": "GM Summary of the encounter...",
+  "premise": "Trigger / Scene start...",
+  "objectives": "What the PCs need to achieve...",
+  "stakesAndAntagonists": "Who opposes them and what happens if they fail...",
+  "mechanicsAndHazards": "Skill checks, attacks, DCs...",
+  "cluesAndProps": "Loot or clues...",
+  "rewards": "Loot, points, or favors...",
+  "pcHooks": "Why the party cares...",
+  "mainOutline": "Beat 1: ...\nBeat 2: ...",
+  "branchingPath": "If the PCs do X instead of Y...",
+  "childLinks": [],
+  "outcomes": "Success / Failure outcomes...",
+  "assumptions": "What you assume the PCs will do...",
+  "openQuestions": "Things you still need to prep...",
+  "characters": ["Target Character Name or Filename"],
+  "locations": ["Target Location Name or Filename"],
+  "factions": ["Target Faction Name or Filename"]
+}

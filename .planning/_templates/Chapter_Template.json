@@ -1,0 +1,29 @@
+{
+  "_INSTRUCTION": "CRITICAL AI INSTRUCTION: This is an EXAMPLE JSON for Chapter elements. DO NOT output a JSON schema. Output a valid JSON object that perfectly mimics this exact structure and depth.",
+  "title": "Chapter Title",
+  "type": "Chapter",
+  "status": "Draft",
+  "primaryLocation": "Location Name",
+  "images": [
+    "scene.png"
+  ],
+  "gmBrief": "GM Summary, intended duration, outcome...",
+  "premise": "Starting Situation & Purpose...",
+  "objectives": "Key Objectives...",
+  "stakesAndAntagonists": "Stakes & Time Pressure...",
+  "mechanicsAndHazards": "Locations & Map Needs, Hazards...",
+  "mainOutline": "Beat Outline (Main Path)...",
+  "branchingPath": "Variant / Branching Path...",
+  "childLinks": [
+    "Target Encounter Name or Filename"
+  ],
+  "cluesAndProps": "Clues & Props...",
+  "pcHooks": "PC Hooks...",
+  "rewards": "Loot, points, or favors...",
+  "outcomes": "Outcomes and Rewards...",
+  "assumptions": "What you assume the PCs will do...",
+  "openQuestions": "Things you still need to prep...",
+  "characters": ["Target Character Name or Filename"],
+  "locations": ["Target Location Name or Filename"],
+  "factions": ["Target Faction Name or Filename"]
+}
