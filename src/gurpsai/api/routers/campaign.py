@@ -320,6 +320,7 @@ import datetime
 
 class RenameEntityRequest(BaseModel):
     old_path: str
+    old_title: str
     new_name: str
     updated_content: dict
 
@@ -349,7 +350,9 @@ def rename_entity(request: RenameEntityRequest) -> RenameEntityResponse:
     if not new_name.strip():
         raise HTTPException(status_code=400, detail="New name cannot be empty.")
         
+    import re
     safe_name = "".join(c for c in new_name if c.isalnum() or c in (" ", "-", "_")).strip()
+    safe_name = re.sub(r'^[\d_]+', '', safe_name).strip()
     if not safe_name:
         raise HTTPException(status_code=400, detail="New name has no valid characters for a filename.")
         
@@ -365,7 +368,7 @@ def rename_entity(request: RenameEntityRequest) -> RenameEntityResponse:
         old_target.unlink()
         
     refactored_count = 0
-    if old_name != new_name:
+    if request.old_title != new_name:
         for json_file in campaign_path.rglob("*.json"):
             if json_file.resolve() == new_target.resolve():
                 continue
@@ -379,22 +382,20 @@ def rename_entity(request: RenameEntityRequest) -> RenameEntityResponse:
             def refactor_json_node(node) -> bool:
                 changed = False
                 if isinstance(node, dict):
+                    ref_keys = {"childLinks", "characters", "locations", "factions"}
                     for k, v in node.items():
-                        if isinstance(v, str):
-                            if v == old_name:
-                                node[k] = new_name
-                                changed = True
-                        else:
+                        if k in ref_keys and isinstance(v, list):
+                            for i, item in enumerate(v):
+                                if isinstance(item, str) and (item == request.old_title or item.endswith(request.old_title)):
+                                    v[i] = new_name
+                                    changed = True
+                        elif isinstance(v, dict) or isinstance(v, list):
                             if refactor_json_node(v):
                                 changed = True
                 elif isinstance(node, list):
-                    for i, v in enumerate(node):
-                        if isinstance(v, str):
-                            if v == old_name:
-                                node[i] = new_name
-                                changed = True
-                        else:
-                            if refactor_json_node(v):
+                    for item in node:
+                        if isinstance(item, dict) or isinstance(item, list):
+                            if refactor_json_node(item):
                                 changed = True
                 return changed
 
@@ -404,7 +405,8 @@ def rename_entity(request: RenameEntityRequest) -> RenameEntityResponse:
                 refactored_count += 1
                 
     rel_new_path = new_target.relative_to(campaign_path).as_posix()
-    return RenameEntityResponse(success=True, new_path=rel_new_path, refactored_files=refactored_count)
+    frontend_path = f"Campaign/{rel_new_path}"
+    return RenameEntityResponse(success=True, new_path=frontend_path, refactored_files=refactored_count)
 
 def get_trash_dir() -> Path:
     config = load_app_config()

@@ -11,7 +11,7 @@ type Props = {
 };
 
 export function ChapterPassport({ data, documentPath, onNavigate }: Props) {
-  const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [activeImageIdx] = useState(0);
   const images = data.images || [];
   const safeImageIdx = images.length > 0 && activeImageIdx < images.length ? activeImageIdx : 0;
   return (

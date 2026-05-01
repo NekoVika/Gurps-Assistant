@@ -7,7 +7,7 @@ README = (ROOT / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="gurpsai",
-    version="0.2.0",
+    version="0.2.10",
     description="GURPS GM Assistant CLI",
     long_description=README,
     long_description_content_type="text/markdown",

@@ -473,6 +473,7 @@ export function MainWorkspace() {
       if (oldName && newName && oldName !== newName && newData) {
         const res = await renameCampaignEntity({
           old_path: selectedFile.path,
+          old_title: oldName,
           new_name: newName,
           updated_content: newData
         });
@@ -510,6 +511,7 @@ export function MainWorkspace() {
       if (oldName && newName && oldName !== newName) {
         const res = await renameCampaignEntity({
           old_path: selectedFile.path,
+          old_title: oldName,
           new_name: newName,
           updated_content: newData
         });
@@ -2036,14 +2038,16 @@ export function MainWorkspace() {
             if (tempWizard) {
                let templateStr = "";
                try {
-                  const tpl = await getFileContent(tempWizard.stubTemplatePath);
+                  const resolvedTemplatePath = typeof tempWizard.stubTemplatePath === "function" ? tempWizard.stubTemplatePath({}) : tempWizard.stubTemplatePath;
+                   const tpl = await getFileContent(resolvedTemplatePath);
                   templateStr = tpl.content;
                } catch { /* */ }
                
                let workflowStr = "";
                if (tempWizard.workflowPath) {
                   try {
-                     const wf = await getFileContent(tempWizard.workflowPath);
+                     const resolvedWorkflowPath = typeof tempWizard.workflowPath === "function" ? tempWizard.workflowPath({}) : tempWizard.workflowPath;
+                      const wf = await getFileContent(resolvedWorkflowPath);
                      workflowStr = wf.content;
                   } catch { /* */ }
                }

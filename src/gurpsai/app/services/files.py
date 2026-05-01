@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from gurpsai.app.config import load_app_config, ROOT
@@ -37,6 +38,7 @@ class FileTreeNode:
     name: str
     node_type: str
     children: list["FileTreeNode"]
+    title: str | None = None
 
 
 @dataclass(frozen=True)
@@ -196,12 +198,21 @@ class CampaignFileService:
             if entry.is_dir():
                 children.append(self._build_virtual_directory_node(entry, child_prefix))
             elif entry.is_file():
+                title = None
+                if entry.suffix.lower() == ".json":
+                    try:
+                        content = json.loads(entry.read_text(encoding="utf-8", errors="replace"))
+                        if isinstance(content, dict):
+                            title = content.get("title") or content.get("name")
+                    except Exception:
+                        pass
                 children.append(
                     FileTreeNode(
                         path=child_prefix,
                         name=entry.name,
                         node_type="file",
                         children=[],
+                        title=title,
                     )
                 )
 

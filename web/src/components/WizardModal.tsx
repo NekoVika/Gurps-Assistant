@@ -53,7 +53,7 @@ export const WizardModal: React.FC<WizardModalProps> = ({ wizard, dynamicOptions
 
   function handleStubSubmit() {
     const targetPath = interpolate(wizard!.stubTargetPath);
-    onCreateStub(targetPath, wizard!.stubTemplatePath, answers);
+    onCreateStub(targetPath, interpolate(wizard!.stubTemplatePath), answers);
   }
 
   const visibleSteps = wizard.steps.filter(step => !step.condition || step.condition(answers));

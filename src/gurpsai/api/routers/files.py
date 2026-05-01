@@ -16,6 +16,7 @@ def _to_node_response(node: FileTreeNode) -> FileTreeNodeResponse:
     return FileTreeNodeResponse(
         path=node.path,
         name=node.name,
+        title=node.title,
         node_type=node.node_type,
         children=[_to_node_response(child) for child in node.children],
     )

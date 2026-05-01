@@ -119,7 +119,7 @@ export function StoryEditor({ value, onChange, documentPath = "" }: Props) {
                 </div>
                 <div className="editor-field">
                     <label className="editor-label">Child Links (Chapters/Encounters)</label>
-                    <MDEditor value={data.childLinks} onChange={val => handleUpdate('childLinks', val || "")} height={150} preview="edit" />
+                    <MDEditor value={Array.isArray(data.childLinks) ? data.childLinks.join(", ") : data.childLinks} onChange={val => handleUpdate('childLinks', val || "")} height={150} preview="edit" />
                 </div>
             </div>
 

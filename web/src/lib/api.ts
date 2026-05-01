@@ -77,6 +77,7 @@ export type FileTreeNode = {
   name: string;
   node_type: "file" | "directory";
   children: FileTreeNode[];
+  title?: string;
 };
 
 export type FileContent = {
@@ -646,6 +647,7 @@ export type TrashItem = {
 
 export type RenameEntityRequest = {
   old_path: string;
+  old_title: string;
   new_name: string;
   updated_content: any;
 };
