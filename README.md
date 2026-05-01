@@ -1,210 +1,90 @@
 # GURPS GM Assistant System
 
-This is a structured AI-assisted environment for running GURPS 4th Edition campaigns with reusable personas, workflows, and a consistent folder architecture.
+This is a local-first, AI-assisted standalone application for running GURPS 4th Edition campaigns. It provides a cohesive environment with reusable personas, workflows, offline rules retrieval, and a standardized campaign architecture.
 
-Status: Active development on `develop` focuses on AI GM personas/workflows, local rules retrieval, and the first steps toward a standalone local app. The broad app-style CLI remains incomplete, but the local `rulesdb` tooling is active and used by the rules persona.
+**Status:** The application is fully functional as a local web UI. It operates using a Python FastAPI backend and a React/Vite frontend, allowing GMs to interface with their campaign files directly through rich "Passport" components, built-in chat, and AI-driven generation wizards.
 
 ## Project Purpose
-The system is a co-pilot for GMs. It offloads rules crunching, tracking, and organization so the GM can focus on pacing, improvisation, and player-facing narrative.
+The system acts as a co-pilot for Game Masters. It offloads rules crunching, entity tracking, and campaign organization, enabling the GM to focus on pacing, improvisation, and narrative delivery. The campaign structure is JSON-first, making it perfectly suited for AI reading, deterministic manipulation, and validation.
 
-## Current app direction
-The next major product direction is a local-first standalone GM app:
-- Python backend
-- local web UI
-- pluggable model providers
-- first-class local LLM support via Ollama
+## Core Architecture
 
-Current stack decision:
-- backend: `FastAPI` + `Uvicorn` + `Pydantic`
-- frontend: `React` + `Vite` + `TypeScript`
-- local model adapter target: `Ollama`
-- optional desktop packaging later: `Tauri`
+- **Backend**: `FastAPI` + `Uvicorn` + `Pydantic`
+  - Handles campaign IO, rules DB querying, structural validation, and AI provider orchestration.
+- **Frontend**: `React` + `Vite` + `TypeScript`
+  - Provides a rich GM Workspace with a file browser, Markdown/JSON block editors, and bespoke "Passport" components for viewing Characters, Locations, Factions, and Story elements (Episodes, Chapters, Encounters).
+- **AI Integration**: Pluggable provider abstraction with first-class support for both cloud (Gemini, Claude, OpenAI) and local (Ollama) models.
 
-Planned repo layout:
-- `src/gurpsai/` for backend/app code
-- `web/` for the frontend
+## Local App Configuration & Setup
 
-The goal is to preserve the existing campaign/workflow/rules-db architecture while making the assistant usable without depending on Antigravity as the primary interface.
+1. Copy `.env.example` to `.env` in the repository root.
+2. Add your provider API keys (e.g., `GEMINI_API_KEY`). This keeps your credentials secure and Git-ignored.
+3. Start the backend server: `gurpsai serve --reload` (or `python scripts/python/gurpsai.py serve`)
+4. Start the frontend server (in `web/`): `npm run dev`
+5. Open the app in your browser (usually `http://localhost:5173`).
 
-## Local app configuration
-The standalone app reads local provider settings from a repo-root `.env` file.
-
-Recommended setup:
-- copy `.env.example` to `.env`
-- put API keys there instead of setting shell environment variables manually
-- keep `.env` local only; it is gitignored
-
-Current keys/settings used by the app:
-- `GEMINI_API_KEY`
-- optional `GEMINI_BASE_URL`
-- optional `GEMINI_TIMEOUT_SECONDS`
+The frontend **Config** tab allows configuring default providers, models, timeouts, and generation endpoints directly from the UI.
 
 ## Core Philosophy
-- System Supremacy (GURPS 4e): Use official 4e rules and avoid fabricated mechanics.
-- Mechanical Transparency: Explain how advantages/traits work at the table.
-- Character-Centric Design: Pull hooks from PC sheets into scenes and encounters.
-- Contextual Awareness: Respect Tech Level, Mana Level, and house rules in `00_System_Rules.md`.
+- **System Supremacy (GURPS 4e)**: Use official 4e rules and avoid fabricated mechanics.
+- **Mechanical Transparency**: Explain how advantages/traits work at the table.
+- **Character-Centric Design**: Pull hooks from PC sheets into scenes and encounters.
+- **JSON-First Data**: All campaign data lives in structured JSON files backed by strict Pydantic/TypeScript schemas, allowing safe and deterministic AI edits.
 
-For full design principles, see `master_philosophy.md`.
+*(For full design principles, see `master_philosophy.md`.)*
 
 ## Directory Structure
 
-Repo layout (develop):
 ```text
 /GurpsAI/
-|-- .agents/                # Personas and workflows (authoritative source)
-|-- .planning/              # Folder map and templates (authoritative source)
-|-- .framework/             # Core metadata/state (non-sensitive)
-|-- scripts/
-|   |-- rulesdb.py          # Local rules DB CLI
-|   |-- rulesdb_lib/        # Rules DB helper/command modules
-|   |-- test_rulesdb_qa.py  # Rules DB regression runner
-|   `-- python/
-|       `-- gurpsai.py      # Legacy shim for broader CLI/app work
-|-- rules_db/               # Local DB schema, config example, docs
-|-- tests/                  # Automated tests
-|-- AGENTS.md               # Codex-compatible instructions
+|-- .agents/                # Personas and workflow definitions (authoritative)
+|-- .planning/              # Folder map and JSON templates (authoritative)
+|-- rules_db/               # Local rules SQLite DB, schemas, and extraction tools
+|-- src/                    # Python Backend (FastAPI routes, schemas, services)
+|-- web/                    # React Frontend (Vite, TSX components, UI)
+|-- tests/                  # Automated tests (Backend & Frontend)
 |-- SYSTEM.md               # Assistant-neutral canonical instructions
 |-- master_philosophy.md    # Core principles
 |-- README.md               # This file
-|-- TODO.md                 # Roadmap; App section on hold
-|-- gemini.md               # Gemini compatibility shim
-|-- .gitignore
-`-- Campaign/              # Active campaign workspace
-```
-```text
-/Campaign_Root/
-|-- .agents/                 # Personas and workflows
-|-- .planning/               # Folder map and templates
-|-- 00_System_Rules.md       # Tech Level, Mana, house rules
-|-- 01_World_Bible/          # Lore, factions, locations
-|-- 02_Characters/           # PCs, NPCs, bestiary
-|-- 03_Story/                # Episodes, chapters, encounters
-|-- Legacy/                  # Raw, messy notes; ignored by agents except Catch-Up
-|-- AGENTS.md                # Codex-compatible instructions
-|-- SYSTEM.md                # Assistant-neutral canonical instructions
-|-- gemini.md                # Gemini compatibility shim
-|-- master_philosophy.md     # Core principles
-`-- state.md                 # Current campaign state
+|-- TODO.md                 # Roadmap and active tickets
+`-- Campaign/               # Active campaign workspace (User Data)
 ```
 
-Detailed taxonomy: `.planning/MAP.md`.
+**Campaign Taxonomy:**
+- `00_System_Rules.json`: Tech Level, Mana, house rules
+- `01_World_Bible/`: Lore, factions, locations
+- `02_Characters/`: PCs, NPCs, bestiary
+- `03_Story/`: Episodes, chapters, encounters
+- `state.json`: Current campaign state clock and active plotlines
 
-Notes:
-- Legacy/ must live inside the campaign root path.
-- Agents and workflows ignore Legacy/ entirely, except when explicitly running the Catch-Up workflow.
+*(For detailed taxonomy see `.planning/MAP.md`)*
 
-## Personas
-- Narrator: Scene text, dialogue, atmosphere.
-- RulesLawyer: Mechanical rulings, point math, adjudication. For rules questions it is wired to use `python scripts/rulesdb.py qa "the user's question"` before answering.
-- WorldBuilder: Locations, factions, lore depth.
-- SessionPlanner: Session/chapter structure and encounter flow.
+## Key Features
 
-## Rules Retrieval
-The repo includes a local, offline rules database pipeline for the GURPS Basic Set.
+### 1. Smart UI Passports
+Entities in the campaign are viewed through rich Passport components that parse the underlying JSON into readable, aesthetically pleasing summaries. Different passports exist for Characters, Factions, Locations, Encounters, Chapters, and Episodes.
 
-Main command:
-- `python scripts/rulesdb.py qa "How does a Deceptive Attack work?"`
+### 2. Creation Wizards
+The UI features generation wizards that allow the GM to quickly mock up a new entity (like an Encounter or NPC), pass parameters to the AI, and have a fully populated Draft created within the correct campaign folder.
 
-Useful commands:
-- `python scripts/rulesdb.py doctor`
-- `python scripts/rulesdb.py search "Alcoholism" --book basic_set`
-- `python scripts/rulesdb.py entity-show "Combat Reflexes" --book basic_set --refs`
-- `python scripts/rulesdb.py qa "Can I dodge bullets?"`
+### 3. Deep Campaign Validation
+The backend exposes a Mender/Validator API that scans all campaign JSON files against their strict Pydantic schemas, surfacing broken relations, missing keys, or structural fractures for immediate fixing.
 
-Current capabilities:
-- deterministic PDF extraction into SQLite
-- lexical chunk search
-- structured entity extraction for advantages, disadvantages, skills, maneuvers, and combat rules
-- semantic retrieval via Chroma
-- question-oriented retrieval that returns a compact evidence bundle with citations
+### 4. Local Rules Retrieval
+The repository includes a local, offline rules database pipeline for the GURPS Basic Set. The AI Assistant automatically queries this DB for rules questions (e.g., "How does a Deceptive Attack work?") to ensure deterministic accuracy instead of hallucinating mechanics. Evidence bundles and citations are rendered directly in the chat UI.
 
-See [rules_db/README.md](/c:/Users/VikA/Documents/RPG/AnomalyHunter_v2/rules_db/README.md) for setup and DB-specific usage.
+## Workflows & Personas
 
-## Workflows
-Available workflows in `.agents/workflows/`:
+**Workflows:** You can invoke workflows naturally in the chat window (e.g., `run prep_session workflow`). Popular workflows include:
 - `new_campaign`
-- `catch_up`
-- `new_episode`
-- `new_chapter`
 - `prep_session`
 - `start_session`
 - `conclude_session`
 - `create_npc`
-- `enrich_pcs`
 - `brainstorm`
-- `update_framework`
-- `update_core`
-- `actualize`
-- `configure_core_source`
 
-## Validator (No AI)
-A deterministic structural validator is available for the `Campaign/` folder. It checks Markdown files against versioned contracts in `.planning/contracts/` and writes reports to `Campaign/_reports/`.
-
-- Run: `python scripts/validate.py`
-- JSON output is intended to drive the `/fix` workflow (step-by-step, GM-confirmed).
-- `update_campaign`
-
-## PC Sheets (GCS Sync)
-If you keep player character sheets in **GCS** (`.gcs`) and want a single AI-friendly Markdown file per PC, use the deterministic sync script:
-
-- Structure rule: store sources as `Campaign/02_Characters/PCs/_source/<PC>.gcs`
-- Single file: `python scripts/sync_pc_from_gcs.py Campaign/02_Characters/PCs/_source/PC.gcs --md Campaign/02_Characters/PCs/PC_Name.md`
-- Batch (scan all PCs): `python scripts/sync_pc_from_gcs.py`
-- PowerShell wrapper: `powershell -ExecutionPolicy Bypass -File scripts/sync_pc_from_gcs.ps1 -Gcs Campaign/02_Characters/PCs/_source/PC.gcs -Md Campaign/02_Characters/PCs/PC_Name.md -Sort`
-
-The sync updates only marked/generated blocks (Attributes, Advantages, Disadvantages, Skills, Gear) and preserves hand-authored notes and callouts.
-
-## Universal Invocation
-You can invoke workflows in either form:
-- Slash style: `/create_npc`
-- Plain style: `run create_npc workflow`
-
-If your chat client removed slash-command support, use the repo-scoped router skill:
-- `use repo skill: anomalyhunter` (then: `run prep_session workflow`)
-
-You can invoke personas directly:
-- `RulesLawyer, build a 100-point city guard`
-- `Narrator, describe this ruined shrine`
-
-Note:
-- Codex may not show a slash-command menu from `.agents/workflows`. Natural language invocation is always supported.
-- The broader app/manager CLI is still in flux, but `python scripts/rulesdb.py ...` is available on `develop`.
-
-## Getting Started
-1. Read `state.md`.
-2. Follow startup docs: `AGENTS.md` (Codex) and `SYSTEM.md` (universal).
-3. Use templates from `.planning/_templates/` for new campaign files.
-4. For any rules DB work, use `python scripts/rulesdb.py --help` and the setup notes in `rules_db/README.md`.
-
-## Compatibility Contract (Legacy Copy Mode)
-The original workflow remains a supported path:
-- Copy core files/folders (`.agents`, `.planning`, root docs) into a campaign folder.
-- Run directly in Antigravity/Codex UI using workflow prompts (for example `run prep_session workflow`).
-- Do not require global app state to use core personas/workflows/templates.
-
-To verify this contract after framework changes:
-- `gurpsai actualize-campaign`
-- The report now validates required personas, templates, workflow files, workflow index coverage, and AGENTS invocation patterns.
-
-## CLI Availability
-There are currently two different command surfaces:
-
-- `python scripts/rulesdb.py ...`
-  - available on `develop`
-  - used for local rules extraction and retrieval
-  - actively maintained
-- broader `gurpsai` app/manager CLI
-  - still tied to unfinished CLI/app work
-  - legacy shim remains in `scripts/python/gurpsai.py`
-  - if you are working on that surface specifically, `feature/cli` is still the relevant branch
-
-## Application Mode
-The global app/manager command surface is still incomplete on `develop`. Core persona/workflow usage and the local rules DB tooling are the supported paths in this branch.
-
-## Terminal AI Providers
-Provider routing via the unfinished app CLI is still not the primary path on `develop`. Use personas/workflows in chat, and use `rulesdb.py` directly for deterministic rules retrieval.
-
-## Updates Distribution
-- End users pull updates via Git. No packaged app releases are provided on develop.
-- When CLI/app surfaces resume, instructions will be reintroduced from `feature/cli` and merged accordingly.
+**Personas:** You can invoke personas directly to get tailored advice:
+- **Narrator**: Scene text, dialogue, atmosphere.
+- **RulesLawyer**: Mechanical rulings, point math, adjudication.
+- **WorldBuilder**: Locations, factions, lore depth.
+- **SessionPlanner**: Session/chapter structure and encounter flow.
