@@ -398,3 +398,50 @@ Boundary rules:
 - [x] Delete or archive legacy regex-based markdown `validate.py`.
 - [x] Create a fast Pydantic Validator API endpoint.
 - [x] Wire the UI to instantly display missing/broken JSON keys and allow one-click Healer injection or deep scanning via Config panel.
+
+## AI Assistant Upgrades (Phase 6)
+
+### Tool Calling & Reliability
+- [x] Implement Native Tool Calling: Switch from custom XML tags (`<read>`, `<query_rules>`) to provider-native function calling via API schemas.
+- [x] Migrate `read_file` to a native tool.
+- [x] Migrate `query_rules` to a native tool.
+- [x] Migrate `draft_file` to a native tool.
+
+### Structured Outputs
+- [x] Implement JSON Mode / Structured Outputs for workflows and entity generation.
+- [x] Ensure AI payloads match Pydantic schemas via provider-level schema enforcement.
+
+### Context Management
+- [x] Implement Token Budget Guard to prevent context overflow on large campaigns (file tree truncation with configurable char limit).
+
+## Wizard Perfection (Phase 7)
+
+### Prompt Hardening
+- [x] Story Wizard: split generic prompt into type-specific (Episode/Chapter/Encounter) prompts with detailed field-format instructions.
+- [x] Story Wizard: add new contextual fields (Theme/Tone, Duration Estimate, Encounter Type, GM Notes).
+- [x] Faction Wizard: rewrite prompt with exhaustive field-format instructions matching create_npc quality.
+- [x] Faction Wizard: add Notable Members and Reputation fields to wizard steps.
+- [x] Location Wizard: rewrite prompt with exhaustive field-format instructions for internalStructure, landmarks, relations.
+
+### Legacy Cleanup
+- [x] Remove legacy streaming XML `<draft>` fallback from WizardModal — all wizards now use structured output path exclusively.
+- [x] Remove `onSubmitPrompt` handler and associated imports from MainWorkspace.
+- [x] Remove unused `createSession`, `updateSession`, `ChatMessage` imports from MainWorkspace.
+
+### UX Improvements
+- [x] Add retry button on generation error banner in WizardModal.
+- [x] Add keyboard shortcuts: Escape to close modal, Enter to advance wizard steps.
+
+### Deferred
+- [ ] Prep Session wizard: needs full rethink (separate effort — logic must be redesigned from scratch).
+
+## AI Campaign Consistency & Scope Awareness (Phase 8)
+
+### Contextual Relevance (Scope Management)
+- [ ] Prevent plot cross-contamination: The AI currently sees global `state.json` lore (like "Rot" or "The Watcher") and weaves it into isolated chapters/encounters where it might not belong.
+- [ ] Implement scope awareness: Give the AI context on *how* episodes are linked (or not linked) so it knows when to introduce global arcs vs when to stick to local standalone themes.
+
+### Dangling References & Hallucinated Relations
+- [ ] Differentiate existing vs new entities: The model currently invents new relations, child encounters (e.g., "Drone Defense"), and factions perfectly, but this confuses the GM because no such files exist yet.
+- [ ] UI visual cues for "Draft/Unlinked" entities: If the AI generates an array of `childLinks` or `characters` that do not map to existing files, the UI should clearly highlight them as "Proposed/Missing" so the GM knows they need to be created.
+- [ ] Batch creation workflows: Provide the GM with a 1-click way to generate stubs for any new entities the AI just hallucinated into the campaign.

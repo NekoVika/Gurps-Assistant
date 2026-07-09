@@ -11,7 +11,7 @@ To create a localized structural block for the next phase of the adventure withi
 ## Execution Steps
 
 1.  **Determine Target Episode:**
-    Check `state.md` for the current active Episode. Ask the GM: "Are we creating this chapter for the current active Episode, or are you prepping ahead for a different Episode?"
+    Check `state.json` for the current active Episode. Ask the GM: "Are we creating this chapter for the current active Episode, or are you prepping ahead for a different Episode?"
 
 2.  **Determine Parameters:**
     Ask the GM for the focus or setting of this chapter (e.g., "Exploring the docks," or "Investigating the murder scene").
@@ -46,7 +46,7 @@ To create a localized structural block for the next phase of the adventure withi
     Add a link to the new `Chapter_Overview.json` in the *Target* `Episode_Overview.json` file. Include the GM’s chapter summary (truncated for the Episode level if very long, but linking to the full text in the Chapter file).
 
 7.  **Update Global State (Conditional):**
-    If the GM is creating a chapter for the *current active* Episode, ask: "Would you like to set this as the active Current Chapter in `state.md` now?" If they agree, update the "Current Chapter" field in `state.md`. If they decline or are prepping ahead, leave `state.md` alone.
+    If the GM is creating a chapter for the *current active* Episode, ask: "Would you like to set this as the active Current Chapter in `state.json` now?" If they agree, update the "Current Chapter" field in `state.json`. If they decline or are prepping ahead, leave `state.json` alone.
 
 8.  **Divergent Updates (Refinement):**
     - If the GM provides an update to an existing chapter that constitutes a "Variant" or "Path B" rather than a replacement, **do not overwrite** the mainOutline field.

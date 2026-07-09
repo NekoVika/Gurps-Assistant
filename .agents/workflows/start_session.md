@@ -11,7 +11,7 @@ To shift the AI into a highly responsive, low-latency "Live GM Assistant" mode d
 ## Execution Steps
 
 1.  **State Loading:**
-    Immediately read `state.md` to establish the Current Episode and Chapter. Check the corresponding `03_Story/.../Encounters/*.md` files for the upcoming session so you know what the GM is running.
+    Immediately read `state.json` to establish the Current Episode and Chapter. Check the corresponding `03_Story/.../Encounters/*.json` files for the upcoming session so you know what the GM is running.
 
 2.  **Mode Shift:**
     Acknowledge the command: *"Live Session Mode Activated. I am standing by for rules lookups, NPC generation, and mechanical resolution. How can I help?"*
