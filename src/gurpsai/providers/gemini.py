@@ -250,41 +250,37 @@ class GeminiProvider(LlmProvider):
         
         try:
             with request.urlopen(req) as response:
-                buffer = []
                 for line in response:
-                    decoded = line.decode("utf-8")
-                    if not decoded.strip():
-                        # End of event
-                        if buffer:
-                            data_str = "".join(buffer)
-                            buffer = []
-                            try:
-                                data = json.loads(data_str)
-                                candidates = data.get("candidates", [])
-                                if candidates and isinstance(candidates, list):
-                                    candidate = candidates[0]
-                                    content = candidate.get("content", {})
-                                    parts = content.get("parts", [])
-                                    for part in parts:
-                                        if isinstance(part, dict):
-                                            text = part.get("text", "")
-                                            if text:
-                                                yield text
-                                            fn_call = part.get("functionCall")
-                                            if isinstance(fn_call, dict):
-                                                name = fn_call.get("name")
-                                                args = fn_call.get("args", {})
-                                                if isinstance(name, str):
-                                                    yield ToolCall(id=name, name=name, arguments=args, raw=part)
-                            except json.JSONDecodeError:
-                                pass
+                    decoded = line.decode("utf-8").strip()
+                    if not decoded or not decoded.startswith("data:"):
                         continue
-                    
-                    if decoded.startswith("data:"):
-                        content = decoded[5:]
-                        if content.startswith(" "):
-                            content = content[1:]
-                        buffer.append(content)
+
+                    data_str = decoded[5:]
+                    if data_str.startswith(" "):
+                        data_str = data_str[1:]
+
+                    try:
+                        data = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        continue
+
+                    candidates = data.get("candidates", [])
+                    if not candidates or not isinstance(candidates, list):
+                        continue
+                    candidate = candidates[0]
+                    content = candidate.get("content", {})
+                    parts = content.get("parts", [])
+                    for part in parts:
+                        if isinstance(part, dict):
+                            text = part.get("text", "")
+                            if text:
+                                yield text
+                            fn_call = part.get("functionCall")
+                            if isinstance(fn_call, dict):
+                                name = fn_call.get("name")
+                                args = fn_call.get("args", {})
+                                if isinstance(name, str):
+                                    yield ToolCall(id=name, name=name, arguments=args, raw=part)
         except error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"Gemini request failed: HTTP {exc.code}: {detail}") from exc
