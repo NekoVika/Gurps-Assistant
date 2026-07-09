@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterable
 from urllib import error, parse, request
 
 from gurpsai.app.config import load_app_config
 from gurpsai.domain.providers import ProviderCapabilities, ProviderModel, ProviderStatus
+from gurpsai.domain.tools import Tool, ToolCall, StructuredOutputSchema
 from gurpsai.providers.base import ChatMessage, ChatResult, LlmProvider
 
 
@@ -32,8 +33,8 @@ class GeminiProvider(LlmProvider):
         self._config = resolved
         self._provider_capabilities = ProviderCapabilities(
             supports_streaming=True,
-            supports_json_mode=False,
-            supports_tools=False,
+            supports_json_mode=True,
+            supports_tools=True,
             max_context_tokens=None,
         )
 
@@ -84,8 +85,8 @@ class GeminiProvider(LlmProvider):
                     provider=self.provider_name,
                     capabilities=ProviderCapabilities(
                         supports_streaming=True,
-                        supports_json_mode=False,
-                        supports_tools=False,
+                        supports_json_mode=True,
+                        supports_tools=True,
                         max_context_tokens=max_context_tokens,
                     ),
                 )
@@ -128,22 +129,18 @@ class GeminiProvider(LlmProvider):
             models=models,
         )
 
-    def chat(self, messages: list[ChatMessage], *, model: str) -> ChatResult:
+    def chat(
+        self,
+        messages: list[ChatMessage],
+        *,
+        model: str,
+        tools: list[Tool] | None = None,
+        response_schema: StructuredOutputSchema | None = None,
+    ) -> ChatResult:
         if not self._config.api_key:
             raise RuntimeError("Add GEMINI_API_KEY to .env before using Gemini.")
 
-        system_messages = [message.content for message in messages if message.role == "system"]
-        content_messages = []
-        for message in messages:
-            if message.role == "system":
-                continue
-            api_role = "model" if message.role == "assistant" else "user"
-            content_messages.append(
-                {
-                    "role": api_role,
-                    "parts": [{"text": message.content}],
-                }
-            )
+        content_messages, system_messages = self._format_messages(messages)
 
         payload: dict[str, Any] = {"contents": content_messages}
         if system_messages:
@@ -151,7 +148,26 @@ class GeminiProvider(LlmProvider):
                 "parts": [{"text": "\n\n".join(system_messages)}]
             }
 
-        data = self._post_json(f"/models/{model}:generateContent", payload)
+        formatted_tools = self._format_tools(tools)
+        if formatted_tools:
+            payload["tools"] = formatted_tools
+
+        if response_schema is not None:
+            payload["generationConfig"] = {
+                "responseMimeType": response_schema.mime_type,
+                "responseSchema": response_schema.schema,
+                "maxOutputTokens": 8192,
+            }
+        else:
+            payload["generationConfig"] = {
+                "maxOutputTokens": 8192,
+            }
+
+        data = self._post_json(
+            f"/models/{model}:generateContent",
+            payload,
+            timeout=max(self._config.timeout_seconds, 120.0),
+        )
         candidates = data.get("candidates", [])
         if not isinstance(candidates, list) or not candidates:
             raise RuntimeError("Gemini returned no candidates.")
@@ -164,37 +180,55 @@ class GeminiProvider(LlmProvider):
         parts = content.get("parts", [])
         if not isinstance(parts, list) or not parts:
             raise RuntimeError("Gemini returned no text parts.")
+            
         text_chunks = []
+        tool_calls = []
         for part in parts:
             if isinstance(part, dict):
                 text = part.get("text")
                 if isinstance(text, str):
                     text_chunks.append(text)
-        if not text_chunks:
-            raise RuntimeError("Gemini returned no text content.")
-        return ChatResult(text="".join(text_chunks), model=model, provider=self.provider_name)
+                fn_call = part.get("functionCall")
+                if isinstance(fn_call, dict):
+                    name = fn_call.get("name")
+                    args = fn_call.get("args", {})
+                    if isinstance(name, str):
+                        tool_calls.append(ToolCall(id=name, name=name, arguments=args, raw=part))
+                        
+        return ChatResult(text="".join(text_chunks), model=model, provider=self.provider_name, tool_calls=tool_calls)
 
-    def stream_chat(self, messages: list[ChatMessage], *, model: str) -> Iterable[str]:
+    def stream_chat(
+        self,
+        messages: list[ChatMessage],
+        *,
+        model: str,
+        tools: list[Tool] | None = None,
+        response_schema: StructuredOutputSchema | None = None,
+    ) -> Iterable[str | ToolCall]:
         if not self._config.api_key:
             raise RuntimeError("Add GEMINI_API_KEY to .env before using Gemini.")
 
-        system_messages = [message.content for message in messages if message.role == "system"]
-        content_messages = []
-        for message in messages:
-            if message.role == "system":
-                continue
-            api_role = "model" if message.role == "assistant" else "user"
-            content_messages.append(
-                {
-                    "role": api_role,
-                    "parts": [{"text": message.content}],
-                }
-            )
+        content_messages, system_messages = self._format_messages(messages)
 
         payload: dict[str, Any] = {"contents": content_messages}
         if system_messages:
             payload["system_instruction"] = {
                 "parts": [{"text": "\n\n".join(system_messages)}]
+            }
+
+        formatted_tools = self._format_tools(tools)
+        if formatted_tools:
+            payload["tools"] = formatted_tools
+
+        if response_schema is not None:
+            payload["generationConfig"] = {
+                "responseMimeType": response_schema.mime_type,
+                "responseSchema": response_schema.schema,
+                "maxOutputTokens": 8192,
+            }
+        else:
+            payload["generationConfig"] = {
+                "maxOutputTokens": 8192,
             }
 
         url = self._with_api_key(f"{self._config.base_url}/models/{model}:streamGenerateContent")
@@ -216,33 +250,100 @@ class GeminiProvider(LlmProvider):
         
         try:
             with request.urlopen(req) as response:
+                buffer = []
                 for line in response:
-                    decoded = line.decode("utf-8").strip()
-                    if not decoded.startswith("data: "):
+                    decoded = line.decode("utf-8")
+                    if not decoded.strip():
+                        # End of event
+                        if buffer:
+                            data_str = "".join(buffer)
+                            buffer = []
+                            try:
+                                data = json.loads(data_str)
+                                candidates = data.get("candidates", [])
+                                if candidates and isinstance(candidates, list):
+                                    candidate = candidates[0]
+                                    content = candidate.get("content", {})
+                                    parts = content.get("parts", [])
+                                    for part in parts:
+                                        if isinstance(part, dict):
+                                            text = part.get("text", "")
+                                            if text:
+                                                yield text
+                                            fn_call = part.get("functionCall")
+                                            if isinstance(fn_call, dict):
+                                                name = fn_call.get("name")
+                                                args = fn_call.get("args", {})
+                                                if isinstance(name, str):
+                                                    yield ToolCall(id=name, name=name, arguments=args, raw=part)
+                            except json.JSONDecodeError:
+                                pass
                         continue
-                    data_str = decoded[6:].strip()
-                    if not data_str:
-                        continue
-                    try:
-                        data = json.loads(data_str)
-                        candidates = data.get("candidates", [])
-                        if candidates and isinstance(candidates, list):
-                            candidate = candidates[0]
-                            content = candidate.get("content", {})
-                            parts = content.get("parts", [])
-                            for part in parts:
-                                if isinstance(part, dict):
-                                    text = part.get("text", "")
-                                    if text:
-                                        yield text
-                    except json.JSONDecodeError:
-                        pass
+                    
+                    if decoded.startswith("data:"):
+                        content = decoded[5:]
+                        if content.startswith(" "):
+                            content = content[1:]
+                        buffer.append(content)
         except error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"Gemini request failed: HTTP {exc.code}: {detail}") from exc
         except error.URLError as exc:
             reason = exc.reason if hasattr(exc, "reason") else exc
             raise RuntimeError(f"Could not reach Gemini API: {reason}") from exc
+
+    def _format_messages(self, messages: list[ChatMessage]) -> tuple[list[dict[str, Any]], list[str]]:
+        system_messages = [message.content for message in messages if message.role == "system"]
+        content_messages = []
+        for message in messages:
+            if message.role == "system":
+                continue
+            if message.role == "tool":
+                content_messages.append({
+                    "role": "user",
+                    "parts": [{"functionResponse": {"name": message.tool_call_id, "response": {"name": message.tool_call_id, "content": message.content}}}]
+                })
+                continue
+                
+            api_role = "model" if message.role == "assistant" else "user"
+            parts = []
+            if message.content:
+                parts.append({"text": message.content})
+            if message.tool_calls:
+                for tc in message.tool_calls:
+                    if tc.raw is not None:
+                        parts.append(tc.raw)
+                    else:
+                        parts.append({"functionCall": {"name": tc.name, "args": tc.arguments}})
+            if parts:
+                content_messages.append({"role": api_role, "parts": parts})
+                
+        return content_messages, system_messages
+
+    def _format_tools(self, tools: list[Tool] | None) -> list[dict[str, Any]] | None:
+        if not tools:
+            return None
+        decls = []
+        for tool in tools:
+            props = {}
+            for param_name, param in tool.parameters.items():
+                props[param_name] = {
+                    "type": param.type.upper(),
+                    "description": param.description
+                }
+                if param.enum:
+                    props[param_name]["enum"] = param.enum
+            decl = {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": props,
+                    "required": tool.required_parameters
+                }
+            }
+            decls.append(decl)
+        return [{"functionDeclarations": decls}]
 
     def _fetch_models(self) -> tuple[bool, dict[str, Any], str | None]:
         if not self._config.api_key:
@@ -276,7 +377,7 @@ class GeminiProvider(LlmProvider):
             raise RuntimeError("Gemini returned an unexpected payload shape.")
         return data
 
-    def _post_json(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def _post_json(self, path: str, payload: dict[str, Any], *, timeout: float | None = None) -> dict[str, Any]:
         if not self._config.api_key:
             raise RuntimeError("Add GEMINI_API_KEY to .env to enable Gemini.")
         url = self._with_api_key(f"{self._config.base_url}{path}")
@@ -290,8 +391,9 @@ class GeminiProvider(LlmProvider):
             },
             method="POST",
         )
+        effective_timeout = timeout if timeout is not None else self._config.timeout_seconds
         try:
-            with request.urlopen(req, timeout=self._config.timeout_seconds) as response:
+            with request.urlopen(req, timeout=effective_timeout) as response:
                 response_body = response.read().decode("utf-8")
         except error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
