@@ -40,6 +40,7 @@ def chat(request: ChatRequest) -> ChatResponse:
             provider_name=request.provider,
             model=request.model,
             messages=_to_domain_messages(request.messages),
+            scope_hint=request.scope_hint,
         )
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
@@ -58,6 +59,7 @@ def chat_stream(request: ChatRequest) -> StreamingResponse:
             provider_name=request.provider,
             model=request.model,
             messages=_to_domain_messages(request.messages),
+            scope_hint=request.scope_hint,
         )
 
         def sse_generator():

@@ -386,7 +386,8 @@ export async function runRulesQa(query: string, limit = 3): Promise<RulesQaResul
 export async function runChat(
   provider: string,
   model: string | null,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  scopeHint?: string
 ): Promise<ChatResult> {
   const response = await fetch(`${apiBaseUrl()}/chat`, {
     method: "POST",
@@ -396,7 +397,8 @@ export async function runChat(
     body: JSON.stringify({
       provider,
       model,
-      messages
+      messages,
+      scope_hint: scopeHint
     })
   });
 
@@ -476,7 +478,8 @@ export async function streamChat(
   provider: string,
   model: string | null,
   messages: ChatMessage[],
-  onChunk: (event: ChatStreamEvent) => void
+  onChunk: (event: ChatStreamEvent) => void,
+  scopeHint?: string
 ): Promise<void> {
   const response = await fetch(`${apiBaseUrl()}/chat/stream`, {
     method: "POST",
@@ -486,7 +489,8 @@ export async function streamChat(
     body: JSON.stringify({
       provider,
       model,
-      messages
+      messages,
+      scope_hint: scopeHint
     })
   });
 

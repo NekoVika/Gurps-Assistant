@@ -191,6 +191,69 @@ class ContextBudgetTests(unittest.TestCase):
         # Tooling section is still emitted even when file tree fails
         self.assertIn("AI CAPABILITIES", prompt)
 
+    @patch("gurpsai.app.services.context._resolve_campaign_root")
+    @patch("gurpsai.app.services.context.build_gm_base")
+    @patch("gurpsai.app.services.context.get_persona_overlay")
+    def test_scope_hint_placed_before_state_json(
+        self, mock_overlay, mock_base, mock_root
+    ):
+        """CURRENT SCOPE must appear before state.json so the model sees the
+        relevance anchor before global lore, not after."""
+        mock_base.return_value = "base"
+        mock_overlay.return_value = None
+
+        import tempfile, pathlib
+        tmp = pathlib.Path(tempfile.mkdtemp())
+        (tmp / "state.json").write_text('{"campaign": "test"}', encoding="utf-8")
+        mock_root.return_value = tmp
+
+        mock_fs = MagicMock()
+        mock_fs.tree.return_value = []
+
+        import gurpsai.app.services.files as files_mod
+        original_cls = files_mod.CampaignFileService
+        try:
+            files_mod.CampaignFileService = MagicMock(return_value=mock_fs)
+            svc = self._make_service()
+            prompt = svc.build_system_prompt(scope_hint="Episode 3 / Chapter 02 / Encounter: Bridge Approach")
+        finally:
+            files_mod.CampaignFileService = original_cls
+
+        self.assertIn("CURRENT SCOPE", prompt)
+        self.assertIn("Episode 3 / Chapter 02 / Encounter: Bridge Approach", prompt)
+        self.assertIn("SCOPE GUARDRAIL", prompt)
+        self.assertLess(
+            prompt.index("CURRENT SCOPE"),
+            prompt.index("BEGIN state.json"),
+            "Scope block must precede the state.json dump",
+        )
+
+    @patch("gurpsai.app.services.context._resolve_campaign_root")
+    @patch("gurpsai.app.services.context.build_gm_base")
+    @patch("gurpsai.app.services.context.get_persona_overlay")
+    def test_scope_hint_defaults_when_absent(self, mock_overlay, mock_base, mock_root):
+        """With no scope_hint, a generic fallback is used instead of leaving the section blank."""
+        mock_base.return_value = "base"
+        mock_overlay.return_value = None
+
+        import tempfile, pathlib
+        tmp = pathlib.Path(tempfile.mkdtemp())
+        mock_root.return_value = tmp
+
+        mock_fs = MagicMock()
+        mock_fs.tree.return_value = []
+
+        import gurpsai.app.services.files as files_mod
+        original_cls = files_mod.CampaignFileService
+        try:
+            files_mod.CampaignFileService = MagicMock(return_value=mock_fs)
+            svc = self._make_service()
+            prompt = svc.build_system_prompt()
+        finally:
+            files_mod.CampaignFileService = original_cls
+
+        self.assertIn("General campaign chat", prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

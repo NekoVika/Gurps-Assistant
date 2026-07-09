@@ -16,6 +16,7 @@ class ChatRequest(BaseModel):
     provider: str = Field(min_length=1)
     model: str | None = None
     messages: list[ChatMessageRequest] = Field(min_length=1)
+    scope_hint: str | None = None
 
 
 class ChatResponse(BaseModel):

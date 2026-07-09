@@ -22,8 +22,13 @@ class ChatService:
         self._provider_service = provider_service or ProviderService()
         self._context_service = context_service or ContextService()
 
-    def _prepare_messages(self, messages: list[ChatMessage], extra_instructions: str | None = None) -> list[ChatMessage]:
-        system_prompt = self._context_service.build_system_prompt()
+    def _prepare_messages(
+        self,
+        messages: list[ChatMessage],
+        extra_instructions: str | None = None,
+        scope_hint: str | None = None,
+    ) -> list[ChatMessage]:
+        system_prompt = self._context_service.build_system_prompt(scope_hint=scope_hint)
         if extra_instructions:
             system_prompt += f"\n\n{extra_instructions}"
         return [ChatMessage(role="system", content=system_prompt)] + messages
@@ -34,6 +39,7 @@ class ChatService:
         provider_name: str,
         model: str | None,
         messages: list[ChatMessage],
+        scope_hint: str | None = None,
     ) -> ChatResult:
         if not messages:
             raise ValueError("At least one chat message is required.")
@@ -53,7 +59,7 @@ class ChatService:
                 raise ValueError(f"Provider '{provider_name}' has multiple models; pick one explicitly.")
 
         provider = self._provider_service.get_provider(provider_name)
-        ready_messages = self._prepare_messages(messages)
+        ready_messages = self._prepare_messages(messages, scope_hint=scope_hint)
         
         last_user_msg = next((m.content for m in reversed(messages) if m.role == "user"), "Unknown")
         ActivityService().log_event(
@@ -70,6 +76,7 @@ class ChatService:
         provider_name: str,
         model: str | None,
         messages: list[ChatMessage],
+        scope_hint: str | None = None,
     ) -> Iterable[dict[str, Any]]:
         if not messages:
             raise ValueError("At least one chat message is required.")
@@ -118,8 +125,8 @@ class ChatService:
                 )
             ]
 
-        ready_messages = self._prepare_messages(messages)
-        
+        ready_messages = self._prepare_messages(messages, scope_hint=scope_hint)
+
         last_user_msg = next((m.content for m in reversed(messages) if m.role == "user"), "Unknown")
         ActivityService().log_event(
             event_type="CHAT",
@@ -229,21 +236,26 @@ class ChatService:
 
         provider = self._provider_service.get_provider(provider_name)
         response_schema = StructuredOutputSchema(schema=schema)
-        
+
         extra_instructions = []
-        if placement_context:
-            extra_instructions.append(f"PLACEMENT CONTEXT:\n{placement_context}")
         if narrative_intent:
             extra_instructions.append(f"NARRATIVE INTENT:\n{narrative_intent}")
-            
+
         if creativity_level == "Strict":
             extra_instructions.append("CREATIVITY RESTRICTION: STRICT.\nCRITICAL: Do NOT invent any new NPCs, Factions, Locations, or Story Events. Only reference entities explicitly provided in the context. Do NOT create relations to existing entities unless explicitly requested to do so.")
         elif creativity_level == "Balanced":
             extra_instructions.append("CREATIVITY RESTRICTION: BALANCED.\nYou may invent minor localized entities (like an innkeeper, a single shop) but do not invent major factions, overarching villains, or major world locations. You may link to existing major entities if it is highly relevant.")
         elif creativity_level == "Unrestricted":
             extra_instructions.append("CREATIVITY RESTRICTION: UNRESTRICTED.\nYou have full creative freedom to invent new factions, locations, characters, and sweeping relations to enrich the story.")
-            
-        ready_messages = self._prepare_messages(messages, extra_instructions="\n\n".join(extra_instructions) if extra_instructions else None)
+
+        # placement_context doubles as the scope hint — it lands in the
+        # CURRENT SCOPE guardrail section (before state.json) rather than as a
+        # loose instruction appended after the full system prompt.
+        ready_messages = self._prepare_messages(
+            messages,
+            extra_instructions="\n\n".join(extra_instructions) if extra_instructions else None,
+            scope_hint=placement_context,
+        )
 
         last_user_msg = next((m.content for m in reversed(messages) if m.role == "user"), "Unknown")
         ActivityService().log_event(

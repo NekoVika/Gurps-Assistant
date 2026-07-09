@@ -39,6 +39,27 @@ export function MainWorkspace() {
 
   const [activeWizard, setActiveWizard] = useState<WizardDef | null>(null);
 
+  // Shared by both onSubmitStructured and onCreateStub below.
+  const updateParentChildLinks = async (tPath: string, vars: Record<string, string>) => {
+     let parentPath = "";
+     if (vars["Parent Chapter"] && tPath.includes("Encounters")) {
+         parentPath = `Campaign/03_Story/${vars["Parent Episode"]}/${vars["Parent Chapter"]}/Chapter_Overview.json`;
+     } else if (vars["Parent Episode"] && tPath.includes("Chapter_Overview.json")) {
+         parentPath = `Campaign/03_Story/${vars["Parent Episode"]}/Episode_Overview.json`;
+     }
+
+     if (parentPath && vars["Name"]) {
+         const pFile = await getFileContent(parentPath);
+         const pData = JSON.parse(pFile.content);
+         if (Array.isArray(pData.childLinks)) {
+             if (!pData.childLinks.includes(vars["Name"])) {
+                 pData.childLinks.push(vars["Name"]);
+                 await writeFileContent(parentPath, JSON.stringify(pData, null, 2));
+             }
+         }
+     }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -162,28 +183,18 @@ export function MainWorkspace() {
             
             const creativityLevel = answers["CreativityLevel"];
             const narrativeIntent = answers["NarrativeIntent"];
-            const placementContext = answers["PlacementContext"];
 
-            // Helper to update parent's childLinks
-            const updateParentChildLinks = async (tPath: string, vars: Record<string, string>) => {
-               let parentPath = "";
-               if (vars["Parent Chapter"] && tPath.includes("Encounters")) {
-                   parentPath = `Campaign/03_Story/${vars["Parent Episode"]}/${vars["Parent Chapter"]}/Chapter_Overview.json`;
-               } else if (vars["Parent Episode"] && tPath.includes("Chapter_Overview.json")) {
-                   parentPath = `Campaign/03_Story/${vars["Parent Episode"]}/Episode_Overview.json`;
-               }
-               
-               if (parentPath && vars["Name"]) {
-                   const pFile = await getFileContent(parentPath);
-                   const pData = JSON.parse(pFile.content);
-                   if (Array.isArray(pData.childLinks)) {
-                       if (!pData.childLinks.includes(vars["Name"])) {
-                           pData.childLinks.push(vars["Name"]);
-                           await writeFileContent(parentPath, JSON.stringify(pData, null, 2));
-                       }
-                   }
-               }
-            };
+            // Auto-derive a scope hint from what we already know about the target
+            // location in the campaign tree, so the AI has a relevance anchor even
+            // when the wizard has no manual "PlacementContext" field.
+            const autoScopeParts: string[] = [`Target: ${targetPath}`];
+            if (answers["Parent Episode"]) autoScopeParts.push(`Episode: ${answers["Parent Episode"]}`);
+            if (answers["Parent Chapter"]) autoScopeParts.push(`Chapter: ${answers["Parent Chapter"]}`);
+            const autoScope = autoScopeParts.join(" | ");
+            const manualPlacementContext = answers["PlacementContext"];
+            const placementContext = manualPlacementContext
+                ? `${autoScope}\n${manualPlacementContext}`
+                : autoScope;
 
             // Build system context: workflow rules ONLY.
             // The JSON template is intentionally excluded — it's a minimal skeleton that was

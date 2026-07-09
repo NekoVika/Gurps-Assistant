@@ -13,6 +13,7 @@ import {
   runRulesQa
 } from '../lib/api';
 import { Draft } from '../components/DiffEditorPanel';
+import { useCampaignStore } from './useCampaignStore';
 
 
 interface ChatState {
@@ -198,6 +199,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     let liveMessages = [...sanitizedMessages];
     let currentAssistantText = "";
     
+    const selectedPath = useCampaignStore.getState().selectedPath;
+    const scopeHint = selectedPath ? `Currently viewing: ${selectedPath}` : undefined;
+
     try {
       await streamChat(provider, model, sanitizedMessages, (chunk) => {
         const msgs = [...liveMessages];
@@ -226,7 +230,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
         liveMessages = msgs;
         set({ chatMessages: liveMessages });
-      });
+      }, scopeHint);
 
       let draftValidationError = "";
       const draftsToValidate = liveMessages

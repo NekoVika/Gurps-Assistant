@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import MDEditor from '@uiw/react-md-editor';
 import type { StoryJSON } from '../../lib/types';
-import { StringArrayEditor } from './StringArrayEditor';
 import { ImageArrayEditor } from './ImageArrayEditor';
+import { EntityLinkListEditor } from './StructuredArrayEditors';
 
 type Props = {
     value: string;
@@ -66,9 +66,9 @@ export function StoryEditor({ value, onChange, documentPath = "" }: Props) {
 
             <h2 className="editor-section-title">Involved Entities</h2>
             <div className="editor-grid-3">
-                <StringArrayEditor title="Characters" items={data.characters || []} onChange={items => handleUpdate('characters', items)} category="Character" />
-                <StringArrayEditor title="Locations" items={data.locations || []} onChange={items => handleUpdate('locations', items)} category="Location" />
-                <StringArrayEditor title="Factions" items={data.factions || []} onChange={items => handleUpdate('factions', items)} category="Faction" />
+                <EntityLinkListEditor title="Characters" items={data.characters || []} onChange={items => handleUpdate('characters', items)} targetCategory="Character" />
+                <EntityLinkListEditor title="Locations" items={data.locations || []} onChange={items => handleUpdate('locations', items)} targetCategory="Location" />
+                <EntityLinkListEditor title="Factions" items={data.factions || []} onChange={items => handleUpdate('factions', items)} targetCategory="Faction" />
             </div>
 
             <h2 className="editor-section-title">Core Content</h2>
@@ -117,10 +117,7 @@ export function StoryEditor({ value, onChange, documentPath = "" }: Props) {
                     <label className="editor-label">Branching Path (Optional variants)</label>
                     <MDEditor value={data.branchingPath} onChange={val => handleUpdate('branchingPath', val || "")} height={150} preview="edit" />
                 </div>
-                <div className="editor-field">
-                    <label className="editor-label">Child Links (Chapters/Encounters)</label>
-                    <MDEditor value={Array.isArray(data.childLinks) ? data.childLinks.join(", ") : data.childLinks} onChange={val => handleUpdate('childLinks', val || "")} height={150} preview="edit" />
-                </div>
+                <EntityLinkListEditor title="Child Links (Chapters/Encounters)" items={Array.isArray(data.childLinks) ? data.childLinks : []} onChange={items => handleUpdate('childLinks', items)} targetCategory="Story" />
             </div>
 
             <h2 className="editor-section-title">Resolution & Hooks</h2>
