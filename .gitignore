@@ -54,6 +54,9 @@ GURPS Assistant.spec
 .DS_Store
 Thumbs.db
 
+# Claude Code local skill discovery (junctions into .agents/skills/, not real content)
+.claude/skills/
+
 # My campaign for development
 AnomalyHuntersCampaign/
 
