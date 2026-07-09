@@ -136,7 +136,7 @@ export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
                             </div>
                             <StringArrayEditor 
                                 title="Rooms / Contents" 
-                                items={zone.items} 
+                                items={zone.items || []} 
                                 onChange={(val) => {
                                     const next = [...data.internalStructure];
                                     next[zIndex].items = val;

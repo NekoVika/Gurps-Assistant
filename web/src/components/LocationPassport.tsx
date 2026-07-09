@@ -91,7 +91,7 @@ export function LocationPassport({ data, documentPath, onNavigate }: Props) {
                  <div className="mechanics-section" key={i}>
                    <span className="eyebrow" style={{ color: "#9fbeff" }}>{struct.title}</span>
                    <ul className="traits-list">
-                       {struct.items.map((item: string, id: number) => <li key={id}>{item}</li>)}
+                       {Array.isArray(struct.items) ? struct.items.map((item: string, id: number) => <li key={id}>{item}</li>) : null}
                    </ul>
                  </div>
                ))}
