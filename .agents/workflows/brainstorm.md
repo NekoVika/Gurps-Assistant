@@ -29,7 +29,7 @@ To capture unstructured thoughts, ideas, or notes from the GM and automatically 
     *   **Priority:** High, Medium, Low.
 
 4.  **System & Canon Checks:**
-    Cross-check against `00_System_Rules.md` (TL, Mana, Allowed Books). Flag anything out-of-bounds and propose allowed alternatives.
+    Cross-check against `System_Rules.json` (TL, Mana, Allowed Books). Flag anything out-of-bounds and propose allowed alternatives.
 
 5.  **Analysis & Segmentation:**
     Analyze the input and categorize the information into:
@@ -42,9 +42,9 @@ To capture unstructured thoughts, ideas, or notes from the GM and automatically 
 
 7.  **File Updates:**
     Identify which specific files in the campaign hierarchy need to be updated. (e.g., updating the King's NPC markdown file under `02_Characters/Main_Cast/`, adding the sword to an Encounter file under `03_Story/Episode_XX/Chapter_YY/Encounters/`).
-    *   Use the **WorldBuilder** persona for lore updates.
-    *   Use the **SessionPlanner** persona for story updates.
-    *   If mechanical work is required (new traits/gear/spells), queue a handoff to **RulesLawyer** or suggest running `/create_npc` as appropriate.
+    *   Use the **Atlas** (WorldBuilder) persona for lore updates.
+    *   Use the **Archer** (SessionPlanner) persona for story updates.
+    *   If mechanical work is required (new traits/gear/spells), queue a handoff to **Marauder** (RulesLawyer) or suggest running `/create_npc` as appropriate.
 
 8.  **Confirmation Output:**
     Present the GM with a summary of the changes you *plan* to make before executing them. "I will add the 'Vampire' template to King Roderick's sheet, and put the 'Sunblade' in Chapter 2, Encounter 3. Proceed?" No files are modified until you confirm.

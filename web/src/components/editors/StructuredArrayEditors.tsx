@@ -8,7 +8,7 @@ function Field({ label, children, flex, hideLabel }: { label: string, children: 
     return <div className="editor-field" style={{ flex: flex || 1, opacity: hideLabel ? 0.6 : 1 }}><label className="editor-label" style={{ display: hideLabel ? "none" : "block" }}>{label}</label>{children}</div>;
 }
 
-export function AttributeEditorList({ title, items, onChange }: ListProps) {
+export function AttributeEditorList({ title, items = [], onChange }: ListProps) {
     const coreAttributes = ["ST", "DX", "IQ", "HT", "HP", "Will", "Per", "FP", "Basic Speed", "Basic Move"];
     let parsed = items.map(parseAttribute);
     
@@ -83,7 +83,7 @@ export function AttributeEditorList({ title, items, onChange }: ListProps) {
     );
 }
 
-export function TraitEditorList({ title, items, onChange }: ListProps) {
+export function TraitEditorList({ title, items = [], onChange }: ListProps) {
     let parsed = items.map(parseTrait);
 
     const updateItem = (idx: number, field: string, val: any) => {
@@ -163,7 +163,7 @@ export function TraitEditorList({ title, items, onChange }: ListProps) {
     );
 }
 
-export function SkillEditorList({ title, items, onChange }: ListProps) {
+export function SkillEditorList({ title, items = [], onChange }: ListProps) {
     let parsed = items.map(parseSkill);
 
     const updateItem = (idx: number, field: string, val: any) => {
@@ -244,7 +244,7 @@ export function SkillEditorList({ title, items, onChange }: ListProps) {
     );
 }
 
-export function GearEditorList({ title, items, onChange }: ListProps) {
+export function GearEditorList({ title, items = [], onChange }: ListProps) {
     let parsed = items.map(parseGear);
 
     const updateItem = (idx: number, field: string, val: any) => {
@@ -325,7 +325,7 @@ export function GearEditorList({ title, items, onChange }: ListProps) {
     );
 }
 
-export function HitLocationEditorList({ title, items, onChange }: ListProps) {
+export function HitLocationEditorList({ title, items = [], onChange }: ListProps) {
     let parsed = items.map(parseHitLocation);
 
     const updateItem = (idx: number, field: string, val: any) => {
@@ -405,13 +405,23 @@ export function HitLocationEditorList({ title, items, onChange }: ListProps) {
     );
 }
 
+import { useEffect, useState } from 'react';
+import { getCampaignRegistry, RegistryItem, createBatchStubs } from '../../lib/api';
+
 type EntityRelationListProps = { 
     title: string; 
     items: any[]; 
     onChange: (items: any[]) => void; 
     targetCategory: "Character" | "Location" | "Story" | "Faction" | "All";
 };
-export function EntityRelationEditorList({ title, items, onChange, targetCategory }: EntityRelationListProps) {
+export function EntityRelationEditorList({ title, items = [], onChange, targetCategory }: EntityRelationListProps) {
+    const [registry, setRegistry] = useState<RegistryItem[]>([]);
+    const [isGeneratingStubs, setIsGeneratingStubs] = useState(false);
+
+    useEffect(() => {
+        getCampaignRegistry().then(setRegistry).catch(console.error);
+    }, []);
+
     const handleAdd = () => {
         onChange([...items, { name: "", relation: "" }]);
     };
@@ -433,28 +443,73 @@ export function EntityRelationEditorList({ title, items, onChange, targetCategor
         onChange(newItems);
     };
 
+    const missingStubs = items.filter(item => item.name && !registry.some(r => r.title === item.name || r.id === item.name));
+
+    const handleGenerateStubs = async () => {
+        if (missingStubs.length === 0) return;
+        setIsGeneratingStubs(true);
+        try {
+            const stubsToCreate = missingStubs.map(item => ({
+                name: item.name,
+                type: targetCategory === "All" ? "Character" : targetCategory
+            }));
+            await createBatchStubs(stubsToCreate);
+            const newRegistry = await getCampaignRegistry();
+            setRegistry(newRegistry);
+        } catch (e) {
+            console.error(e);
+            alert("Failed to generate stubs");
+        } finally {
+            setIsGeneratingStubs(false);
+        }
+    };
+
     return (
         <div className="editor-array-container">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span className="editor-label" style={{ color: "#a8c7fa" }}>{title}</span>
+                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                    <span className="editor-label" style={{ color: "#a8c7fa" }}>{title}</span>
+                    {missingStubs.length > 0 && (
+                        <button 
+                            type="button" 
+                            onClick={handleGenerateStubs} 
+                            disabled={isGeneratingStubs}
+                            style={{ 
+                                background: "#4a3311", 
+                                border: "1px solid #c27d0a", 
+                                color: "#ffb44d", 
+                                borderRadius: "4px", 
+                                padding: "2px 8px", 
+                                fontSize: "0.75rem", 
+                                cursor: isGeneratingStubs ? "not-allowed" : "pointer" 
+                            }}>
+                            {isGeneratingStubs ? "Generating..." : `Generate Missing Stubs (${missingStubs.length})`}
+                        </button>
+                    )}
+                </div>
                 <button type="button" className="editor-add-btn" onClick={handleAdd}>+ Add {targetCategory}</button>
             </div>
             {items.length === 0 && <p style={{ fontSize: "0.85em", opacity: 0.5, fontStyle: "italic", margin: 0 }}>No items.</p>}
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                {items.map((item, i) => (
-                    <div key={i} className="editor-array-item" style={{ display: "flex", gap: "8px", alignItems: "center", padding: "8px" }}>
+                {items.map((item, i) => {
+                    const isMissing = item.name && !registry.some(r => r.title === item.name || r.id === item.name);
+                    return (
+                    <div key={i} className="editor-array-item" style={{ display: "flex", gap: "8px", alignItems: "center", padding: "8px", borderLeft: isMissing ? "3px solid #ffb44d" : "none" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                             <button type="button" onClick={() => moveItem(i, -1)} style={{ background: "none", border: "none", color: "white", cursor: i === 0 ? "default" : "pointer", opacity: i === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
                             <button type="button" onClick={() => moveItem(i, 1)} style={{ background: "none", border: "none", color: "white", cursor: i === items.length - 1 ? "default" : "pointer", opacity: i === items.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
                         </div>
-                        <div style={{ flex: 1 }}>
-                            <WorkspaceSelect
-                                value={item.name}
-                                onChange={name => updateItem(i, "name", name)}
-                                category={targetCategory}
-                                placeholder={`Select ${targetCategory}...`}
-                                style={{ margin: 0, padding: "6px 8px", borderRadius: "6px", border: "1px solid rgba(149,181,255,0.2)", background: "rgba(8,15,30,0.6)", color: "white", width: "100%", fontSize: "0.95rem" }}
-                            />
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                                <WorkspaceSelect
+                                    value={item.name}
+                                    onChange={name => updateItem(i, "name", name)}
+                                    category={targetCategory}
+                                    placeholder={`Select ${targetCategory}...`}
+                                    style={{ flex: 1, margin: 0, padding: "6px 8px", borderRadius: "6px", border: "1px solid rgba(149,181,255,0.2)", background: "rgba(8,15,30,0.6)", color: "white", fontSize: "0.95rem" }}
+                                />
+                                {isMissing && <span style={{ color: "#ffb44d", fontSize: "0.75rem", fontWeight: "bold", paddingRight: "4px" }}>PROPOSED</span>}
+                            </div>
                         </div>
                         <input
                             className="editor-input"
@@ -465,7 +520,7 @@ export function EntityRelationEditorList({ title, items, onChange, targetCategor
                         />
                         <button type="button" onClick={() => deleteItem(i)} className="editor-action-btn danger">✕</button>
                     </div>
-                ))}
+                )})}
             </div>
         </div>
     );

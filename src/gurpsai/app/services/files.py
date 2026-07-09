@@ -251,5 +251,29 @@ class CampaignFileService:
 
         raise ValueError(f"Path is not available in browser: {normalized}")
 
+    def get_registry(self) -> list[dict]:
+        """Returns a flat list of all JSON entities in the campaign."""
+        registry = []
+        if not self._campaign_root.exists():
+            return registry
+            
+        for path in self._campaign_root.rglob("*.json"):
+            if path.name.startswith("."):
+                continue
+            rel_path = path.relative_to(self._campaign_root).as_posix()
+            try:
+                content = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+                if isinstance(content, dict):
+                    title = content.get("title") or content.get("name")
+                    registry.append({
+                        "id": path.stem,
+                        "title": title or path.stem,
+                        "path": f"Campaign/{rel_path}",
+                        "type": content.get("type", "Unknown")
+                    })
+            except Exception:
+                pass
+        return registry
+
     def _is_text_file(self, path: Path) -> bool:
         return path.suffix.lower() in TEXT_EXTENSIONS or path.name in ROOT_FILE_ALLOWLIST

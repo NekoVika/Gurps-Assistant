@@ -41,22 +41,22 @@ To rapidly generate a mechanically sound GURPS 4e character sheet for an NPC and
         - Optional Leader/Elite package (1 standout in a group)
     - When the GM chooses “You decide” or skips, propose 2–3 sensible options aligned with `state.md` and `00_System_Rules.md` and ask for quick approval. If they still defer, pick the best-practice default and later record it as an Assumption with a TODO in the NPC file under **Assumptions & Open Questions**.
 
-3.  **Mechanical Generation (RulesLawyer Mode):**
-    Switch strictly to the **RulesLawyer** persona. Read `00_System_Rules.md` to ensure no forbidden traits are used. Calculate attributes, advantages, disadvantages, and skills to hit the target point total, scaling detail to the chosen build mode:
+3.  **Mechanical Generation (Marauder Mode):**
+    Switch strictly to the **Marauder** (RulesLawyer) persona. Read `System_Rules.json` to ensure no forbidden traits are used. Calculate attributes, advantages, disadvantages, and skills to hit the target point total, scaling detail to the chosen build mode:
     - For **Quick NPCs**, prioritize a small, clear set of traits and skills that capture the concept and role; avoid excessive niche abilities that will not matter in play.
     - For **Standard NPCs**, provide a solid, rounded build suitable for recurring use without going into exhaustive detail.
     - For **Detailed NPCs**, aim for PC-grade completeness where appropriate, within reasonable length for the chat format.
     *Always ensure math is correct*. **Crucial:** You MUST include a mechanical explanation for every Advantage generated, and a **Hit Location DR table** for characters expected to engage in combat, as per the Rules Lawyer's updated response format.
 
 4.  **Validation & Compliance:**
-    Verify point totals, prerequisites, and book allowances against `00_System_Rules.md`. If a chosen trait is disallowed, select a nearest-analog allowed trait and note the substitution in Assumptions. Ensure attack/damage lines and defenses are coherent with ST, skills, weapons, and armor coverage.
+    Verify point totals, prerequisites, and book allowances against `System_Rules.json`. If a chosen trait is disallowed, select a nearest-analog allowed trait and note the substitution in Assumptions. Ensure attack/damage lines and defenses are coherent with ST, skills, weapons, and armor coverage.
     - **Coverage check (critical):** Compare the final NPC writeup against the interview answers and the Visual Anchor. If anything is missing or contradicted (especially appearance), stop and ask the GM to correct it before saving the file.
 
 5.  **Output Format:**
     Present the stat block in the strict JSON format matching the template. Do not use Markdown text blocks for the final file.
 
-6.  **Narrative Integration (WorldBuilder Mode):**
-    Switch to the **WorldBuilder** persona. Provide appearance, a personality quirk, a motivation tied to existing lore, and a short speech snippet. Add PC hooks by consulting `02_Characters/PCs/` where relevant. Preserve GM-provided narrative details with light edits for clarity only.
+6.  **Narrative Integration (Atlas Mode):**
+    Switch to the **Atlas** (WorldBuilder) persona. Provide appearance, a personality quirk, a motivation tied to existing lore, and a short speech snippet. Add PC hooks by consulting `02_Characters/PCs/` where relevant. Preserve GM-provided narrative details with light edits for clarity only.
     - **Appearance rule (critical):** If the GM provided a Visual Anchor, paste it into the NPC file's appearance section **verbatim** (or with only minimal formatting fixes), and only add extra flavor in a clearly separated "Additional notes" line that does not contradict the anchor.
 
 7.  **File Creation:**

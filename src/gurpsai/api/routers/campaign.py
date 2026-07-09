@@ -140,6 +140,12 @@ def validate_campaign() -> CampaignValidateResponse:
 
     errors = []
     scanned = 0
+    
+    from gurpsai.app.services.files import CampaignFileService
+    service = CampaignFileService()
+    registry = service.get_registry()
+    valid_ids = {r["id"] for r in registry}
+    valid_titles = {r["title"] for r in registry}
 
     for file_path in camp_path.rglob("*.json"):
         rel_path = file_path.relative_to(camp_path).as_posix()
@@ -149,6 +155,13 @@ def validate_campaign() -> CampaignValidateResponse:
             continue
 
         try:
+            data_dict = {}
+            try:
+                import json
+                data_dict = json.loads(content)
+            except Exception:
+                pass
+                
             if "02_Characters" in rel_path or "Bestiary" in rel_path:
                 scanned += 1
                 CharacterData.model_validate_json(content)
@@ -161,6 +174,22 @@ def validate_campaign() -> CampaignValidateResponse:
             elif "03_Story" in rel_path or "Episodes" in rel_path or "sessions" in rel_path:
                 scanned += 1
                 StoryData.model_validate_json(content)
+                
+            # Check for dangling links
+            if data_dict:
+                for rel_key in ["characterRelations", "locationRelations", "factionRelations"]:
+                    if rel_key in data_dict and isinstance(data_dict[rel_key], list):
+                        for rel in data_dict[rel_key]:
+                            if isinstance(rel, dict) and "name" in rel:
+                                name = rel["name"]
+                                if name and name not in valid_ids and name not in valid_titles:
+                                    errors.append(f"[{rel_path}] Dangling relation: '{name}' in {rel_key}")
+                
+                if "childLinks" in data_dict and isinstance(data_dict["childLinks"], list):
+                    for child in data_dict["childLinks"]:
+                        if isinstance(child, str) and child and child not in valid_ids and child not in valid_titles:
+                            errors.append(f"[{rel_path}] Dangling child link: '{child}'")
+
         except ValidationError as ve:
             for err in ve.errors():
                 field = " -> ".join(str(loc) for loc in err["loc"])
@@ -170,6 +199,76 @@ def validate_campaign() -> CampaignValidateResponse:
             errors.append(f"[{rel_path}] Corrupt JSON: {str(e)}")
 
     return CampaignValidateResponse(scanned_files=scanned, errors=errors)
+
+class RegistryItem(BaseModel):
+    id: str
+    title: str
+    path: str
+    type: str
+
+class CampaignRegistryResponse(BaseModel):
+    items: list[RegistryItem]
+
+@router.get("/registry", response_model=CampaignRegistryResponse)
+def get_campaign_registry() -> CampaignRegistryResponse:
+    from gurpsai.app.services.files import CampaignFileService
+    service = CampaignFileService()
+    items = service.get_registry()
+    return CampaignRegistryResponse(items=[RegistryItem(**item) for item in items])
+
+class StubRequest(BaseModel):
+    name: str
+    type: str
+
+class BatchStubRequest(BaseModel):
+    stubs: list[StubRequest]
+
+class BatchStubResponse(BaseModel):
+    created: int
+    paths: list[str]
+
+@router.post("/stubs/batch", response_model=BatchStubResponse)
+def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
+    from gurpsai.app.services.files import CampaignFileService
+    from gurpsai.domain.campaign import CharacterData, LocationData, FactionData, StoryData
+    import re
+    
+    service = CampaignFileService()
+    created_paths = []
+    
+    for stub in request.stubs:
+        safe_name = "".join(c for c in stub.name if c.isalnum() or c in (" ", "-", "_")).strip()
+        safe_name = re.sub(r'^[\d_]+', '', safe_name).strip()
+        if not safe_name:
+            continue
+            
+        t_lower = stub.type.lower()
+        if "char" in t_lower or "npc" in t_lower:
+            data = CharacterData(name=stub.name).model_dump()
+            subfolder = "02_Characters/Cast"
+        elif "loc" in t_lower:
+            data = LocationData(name=stub.name).model_dump()
+            subfolder = "01_World_Bible/Locations"
+        elif "fac" in t_lower:
+            data = FactionData(name=stub.name).model_dump()
+            subfolder = "04_Factions"
+        else:
+            data = StoryData(title=stub.name).model_dump()
+            subfolder = "03_Story/Encounters"
+            
+        filename = safe_name.replace(" ", "_") + ".json"
+        rel_path = f"Campaign/{subfolder}/{filename}"
+        
+        try:
+            # Try not to overwrite if it exists
+            service.read_file(rel_path)
+        except Exception:
+            # It does not exist, so we can write it
+            import json
+            service.write_file(rel_path, json.dumps(data, indent=2))
+            created_paths.append(rel_path)
+
+    return BatchStubResponse(created=len(created_paths), paths=created_paths)
 
 from gurpsai.app.services.chat import ChatService
 from gurpsai.providers.base import ChatMessage as ProviderChatMessage

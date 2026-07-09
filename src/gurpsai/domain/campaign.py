@@ -100,7 +100,7 @@ class StoryData(BaseModel):
     mainOutline: str = Field("", title="Main Outline")
     branchingPath: str = Field("", title="Branching Path")
     
-    childLinks: str = Field("", title="Child Links (Chapters/Encounters)")
+    childLinks: List[str] = Field(default_factory=list, title="Child Links (Chapters/Encounters)")
 
     outcomes: str = Field("", title="Outcomes")
     pcHooks: str = Field("", title="PC Hooks")

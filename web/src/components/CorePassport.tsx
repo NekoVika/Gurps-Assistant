@@ -5,7 +5,7 @@ type Props = {
   title?: string;
 };
 
-export function CorePassport({ data, title }: Props) {
+export function CorePassport({ data }: Props) {
   // Filter out empty arrays and strings
   const entries = Object.entries(data).filter(([_, val]) => {
      if (Array.isArray(val) && val.length === 0) return false;
@@ -23,9 +23,7 @@ export function CorePassport({ data, title }: Props) {
   return (
     <div className="character-passport" style={{ padding: "32px", maxWidth: "900px", margin: "0 auto" }}>
       <header className="passport-header" style={{ marginBottom: "32px" }}>
-        <div className="passport-title-area">
-          <h1>{title || data.title || data.name || data.campaignName || "Core Document"}</h1>
-        </div>
+
       </header>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>

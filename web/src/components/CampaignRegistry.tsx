@@ -73,7 +73,10 @@ type RegistryData = {
 
 function formatEntityName(pathStr: string) {
   const base = pathStr.split('/').pop() || "";
-  return base.replace(/\.(md|json)$/, "").replace(/_/g, " ");
+  let name = base.replace(/\.(md|json)$/, "").replace(/_/g, " ");
+  if (name.toLowerCase() === "state") return "Campaign State";
+  if (name.toLowerCase() === "00 system rules" || name.toLowerCase() === "system rules") return "System Rules";
+  return name;
 }
 
 export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizard }: Props) {
@@ -140,7 +143,7 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
   function walk(node: FileTreeNode) {
      if (node.node_type === "file" && (node.path.endsWith(".md") || node.path.endsWith(".json"))) {
         const p = node.path;
-        if (p.endsWith("state.json") || p.endsWith("00_System_Rules.json") || p.includes("/Campaign_Overview.json") || p.includes("/World_Dossier.json")) {
+        if (p.endsWith("state.json") || p.includes("System_Rules.json") || p.includes("/Campaign_Overview.json") || p.includes("/World_Dossier.json")) {
             data.core.push(node);
         } else if (p.includes("/02_Characters/PCs/")) {
             data.pcs.push(node);
@@ -267,7 +270,7 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
     <div className="campaign-registry">
       <CollapsibleSection title="📌 Core Docs" defaultOpen={true}>
         <div className="registry-list">
-          {data.core.map(n => renderItem(n))}
+          {data.core.map(n => renderItem(n, formatEntityName(n.path)))}
         </div>
       </CollapsibleSection>
 
@@ -277,9 +280,34 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
          {data.bestiary.length > 0 && <div className="registry-group"><p className="eyebrow">Bestiary</p><div className="registry-list">{data.bestiary.map(n => renderItem(n))}</div></div>}
       </CollapsibleSection>
 
-      <CollapsibleSection title="🗺️ World" defaultOpen={true} onAdd={onActivateWizard ? () => onActivateWizard("create_location") : undefined} addLabel="Create Location">
-         {data.locations.length > 0 && <div className="registry-group"><p className="eyebrow">Locations</p><div className="registry-list">{data.locations.map(n => renderItem(n))}</div></div>}
-         {data.factions.length > 0 && <div className="registry-group"><p className="eyebrow">Factions</p><div className="registry-list">{data.factions.map(n => renderItem(n))}</div></div>}
+      <CollapsibleSection title="🗺️ World" defaultOpen={true}>
+         <div className="registry-group" style={{ marginBottom: "12px" }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <p className="eyebrow" style={{ margin: 0 }}>Locations</p>
+                {onActivateWizard && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onActivateWizard("create_location"); }}
+                        style={{ background: "transparent", border: "none", color: "var(--color-primary-light)", cursor: "pointer", fontSize: "1.2rem", padding: "0 4px", lineHeight: 1 }}
+                        title="Create Location"
+                    >+</button>
+                )}
+            </div>
+            {data.locations.length > 0 && <div className="registry-list">{data.locations.map(n => renderItem(n))}</div>}
+         </div>
+
+         <div className="registry-group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <p className="eyebrow" style={{ margin: 0 }}>Factions</p>
+                {onActivateWizard && (
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onActivateWizard("create_faction"); }}
+                        style={{ background: "transparent", border: "none", color: "var(--color-primary-light)", cursor: "pointer", fontSize: "1.2rem", padding: "0 4px", lineHeight: 1 }}
+                        title="Create Faction"
+                    >+</button>
+                )}
+            </div>
+            {data.factions.length > 0 && <div className="registry-list">{data.factions.map(n => renderItem(n))}</div>}
+         </div>
       </CollapsibleSection>
 
       <CollapsibleSection title="📖 Story Arcs" defaultOpen={true} onAdd={onActivateWizard ? () => onActivateWizard("story_wizard") : undefined} addLabel="Create Element">

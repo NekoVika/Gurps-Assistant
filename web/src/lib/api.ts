@@ -87,9 +87,18 @@ export type FileContent = {
   truncated: boolean;
 };
 
+export type ToolCall = {
+  id: string;
+  name: string;
+  arguments: Record<string, any>;
+  raw?: Record<string, any>;
+};
+
 export type ChatMessage = {
-  role: "system" | "user" | "assistant";
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string | null;
 };
 
 export type ChatResult = {
@@ -407,11 +416,67 @@ export async function runChat(
   return (await response.json()) as ChatResult;
 }
 
+export type StructuredChatResult = {
+  provider: string;
+  model: string;
+  result: Record<string, any>;
+};
+
+export async function runStructuredChat(
+  provider: string,
+  model: string | null,
+  messages: ChatMessage[],
+  schema: Record<string, any>,
+  pydanticModel?: string,
+  creativityLevel?: string,
+  narrativeIntent?: string,
+  placementContext?: string
+): Promise<StructuredChatResult> {
+  const response = await fetch(`${apiBaseUrl()}/chat/structured`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      provider,
+      model,
+      messages,
+      output_schema: schema,
+      pydantic_model: pydanticModel,
+      creativity_level: creativityLevel,
+      narrative_intent: narrativeIntent,
+      placement_context: placementContext
+    })
+  });
+
+  if (!response.ok) {
+    let detail = `Structured chat request failed with ${response.status}`;
+    try {
+      const body = (await response.json()) as { detail?: string };
+      if (typeof body.detail === "string" && body.detail.trim()) {
+        detail = body.detail;
+      }
+    } catch {
+      // Ignore JSON parsing errors and keep generic message.
+    }
+    throw new Error(detail);
+  }
+
+  return (await response.json()) as StructuredChatResult;
+}
+
+export type ChatStreamEvent = 
+  | { type: "text"; content: string }
+  | { type: "status"; message: string }
+  | { type: "draft"; path: string; content: string }
+  | { type: "tool_calls"; tool_calls: ToolCall[] }
+  | { type: "tool_response"; tool_call_id: string; content: string };
+
 export async function streamChat(
   provider: string,
   model: string | null,
   messages: ChatMessage[],
-  onChunk: (text: string) => void
+  onChunk: (event: ChatStreamEvent) => void
 ): Promise<void> {
   const response = await fetch(`${apiBaseUrl()}/chat/stream`, {
     method: "POST",
@@ -471,8 +536,11 @@ export async function streamChat(
           if (payload.error) {
             throw new Error(payload.error);
           }
-          if (payload.text) {
-            onChunk(payload.text);
+          if (payload.type) {
+            onChunk(payload as ChatStreamEvent);
+          } else if (payload.text) {
+            // Fallback for non-JSON stream tests or older backends
+            onChunk({ type: "text", content: payload.text });
           }
         } catch (e) {
           if (e instanceof Error && e.name !== "SyntaxError") {
@@ -538,6 +606,39 @@ export async function validateCampaign(): Promise<CampaignValidateResponse> {
     throw new Error(errorData?.detail || `Failed to validate campaign. Status: ${res.status}`);
   }
   return res.json();
+}
+
+export type RegistryItem = {
+  id: string;
+  title: string;
+  path: string;
+  type: string;
+};
+
+export async function getCampaignRegistry(): Promise<RegistryItem[]> {
+  const response = await fetch(`${apiBaseUrl()}/campaign/registry`);
+  if (!response.ok) {
+    throw new Error(`Registry fetch failed: ${response.status}`);
+  }
+  const data = await response.json() as { items: RegistryItem[] };
+  return data.items;
+}
+
+export type StubRequest = {
+  name: string;
+  type: string;
+};
+
+export async function createBatchStubs(stubs: StubRequest[]): Promise<{ created: number, paths: string[] }> {
+  const response = await fetch(`${apiBaseUrl()}/campaign/stubs/batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stubs })
+  });
+  if (!response.ok) {
+    throw new Error(`Stub creation failed: ${response.status}`);
+  }
+  return await response.json();
 }
 
 export type ActivityEventSchema = {

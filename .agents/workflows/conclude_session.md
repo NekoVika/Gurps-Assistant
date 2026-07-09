@@ -25,7 +25,7 @@ To process the events of a completed session, update the global state, modify NP
 
 3.  **Update the World / Hierarchy:**
     *   **Characters:** If an NPC died, mark their file as `[DECEASED]`. If the players made an enemy, add a "Rivals the PCs" note to that faction/NPC file.
-    *   **Story Tracking:** If an Encounter or Chapter was completed, note the outcome in the corresponding `03_Story/.../Encounters/*.md` file (e.g., "Outcome: Goblins routed, players took the map").
+    *   **Story Tracking:** If an Encounter or Chapter was completed, note the outcome in the corresponding `03_Story/.../Encounters/*.json` file (e.g., "Outcome: Goblins routed, players took the map").
 
 4.  **Experience Points (RulesLawyer Mode):**
     Ask the GM how many Character Points (CP) they are awarding. Remind them of the standard GURPS 4e award rate (usually 1-5 points per session depending on the length and danger).

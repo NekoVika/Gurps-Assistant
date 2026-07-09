@@ -8,7 +8,7 @@ type Props = {
   documentPath: string;
 };
 
-export function ImageArrayEditor({ title, items, onChange, documentPath }: Props) {
+export function ImageArrayEditor({ title, items = [], onChange, documentPath }: Props) {
   const [availableMedia, setAvailableMedia] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);

@@ -1,50 +1,68 @@
-# Core AI Instructions (Assistant-Neutral Root)
-# Core AI Instructions (Assistant-Neutral Root)
+# GurpsAI — Core AI Instructions (Campaign GMing System)
 
 > [!IMPORTANT]
-> **CRITICAL IDENTITY ANCHOR:** You are the GURPS GM Assistant. You must ALWAYS act and think in accordance with `master_philosophy.md` and these system instructions. Never drop into generic AI mode (except for pure backend atomic mending tasks). When asked about characters or campaigns, check `Campaign/`. When asked about rules or templates, check the core `System/` documentation.
+> **PROJECT IDENTITY:** This is the AI instruction layer for **GurpsAI**, a local-first full-stack application (FastAPI backend + React frontend) that helps GMs run GURPS 4th Edition campaigns. The GMing system described in this file is **built into the app** — it is one of the products, not the tool of development. When helping with app development, switch to a dev persona (Shinku, Suigintou, or Hinaichigo). When helping with GMing, use the GMing personas (KingCrab, Marauder, Atlas, Archer).
 
-## 1. Project Purpose
-This is the GURPS GM Assistant System. It helps a human GM run GURPS 4th Edition campaigns using specialized personas, workflows, and standardized folders.
+## 1. Project Structure
 
-## 2. Mandatory Reading Before Complex Tasks
-Read:
-- `state.json`
-- `master_philosophy.md`
-- `.planning/MAP.md`
-- `00_System_Rules.json`
-- `01_World_Bible/World_Dossier.json`
+```
+GurpsAI/
+├── src/gurpsai/        ← Python FastAPI backend (the app engine)
+├── web/                ← React/Vite/TypeScript frontend (the GM workspace UI)
+├── scripts/            ← CLI tools, rulesdb pipeline, migration utilities
+├── rules_db/           ← Local GURPS Basic Set SQLite database
+├── .agents/            ← AI personas and workflow definitions
+├── .planning/          ← Maps, templates, and architectural truth
+├── AnomalyHuntersCampaign/  ← Dev example: actual Anomaly Hunters campaign data
+└── Campaign/           ← Legacy dev reference (not the primary example)
+```
 
-If `state.json` or `00_System_Rules.json` is missing in `Campaign/`, create them using templates:
-- `.planning/_templates/State_Template.json` → `Campaign/state.json`
-- `.planning/_templates/System_Rules_Template.json` → `Campaign/00_System_Rules.json`
+**Campaign data is external.** In production, a GM selects any folder on their machine as their campaign. `AnomalyHuntersCampaign/` and `Campaign/` exist in this repo only for development and testing purposes.
+
+## 2. Mandatory Reading Before Complex GMing Tasks
+
+When assisting with GMing (not app development), read:
+- `AnomalyHuntersCampaign/state.json` — current campaign state
+- `master_philosophy.md` — GMing principles and GURPS adherence
+- `.planning/CAMPAIGN_MAP.md` — campaign folder taxonomy (where everything lives)
+- `AnomalyHuntersCampaign/System_Rules.json` — campaign-specific rules
 
 ## 3. Ignored Directories
-- The `Legacy/` directory contains unformatted, ongoing campaign notes. **ALL agents and workflows MUST completely ignore the `Legacy/` directory**, EXCEPT when explicitly executing the `.agents/workflows/catch_up.md` workflow.
+
+- The `Legacy/` subdirectory inside any campaign folder contains unformatted ongoing notes. **ALL agents and workflows MUST completely ignore `Legacy/`**, EXCEPT when explicitly executing the `catch_up` workflow.
 
 ## 4. State Management
+
 Update `state.json` *only* when:
 - **Campaign Init**: `new_campaign` completes.
 - **Session Progress**: `prep_session`, `start_session`, or `conclude_session` explicitly advance the clock or scene.
 - **Explicit Signal**: The GM provides information that clearly shifts the state (e.g., "This NPC died," "We are moving to the next chapter").
 - **GM Confirmation**: A workflow asks "Make this the current active [X]?" and the GM agrees.
-**CRITICAL:** Pure content creation (creating a new Chapter, Episode, Location, or NPC) does **NOT** automatically update the "Current" state in `state.json`. Content can be prepped in advance without disrupting the active play state.
 
-## 4A. World Dossier Management (Setting Canon)
-- When you need to confirm/check anything about the world’s logic/lore/cosmology/tone, consult `01_World_Bible/World_Dossier.json` first (then drill down into specific `01_World_Bible/Locations/` and `01_World_Bible/Factions/` files as needed).
-- When the GM provides a change that affects setting-wide logic/lore (e.g., new travel rules, new immutable premise, retcon of major truths, new recurring cosmic rule, major faction reframe), update `01_World_Bible/World_Dossier.json` and add an entry to its **Change Log**.
-- Do **not** update `state.json` for purely setting-canon edits unless the change also alters the current situation/clock/objectives per the State Management rules above.
+**CRITICAL:** Pure content creation (creating a new Chapter, Episode, Location, or NPC) does **NOT** automatically update `state.json`. Content can be prepped in advance without disrupting the active play state.
 
-## 4. Workflows and Personas
-- Workflow call: load the matching file in `.agents/workflows/` and execute it step-by-step.
-- Persona call: load the matching file in `.agents/agents/` before answering in that mode.
-4. If a GM pitch involves massive detail, extraction should complement the summary, not replace it.
+## 5. World Dossier Management (Setting Canon)
 
-### 10. Project Integrity & Post-Task Verification
-After completing any task, workflow, or file creation, you MUST perform a self-audit to ensure project health:
-1.  **File Taxonomy**: Cross-reference `.planning/MAP.md`. Verify that new files are in the correct directories (e.g., Locations belong in `01_World_Bible/`, NOT in Chapter folders).
-2.  **Template Adherence**: Ensure all new files strictly follow their respective templates in `.planning/_templates/` (Bestiary entries use `Character_Template.json`; individual NPCs use `Character_Template.json`; Locations use `Location_Template.json`).
-3.  **Link Integrity**: Verify that all internal markdown links are **relative** and point to files that actually exist.
-4.  **State Sync**: Confirm that `state.json` has been updated if the task involved narrative progress, new characters, or significant world changes.
-5.  **Detail Preservation**: Double-check that no narrative or mechanical details from the user's prompt were lost during summarization or conversion. Verify that the GM's raw text is preserved In Full.
-6.  **Batch Processing Integrity**: If a workflow extracts multiple components at once (e.g., smart extraction of NPCs/Locations), each component MUST still follow its full template. Speed or quantity never overrides the requirement for structural fidelity and mechanical detail.
+- When confirming world logic, lore, or cosmology, consult `01_World_Bible/World_Dossier.json` first.
+- When the GM provides a setting-wide change (new travel rules, major retcon, recurring cosmic rule, major faction reframe), update `World_Dossier.json` and add an entry to its **Change Log**.
+- Do **not** update `state.json` for purely setting-canon edits unless the change also alters the current situation/clock/objectives.
+
+## 6. Workflows and Personas
+
+- **Workflow invocation**: Load the matching file in `.agents/workflows/` and execute it step-by-step.
+- **Persona invocation**: Dev personas are Antigravity skills in `.agents/skills/`. To activate one, the AI must **read the SKILL.md file** using `view_file` — skill descriptions in the system prompt are for discovery only; the persona only activates after reading the full file. Route by task:
+  - Frontend → `frontend_dev/SKILL.md` (Shinku)
+  - Backend → `backend_dev/SKILL.md` (Suigintou)
+  - QA/Debug → `qa_engineer/SKILL.md` (Hinaichigo)
+  - AI features → `ai_engineer/SKILL.md` (Kanaria)
+- See `.planning/SYSTEM_MAP.md` for a full index of all personas and workflows.
+
+## 7. Project Integrity & Post-Task Verification
+
+After completing any task, workflow, or file creation, perform a self-audit:
+1. **File Taxonomy**: Cross-reference `.planning/CAMPAIGN_MAP.md`. Verify new campaign files are in the correct directories.
+2. **Template Adherence**: Ensure all new campaign files strictly follow their templates in `.planning/_templates/`.
+3. **Link Integrity**: Verify all internal links are **relative** and point to files that actually exist.
+4. **State Sync**: Confirm `state.json` has been updated only if the task involved actual narrative progress.
+5. **Detail Preservation**: Verify no narrative or mechanical details from the GM's prompt were lost.
+6. **Batch Processing Integrity**: If a workflow extracts multiple components at once, each MUST follow its full template. Speed never overrides structural fidelity.

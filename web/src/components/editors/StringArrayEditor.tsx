@@ -8,7 +8,7 @@ type Props = {
     compact?: boolean;
 };
 
-export function StringArrayEditor({ title, items, onChange, category, compact }: Props) {
+export function StringArrayEditor({ title, items = [], onChange, category, compact }: Props) {
     const handleAdd = () => {
         onChange([...items, ""]);
     };
