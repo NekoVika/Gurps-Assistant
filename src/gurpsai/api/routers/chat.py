@@ -32,6 +32,29 @@ def _to_domain_messages(req_messages: list[ChatMessageRequest]) -> list[ChatMess
         result.append(ChatMessage(role=msg.role, content=msg.content, tool_calls=tcs, tool_call_id=msg.tool_call_id))
     return result
 
+
+def _resolve_scope_hint(request: ChatRequest) -> str | None:
+    """Turn the focused-file path into a semantic scope descriptor.
+
+    Prefers a ScopeService-computed descriptor from ``scope_path``; falls back to
+    the raw ``scope_hint`` when no path is given, the file can't be read, or the
+    computation fails — so behaviour never regresses for older clients.
+    """
+    if request.scope_path:
+        try:
+            from gurpsai.app.services.scope import ScopeService
+
+            computed = ScopeService().describe(request.scope_path)
+            if computed:
+                return computed
+        except Exception:  # noqa: BLE001 — scope enrichment must never break chat
+            logging.warning(
+                "Scope enrichment failed for %r; falling back to raw scope_hint.",
+                request.scope_path,
+                exc_info=True,
+            )
+    return request.scope_hint
+
 @router.post("", response_model=ChatResponse)
 def chat(request: ChatRequest) -> ChatResponse:
     service = ChatService()
@@ -40,7 +63,7 @@ def chat(request: ChatRequest) -> ChatResponse:
             provider_name=request.provider,
             model=request.model,
             messages=_to_domain_messages(request.messages),
-            scope_hint=request.scope_hint,
+            scope_hint=_resolve_scope_hint(request),
         )
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
@@ -59,7 +82,7 @@ def chat_stream(request: ChatRequest) -> StreamingResponse:
             provider_name=request.provider,
             model=request.model,
             messages=_to_domain_messages(request.messages),
-            scope_hint=request.scope_hint,
+            scope_hint=_resolve_scope_hint(request),
         )
 
         def sse_generator():

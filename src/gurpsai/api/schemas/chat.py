@@ -16,7 +16,13 @@ class ChatRequest(BaseModel):
     provider: str = Field(min_length=1)
     model: str | None = None
     messages: list[ChatMessageRequest] = Field(min_length=1)
+    # Raw, pre-formatted scope hint (legacy / fallback). New clients should send
+    # scope_path instead and let the backend compute a semantic scope descriptor.
     scope_hint: str | None = None
+    # Virtual path of the campaign file the GM currently has in focus
+    # (e.g. "Campaign/03_Story/Encounters/Drone_Ambush.json"). When present the
+    # backend derives a richer scope descriptor via ScopeService.
+    scope_path: str | None = None
 
 
 class ChatResponse(BaseModel):

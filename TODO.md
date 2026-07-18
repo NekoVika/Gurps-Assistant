@@ -438,8 +438,8 @@ Boundary rules:
 ## AI Campaign Consistency & Scope Awareness (Phase 8)
 
 ### Contextual Relevance (Scope Management)
-- [ ] Prevent plot cross-contamination: The AI currently sees global `state.json` lore (like "Rot" or "The Watcher") and weaves it into isolated chapters/encounters where it might not belong.
-- [ ] Implement scope awareness: Give the AI context on *how* episodes are linked (or not linked) so it knows when to introduce global arcs vs when to stick to local standalone themes.
+- [x] Prevent plot cross-contamination: The AI currently sees global `state.json` lore (like "Rot" or "The Watcher") and weaves it into isolated chapters/encounters where it might not belong. *(ScopeService now emits explicit "self-contained — do NOT weave global arcs" guidance for standalone nodes, layered on the existing SCOPE GUARDRAIL.)*
+- [x] Implement scope awareness: Give the AI context on *how* episodes are linked (or not linked) so it knows when to introduce global arcs vs when to stick to local standalone themes. *(New `ScopeService` computes a semantic scope descriptor — entity type, parent/children hierarchy, resolved vs unresolved child links, and keyword-overlap ties to `state.json` arcs — passed via `scope_path` from the focused file. See `src/gurpsai/app/services/scope.py` + `tests/test_scope_service.py`.)*
 
 ### Dangling References & Hallucinated Relations
 - [ ] Differentiate existing vs new entities: The model currently invents new relations, child encounters (e.g., "Drone Defense"), and factions perfectly, but this confuses the GM because no such files exist yet.

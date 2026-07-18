@@ -387,7 +387,8 @@ export async function runChat(
   provider: string,
   model: string | null,
   messages: ChatMessage[],
-  scopeHint?: string
+  scopeHint?: string,
+  scopePath?: string
 ): Promise<ChatResult> {
   const response = await fetch(`${apiBaseUrl()}/chat`, {
     method: "POST",
@@ -398,7 +399,8 @@ export async function runChat(
       provider,
       model,
       messages,
-      scope_hint: scopeHint
+      scope_hint: scopeHint,
+      scope_path: scopePath
     })
   });
 
@@ -479,7 +481,8 @@ export async function streamChat(
   model: string | null,
   messages: ChatMessage[],
   onChunk: (event: ChatStreamEvent) => void,
-  scopeHint?: string
+  scopeHint?: string,
+  scopePath?: string
 ): Promise<void> {
   const response = await fetch(`${apiBaseUrl()}/chat/stream`, {
     method: "POST",
@@ -490,7 +493,8 @@ export async function streamChat(
       provider,
       model,
       messages,
-      scope_hint: scopeHint
+      scope_hint: scopeHint,
+      scope_path: scopePath
     })
   });
 

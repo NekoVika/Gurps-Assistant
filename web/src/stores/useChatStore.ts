@@ -200,6 +200,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     let currentAssistantText = "";
     
     const selectedPath = useCampaignStore.getState().selectedPath;
+    // scopePath lets the backend compute a semantic scope descriptor (entity type,
+    // parent/children, global-arc linkage). scopeHint stays as a legacy fallback for
+    // the case where the backend can't resolve the path.
+    const scopePath = selectedPath || undefined;
     const scopeHint = selectedPath ? `Currently viewing: ${selectedPath}` : undefined;
 
     try {
@@ -230,7 +234,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
         liveMessages = msgs;
         set({ chatMessages: liveMessages });
-      }, scopeHint);
+      }, scopeHint, scopePath);
 
       let draftValidationError = "";
       const draftsToValidate = liveMessages
