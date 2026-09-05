@@ -7,8 +7,10 @@ Goal: a GM can prepare a campaign from zero with no dead ends.
 
 - [ ] `python -m pytest tests/` — all green
 - [ ] `cd web && npx tsc --noEmit && npx vitest run` — all green
-- [ ] Version identical in `src/gurpsai/__version__.py`, `setup.py`, `web/package.json`
-      (drift breaks `/update/check`)
+- [ ] Version parity — covered by `tests/test_version_parity.py`, which asserts
+      `__version__.py`, `setup.py`, `web/package.json`, the OpenAPI app version
+      and `/health` all agree. Drift breaks `/update/check` and makes a fresh
+      install report the old version in the header.
 - [ ] `python scripts/build_alpha.py` completes; installer exe produced
 
 ## 1. Install
