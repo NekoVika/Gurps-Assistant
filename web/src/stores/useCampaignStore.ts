@@ -3,9 +3,12 @@ import {
   FileTreeNode,
   FileContent,
   CampaignValidateResponse,
+  RegistryItem,
   getCampaignSettings,
   getFileTree,
   getFileContent,
+  getCampaignRegistry,
+  createBatchStubs,
   saveCampaignSettings,
   initCampaign,
   validateCampaign,
@@ -24,9 +27,13 @@ interface CampaignState {
 
   fileTree: FileTreeNode[];
   fileTreeError: string | null;
+  entityRegistry: RegistryItem[];
   selectedPath: string;
   selectedFile: FileContent | null;
   fileContentError: string | null;
+
+  // Pending "create stub for missing entity?" prompt (ConfirmModal in MainWorkspace)
+  stubPrompt: { name: string; type: string; parentPath?: string } | null;
 
   isEditing: boolean;
   editedContent: string;
@@ -42,17 +49,21 @@ interface CampaignState {
   // Actions
   loadCampaignData: () => Promise<void>;
   loadFileContent: (path: string) => Promise<void>;
+  refreshEntityRegistry: () => Promise<void>;
+  refreshCampaignArtifacts: () => Promise<void>;
   setCampaignPathDraft: (path: string) => void;
   setSelectedPath: (path: string) => void;
   setIsEditing: (isEditing: boolean) => void;
   setEditedContent: (content: string) => void;
   setIsDeleteModalOpen: (isOpen: boolean) => void;
+  setStubPrompt: (prompt: { name: string; type: string; parentPath?: string } | null) => void;
+  executeCreateStub: () => Promise<void>;
   handleSaveEdit: () => Promise<void>;
   handleSaveParsedData: (newData: any) => Promise<void>;
   handleMendFile: (targetType: string, provider: string, model: string) => Promise<void>;
   handleUndoFileAction: () => Promise<void>;
   executeDeleteFile: () => Promise<void>;
-  handleNavigateTo: (targetName: string) => Promise<void>;
+  handleNavigateTo: (targetName: string, suggestedType?: string) => Promise<void>;
   
   // Campaign Management Actions
   handleCampaignSubmit: (e?: React.FormEvent<HTMLFormElement>) => Promise<void>;
@@ -69,9 +80,11 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   fileTree: [],
   fileTreeError: null,
+  entityRegistry: [],
   selectedPath: "",
   selectedFile: null,
   fileContentError: null,
+  stubPrompt: null,
 
   isEditing: false,
   editedContent: "",
@@ -84,6 +97,48 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   menderLoading: false,
   menderError: null,
 
+  refreshEntityRegistry: async () => {
+    try {
+      const registry = await getCampaignRegistry();
+      set({ entityRegistry: registry });
+    } catch (e) {
+      console.error("Failed to refresh entity registry", e);
+    }
+  },
+
+  // Refetch everything derived from campaign files (tree + registry).
+  // Call after any mutation that creates, renames, moves or deletes entities.
+  refreshCampaignArtifacts: async () => {
+    try {
+      const [tree, registry] = await Promise.all([getFileTree(), getCampaignRegistry()]);
+      set({ fileTree: tree, entityRegistry: registry, fileTreeError: null });
+    } catch (e) {
+      console.error("Failed to refresh campaign artifacts", e);
+    }
+  },
+
+  setStubPrompt: (prompt) => set({ stubPrompt: prompt }),
+
+  executeCreateStub: async () => {
+    const prompt = get().stubPrompt;
+    if (!prompt) return;
+    try {
+      const res = await createBatchStubs([{
+        name: prompt.name,
+        type: prompt.type,
+        parent_path: prompt.parentPath
+      }]);
+      set({ stubPrompt: null });
+      await get().refreshCampaignArtifacts();
+      if (res.paths.length > 0) {
+        get().setSelectedPath(res.paths[0]);
+      }
+    } catch (err: any) {
+      set({ stubPrompt: null });
+      alert("Failed to create stub: " + (err?.message ?? err));
+    }
+  },
+
   setCampaignPathDraft: (path) => set({ campaignPathDraft: path }),
   setSelectedPath: (path) => {
     set({ selectedPath: path, isEditing: false, fileUndoStack: [] });
@@ -95,9 +150,10 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   loadCampaignData: async () => {
     try {
-      const [campaignResult, treeResult] = await Promise.allSettled([
+      const [campaignResult, treeResult, registryResult] = await Promise.allSettled([
         getCampaignSettings(),
-        getFileTree()
+        getFileTree(),
+        getCampaignRegistry()
       ]);
 
       const updates: Partial<CampaignState> = {};
@@ -112,6 +168,10 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         updates.fileTreeError = null;
       } else {
         updates.fileTreeError = treeResult.reason instanceof Error ? treeResult.reason.message : "Unknown file tree error";
+      }
+
+      if (registryResult.status === "fulfilled") {
+        updates.entityRegistry = registryResult.value;
       }
 
       set(updates);
@@ -160,17 +220,16 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
           new_name: newName,
           updated_content: newData
         });
-        const updatedTree = await getFileTree();
-        set({ fileTree: updatedTree, selectedPath: res.new_path, isEditing: false });
-        // loadFileContent will be called implicitly via components reacting to selectedPath change,
-        // or we can explicitly call it here.
+        await get().refreshCampaignArtifacts();
+        set({ selectedPath: res.new_path, isEditing: false });
         get().loadFileContent(res.new_path);
       } else {
         await writeFileContent(state.selectedFile.path, state.editedContent);
-        set({ 
+        set({
           selectedFile: { ...state.selectedFile, content: state.editedContent },
-          isEditing: false 
+          isEditing: false
         });
+        get().refreshEntityRegistry();
       }
     } catch (err: any) {
       set({ fileContentError: err.message || "Failed to save file." });
@@ -202,10 +261,9 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
           new_name: newName,
           updated_content: newData
         });
-        const updatedTree = await getFileTree();
+        await get().refreshCampaignArtifacts();
         const newContent = JSON.stringify(newData, null, 2);
-        set({ 
-          fileTree: updatedTree, 
+        set({
           selectedPath: res.new_path,
           editedContent: newContent
         });
@@ -213,10 +271,11 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       } else {
         const newContent = JSON.stringify(newData, null, 2);
         await writeFileContent(state.selectedFile.path, newContent);
-        set({ 
+        set({
           selectedFile: { ...state.selectedFile, content: newContent },
           editedContent: newContent
         });
+        get().refreshEntityRegistry();
       }
     } catch (err: any) {
       set({ fileContentError: err.message || "Failed to save mended file." });
@@ -272,21 +331,20 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     if (!state.selectedFile) return;
     try {
       await deleteCampaignFile(state.selectedFile.path);
-      set({ 
+      set({
         selectedFile: null,
         editedContent: "",
         fileUndoStack: [],
         isDeleteModalOpen: false,
         selectedPath: ""
       });
-      const updatedTree = await getFileTree();
-      set({ fileTree: updatedTree });
+      await get().refreshCampaignArtifacts();
     } catch (err: any) {
       alert("Failed to delete file: " + err.message);
     }
   },
 
-  handleNavigateTo: async (targetName: string) => {
+  handleNavigateTo: async (targetName: string, suggestedType?: string) => {
     const state = get();
     if (!targetName || !state.fileTree) return;
     const lowerName = targetName.toLowerCase();
@@ -331,7 +389,8 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     if (targetNode) {
       get().setSelectedPath(targetNode.path);
     } else {
-      // alert("File not found in workspace.");
+      // No file backs this name — offer to create a stub for it.
+      set({ stubPrompt: { name: targetName, type: suggestedType || "Character" } });
     }
   },
 
@@ -341,13 +400,12 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     const state = get();
     try {
       const updated = await saveCampaignSettings(state.campaignPathDraft);
-      set({ 
+      set({
         campaignPath: updated.active_path,
         campaignPathDraft: updated.active_path,
         campaignMessage: "Campaign path updated."
       });
-      const updatedTree = await getFileTree();
-      set({ fileTree: updatedTree, fileTreeError: null });
+      await get().refreshCampaignArtifacts();
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Failed to update campaign path";
       set({ campaignMessage: `Error: ${detail}` });
@@ -361,8 +419,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     try {
       const res = await initCampaign();
       set({ campaignMessage: res.message });
-      const updatedTree = await getFileTree();
-      set({ fileTree: updatedTree, fileTreeError: null });
+      await get().refreshCampaignArtifacts();
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Failed to initialize campaign";
       set({ campaignMessage: `Error: ${detail}` });
@@ -378,12 +435,11 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       if (res.path) {
         set({ campaignPathDraft: res.path });
         const updated = await saveCampaignSettings(res.path);
-        set({ 
+        set({
           campaignPath: updated.active_path,
           campaignMessage: "Campaign loaded from picker."
         });
-        const updatedTree = await getFileTree();
-        set({ fileTree: updatedTree, fileTreeError: null });
+        await get().refreshCampaignArtifacts();
       }
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Failed to browse folder";

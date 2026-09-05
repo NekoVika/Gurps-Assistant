@@ -24,6 +24,8 @@ class CampaignSettingsUpdateRequest(BaseModel):
 class InitCampaignResponse(BaseModel):
     success: bool
     message: str
+    created: list[str] = []
+    existing: list[str] = []
 
 @router.get("/settings", response_model=CampaignSettingsResponse)
 def get_campaign_settings() -> CampaignSettingsResponse:
@@ -72,6 +74,58 @@ def browse_campaign() -> CampaignBrowseResponse:
         
     return CampaignBrowseResponse(path=selected)
 
+import json
+
+_TEMPLATE_DIR = ROOT / ".planning" / "_templates"
+
+# Canonical campaign layout — must match what CampaignRegistry.tsx buckets
+# and the creation wizards (web/src/lib/wizards.ts) expect.
+_INIT_DIRS = [
+    "01_World_Bible/Locations",
+    "01_World_Bible/Factions",
+    "01_World_Bible/World_Maps_and_Art",
+    "02_Characters/PCs",
+    "02_Characters/Main_Cast",
+    "02_Characters/Bestiary",
+    "03_Story",
+    "_reports/sessions",
+]
+
+# (target file, template filename, fallback content if template missing)
+_INIT_SEEDS: list[tuple[str, str, dict]] = [
+    ("state.json", "State_Template.json", {
+        "campaignName": "", "currentDate": "", "currentLocation": "",
+        "activeQuests": [], "recentEvents": [], "inventory": [],
+        "reputation": "", "notes": "",
+    }),
+    ("00_System_Rules.json", "System_Rules_Template.json", {
+        "title": "System Rules", "baseSystem": "GURPS 4e", "coreBooks": [],
+        "houseRules": "", "allowedOptions": "", "forbiddenOptions": "",
+        "pointBudget": "", "customMechanics": "",
+    }),
+    ("01_World_Bible/World_Dossier.json", "World_Dossier_Template.json", {
+        "name": "", "worldType": "", "toneAndGenre": "", "themes": [],
+        "elevatorPitch": "", "corePremises": [], "tags": [], "images": [],
+    }),
+    ("03_Story/Campaign_Overview.json", "Campaign_Overview_Template.json", {
+        "title": "", "status": "", "synopsis": "", "players": [], "pcs": [],
+        "childLinks": [], "images": [],
+    }),
+]
+
+
+def _load_seed_template(template_name: str, fallback: dict) -> dict:
+    try:
+        data = json.loads((_TEMPLATE_DIR / template_name).read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("template root is not an object")
+    except Exception:
+        data = dict(fallback)
+    if template_name == "Campaign_Overview_Template.json":
+        data.setdefault("childLinks", [])
+    return data
+
+
 @router.post("/init", response_model=InitCampaignResponse)
 def init_campaign() -> InitCampaignResponse:
     config = load_app_config()
@@ -88,41 +142,49 @@ def init_campaign() -> InitCampaignResponse:
         except OSError as exc:
             raise HTTPException(status_code=500, detail=f"Could not create campaign directory: {exc}")
 
-    state_file = camp_path / "state.md"
-    rules_file = camp_path / "00_System_Rules.md"
-    
-    # Simple stub content
-    state_content = """# Campaign State
-
-## Overview
-Campaign tracking and state documentation.
-
-## Recent Events
-- Campaign initialized.
-"""
-
-    rules_content = """# System Rules
-
-## Rules Snapshot
-Mechanical guidelines and specific rulings for this campaign.
-"""
+    created: list[str] = []
+    existing: list[str] = []
 
     try:
-        if not state_file.exists():
-            state_file.write_text(state_content, encoding="utf-8")
-        if not rules_file.exists():
-            rules_file.write_text(rules_content, encoding="utf-8")
+        for rel_dir in _INIT_DIRS:
+            target = camp_path / rel_dir
+            if target.is_dir():
+                existing.append(rel_dir + "/")
+            else:
+                target.mkdir(parents=True, exist_ok=True)
+                created.append(rel_dir + "/")
+
+        for rel_file, template_name, fallback in _INIT_SEEDS:
+            target = camp_path / rel_file
+            if target.exists():
+                existing.append(rel_file)
+                continue
+            data = _load_seed_template(template_name, fallback)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            created.append(rel_file)
     except OSError as exc:
         raise HTTPException(status_code=500, detail=f"Could not create initial campaign files: {exc}")
-        
-    return InitCampaignResponse(success=True, message="Campaign initialized with stub files.")
+
+    if created:
+        message = f"Campaign initialized: created {len(created)} items."
+    else:
+        message = "Campaign structure already complete; nothing to create."
+    return InitCampaignResponse(success=True, message=message, created=created, existing=existing)
 
 from pydantic import ValidationError
 from gurpsai.domain.campaign import CharacterData, LocationData, StoryData, FactionData
 
+class DanglingRef(BaseModel):
+    source_path: str
+    field: str
+    name: str
+    suggested_type: str
+
 class CampaignValidateResponse(BaseModel):
     scanned_files: int
     errors: list[str]
+    dangling: list[DanglingRef] = []
 
 @router.get("/validate", response_model=CampaignValidateResponse)
 def validate_campaign() -> CampaignValidateResponse:
@@ -139,13 +201,14 @@ def validate_campaign() -> CampaignValidateResponse:
         raise HTTPException(status_code=404, detail="Campaign directory does not exist.")
 
     errors = []
+    dangling: list[DanglingRef] = []
     scanned = 0
-    
+
     from gurpsai.app.services.files import CampaignFileService
+    from gurpsai.app.services.link_resolver import LinkResolver, is_reference
     service = CampaignFileService()
     registry = service.get_registry()
-    valid_ids = {r["id"] for r in registry}
-    valid_titles = {r["title"] for r in registry}
+    resolver = LinkResolver(registry)
 
     for file_path in camp_path.rglob("*.json"):
         rel_path = file_path.relative_to(camp_path).as_posix()
@@ -175,20 +238,50 @@ def validate_campaign() -> CampaignValidateResponse:
                 scanned += 1
                 StoryData.model_validate_json(content)
                 
-            # Check for dangling links
-            if data_dict:
-                for rel_key in ["characterRelations", "locationRelations", "factionRelations"]:
-                    if rel_key in data_dict and isinstance(data_dict[rel_key], list):
+            # Check for dangling references (reported separately from schema errors)
+            if isinstance(data_dict, dict) and data_dict:
+                source_path = f"Campaign/{rel_path}"
+
+                def add_dangling(field: str, name: str, suggested_type: str) -> None:
+                    dangling.append(DanglingRef(
+                        source_path=source_path, field=field,
+                        name=name, suggested_type=suggested_type,
+                    ))
+
+                for rel_key, suggested in [
+                    ("characterRelations", "Character"),
+                    ("locationRelations", "Location"),
+                    ("factionRelations", "Faction"),
+                ]:
+                    if isinstance(data_dict.get(rel_key), list):
                         for rel in data_dict[rel_key]:
-                            if isinstance(rel, dict) and "name" in rel:
+                            if isinstance(rel, dict) and isinstance(rel.get("name"), str):
                                 name = rel["name"]
-                                if name and name not in valid_ids and name not in valid_titles:
-                                    errors.append(f"[{rel_path}] Dangling relation: '{name}' in {rel_key}")
-                
-                if "childLinks" in data_dict and isinstance(data_dict["childLinks"], list):
+                                if is_reference(name) and not resolver.exists(name):
+                                    add_dangling(rel_key, name, suggested)
+
+                for arr_key, suggested in [
+                    ("characters", "Character"),
+                    ("locations", "Location"),
+                    ("factions", "Faction"),
+                    ("storyAppearances", "Story"),
+                ]:
+                    if isinstance(data_dict.get(arr_key), list):
+                        for entry in data_dict[arr_key]:
+                            if isinstance(entry, str) and is_reference(entry) and not resolver.exists(entry):
+                                add_dangling(arr_key, entry, suggested)
+
+                if isinstance(data_dict.get("childLinks"), list):
+                    src_type = str(data_dict.get("type", "")).lower()
+                    if src_type == "episode":
+                        child_type = "Chapter"
+                    elif src_type == "chapter":
+                        child_type = "Encounter"
+                    else:
+                        child_type = "Episode"
                     for child in data_dict["childLinks"]:
-                        if isinstance(child, str) and child and child not in valid_ids and child not in valid_titles:
-                            errors.append(f"[{rel_path}] Dangling child link: '{child}'")
+                        if isinstance(child, str) and is_reference(child) and not resolver.exists(child):
+                            add_dangling("childLinks", child, child_type)
 
         except ValidationError as ve:
             for err in ve.errors():
@@ -198,7 +291,7 @@ def validate_campaign() -> CampaignValidateResponse:
         except Exception as e:
             errors.append(f"[{rel_path}] Corrupt JSON: {str(e)}")
 
-    return CampaignValidateResponse(scanned_files=scanned, errors=errors)
+    return CampaignValidateResponse(scanned_files=scanned, errors=errors, dangling=dangling)
 
 class RegistryItem(BaseModel):
     id: str
@@ -219,6 +312,7 @@ def get_campaign_registry() -> CampaignRegistryResponse:
 class StubRequest(BaseModel):
     name: str
     type: str
+    parent_path: str | None = None
 
 class BatchStubRequest(BaseModel):
     stubs: list[StubRequest]
@@ -226,6 +320,7 @@ class BatchStubRequest(BaseModel):
 class BatchStubResponse(BaseModel):
     created: int
     paths: list[str]
+    skipped: list[str] = []
 
 @router.post("/stubs/batch", response_model=BatchStubResponse)
 def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
@@ -233,42 +328,71 @@ def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
     from gurpsai.domain.campaign import CharacterData, LocationData, FactionData, StoryData
     import re
     
+    from gurpsai.app.services.link_resolver import LinkResolver
+
     service = CampaignFileService()
+    resolver = LinkResolver.from_service(service)
     created_paths = []
-    
+    skipped = []
+
     for stub in request.stubs:
         safe_name = "".join(c for c in stub.name if c.isalnum() or c in (" ", "-", "_")).strip()
         safe_name = re.sub(r'^[\d_]+', '', safe_name).strip()
         if not safe_name:
             continue
-            
+
+        # Entity already exists somewhere in the campaign (any folder, any
+        # case/underscore variation) — don't create a duplicate stub.
+        if resolver.exists(stub.name):
+            skipped.append(stub.name)
+            continue
+
+        filename = safe_name.replace(" ", "_") + ".json"
         t_lower = stub.type.lower()
         if "char" in t_lower or "npc" in t_lower:
             data = CharacterData(name=stub.name).model_dump()
-            subfolder = "02_Characters/Cast"
+            rel_path = f"Campaign/02_Characters/Main_Cast/{filename}"
         elif "loc" in t_lower:
             data = LocationData(name=stub.name).model_dump()
-            subfolder = "01_World_Bible/Locations"
+            rel_path = f"Campaign/01_World_Bible/Locations/{filename}"
         elif "fac" in t_lower:
             data = FactionData(name=stub.name).model_dump()
-            subfolder = "04_Factions"
+            rel_path = f"Campaign/01_World_Bible/Factions/{filename}"
+        elif "episode" in t_lower:
+            data = StoryData(title=stub.name, type="Episode").model_dump()
+            episode_dir = safe_name.replace(" ", "_")
+            if not episode_dir.startswith("Episode_"):
+                episode_dir = f"Episode_{episode_dir}"
+            rel_path = f"Campaign/03_Story/{episode_dir}/Episode_Overview.json"
+        elif "chap" in t_lower:
+            data = StoryData(title=stub.name, type="Chapter").model_dump()
+            chapter_dir = safe_name.replace(" ", "_")
+            if not chapter_dir.startswith("Chapter_"):
+                chapter_dir = f"Chapter_{chapter_dir}"
+            if stub.parent_path:
+                parent_dir = stub.parent_path.rsplit("/", 1)[0]
+                rel_path = f"{parent_dir}/{chapter_dir}/Chapter_Overview.json"
+            else:
+                rel_path = f"Campaign/03_Story/_Unsorted/{chapter_dir}/Chapter_Overview.json"
         else:
-            data = StoryData(title=stub.name).model_dump()
-            subfolder = "03_Story/Encounters"
-            
-        filename = safe_name.replace(" ", "_") + ".json"
-        rel_path = f"Campaign/{subfolder}/{filename}"
-        
+            story_type = "Encounter" if "enc" in t_lower else "Story"
+            data = StoryData(title=stub.name, type=story_type).model_dump()
+            if stub.parent_path:
+                parent_dir = stub.parent_path.rsplit("/", 1)[0]
+                rel_path = f"{parent_dir}/Encounters/{filename}"
+            else:
+                rel_path = f"Campaign/03_Story/_Unsorted/{filename}"
+
         try:
-            # Try not to overwrite if it exists
+            # Belt-and-suspenders: never overwrite an existing file.
             service.read_file(rel_path)
+            skipped.append(stub.name)
         except Exception:
-            # It does not exist, so we can write it
             import json
             service.write_file(rel_path, json.dumps(data, indent=2))
             created_paths.append(rel_path)
 
-    return BatchStubResponse(created=len(created_paths), paths=created_paths)
+    return BatchStubResponse(created=len(created_paths), paths=created_paths, skipped=skipped)
 
 from gurpsai.app.services.chat import ChatService
 from gurpsai.providers.base import ChatMessage as ProviderChatMessage
@@ -481,12 +605,19 @@ def rename_entity(request: RenameEntityRequest) -> RenameEntityResponse:
             def refactor_json_node(node) -> bool:
                 changed = False
                 if isinstance(node, dict):
-                    ref_keys = {"childLinks", "characters", "locations", "factions"}
+                    ref_keys = {"childLinks", "characters", "locations", "factions", "storyAppearances"}
+                    relation_keys = {"characterRelations", "locationRelations", "factionRelations"}
                     for k, v in node.items():
                         if k in ref_keys and isinstance(v, list):
                             for i, item in enumerate(v):
                                 if isinstance(item, str) and (item == request.old_title or item.endswith(request.old_title)):
                                     v[i] = new_name
+                                    changed = True
+                        elif k in relation_keys and isinstance(v, list):
+                            for item in v:
+                                if isinstance(item, dict) and isinstance(item.get("name"), str) \
+                                        and (item["name"] == request.old_title or item["name"].endswith(request.old_title)):
+                                    item["name"] = new_name
                                     changed = True
                         elif isinstance(v, dict) or isinstance(v, list):
                             if refactor_json_node(v):

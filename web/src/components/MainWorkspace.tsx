@@ -16,7 +16,8 @@ import { TrashbinPanel } from "./TrashbinPanel";
 import { ConfirmModal } from "./ConfirmModal";
 import { WizardModal } from "./WizardModal";
 import { type WizardDef } from "../lib/wizards";
-import { getFileTree, getFileContent, writeFileContent, runStructuredChat } from '../lib/api';
+import { getFileContent, writeFileContent, runStructuredChat } from '../lib/api';
+import { updateParentChildLinks } from '../lib/parentLinks';
 import { useToast } from '../context/ToastContext';
 
 export function MainWorkspace() {
@@ -30,35 +31,17 @@ export function MainWorkspace() {
     isDeleteModalOpen, 
     setIsDeleteModalOpen, 
     executeDeleteFile,
-    handleCampaignSubmit, 
-    handleBrowse, 
+    handleCampaignSubmit,
+    handleBrowse,
     handleCampaignInit,
-    setSelectedPath
+    setSelectedPath,
+    stubPrompt,
+    setStubPrompt,
+    executeCreateStub
   } = useCampaignStore();
   const { loadSessions } = useChatStore();
 
   const [activeWizard, setActiveWizard] = useState<WizardDef | null>(null);
-
-  // Shared by both onSubmitStructured and onCreateStub below.
-  const updateParentChildLinks = async (tPath: string, vars: Record<string, string>) => {
-     let parentPath = "";
-     if (vars["Parent Chapter"] && tPath.includes("Encounters")) {
-         parentPath = `Campaign/03_Story/${vars["Parent Episode"]}/${vars["Parent Chapter"]}/Chapter_Overview.json`;
-     } else if (vars["Parent Episode"] && tPath.includes("Chapter_Overview.json")) {
-         parentPath = `Campaign/03_Story/${vars["Parent Episode"]}/Episode_Overview.json`;
-     }
-
-     if (parentPath && vars["Name"]) {
-         const pFile = await getFileContent(parentPath);
-         const pData = JSON.parse(pFile.content);
-         if (Array.isArray(pData.childLinks)) {
-             if (!pData.childLinks.includes(vars["Name"])) {
-                 pData.childLinks.push(vars["Name"]);
-                 await writeFileContent(parentPath, JSON.stringify(pData, null, 2));
-             }
-         }
-     }
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -155,8 +138,7 @@ export function MainWorkspace() {
       
       {activeTab === "trashbin" && (
         <TrashbinPanel onRestore={async () => {
-          const updatedTree = await getFileTree();
-          useCampaignStore.setState({ fileTree: updatedTree });
+          await useCampaignStore.getState().refreshCampaignArtifacts();
         }} />
       )}
 
@@ -188,8 +170,8 @@ export function MainWorkspace() {
             // location in the campaign tree, so the AI has a relevance anchor even
             // when the wizard has no manual "PlacementContext" field.
             const autoScopeParts: string[] = [`Target: ${targetPath}`];
-            if (answers["Parent Episode"]) autoScopeParts.push(`Episode: ${answers["Parent Episode"]}`);
-            if (answers["Parent Chapter"]) autoScopeParts.push(`Chapter: ${answers["Parent Chapter"]}`);
+            if (answers["ParentEpisode"]) autoScopeParts.push(`Episode: ${answers["ParentEpisode"]}`);
+            if (answers["ParentChapter"]) autoScopeParts.push(`Chapter: ${answers["ParentChapter"]}`);
             const autoScope = autoScopeParts.join(" | ");
             const manualPlacementContext = answers["PlacementContext"];
             const placementContext = manualPlacementContext
@@ -240,8 +222,7 @@ export function MainWorkspace() {
                  } catch (e) {
                      console.error("Failed to update parent childLinks", e);
                  }
-                 const updatedTree = await getFileTree();
-                 useCampaignStore.setState({ fileTree: updatedTree });
+                 await useCampaignStore.getState().refreshCampaignArtifacts();
                  setSelectedPath(targetPath);
                  setActiveWizard(null);
                  const fileName = targetPath.split("/").pop() ?? targetPath;
@@ -281,8 +262,7 @@ export function MainWorkspace() {
                       console.error("Failed to update parent childLinks", e);
                   }
 
-                  const updatedTree = await getFileTree();
-                  useCampaignStore.setState({ fileTree: updatedTree });
+                  await useCampaignStore.getState().refreshCampaignArtifacts();
                   setSelectedPath(targetPath);
                }
             } catch (err) {
@@ -298,6 +278,16 @@ export function MainWorkspace() {
         cancelText="Cancel"
         onConfirm={executeDeleteFile}
         onCancel={() => setIsDeleteModalOpen(false)}
+      />
+
+      <ConfirmModal
+        isOpen={stubPrompt !== null}
+        title="Create proposed entity?"
+        message={`No file exists for "${stubPrompt?.name ?? ""}" yet. Create a ${stubPrompt?.type ?? "Character"} stub for it?`}
+        confirmText="Create Stub"
+        cancelText="Cancel"
+        onConfirm={executeCreateStub}
+        onCancel={() => setStubPrompt(null)}
       />
 
     </div>

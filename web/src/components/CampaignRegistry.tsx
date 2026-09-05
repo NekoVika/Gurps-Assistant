@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import type { FileTreeNode } from "../lib/api";
 import { getFileContent } from "../lib/api";
+import { entityExists, isReferenceName } from "../lib/entityResolution";
+import { useCampaignStore } from "../stores/useCampaignStore";
+
+// orderMap key for the campaign-level episode order (03_Story/Campaign_Overview.json)
+const CAMPAIGN_ORDER_KEY = "__campaign__";
 
 type CollapsibleProps = {
   title: string;
@@ -58,16 +63,18 @@ type RegistryData = {
   bestiary: FileTreeNode[];
   locations: FileTreeNode[];
   factions: FileTreeNode[];
-  episodes: { 
-      name: string; 
+  unsorted: FileTreeNode[];
+  episodes: {
+      name: string;
+      path: string;
       overviewFile?: FileTreeNode;
-      files: FileTreeNode[]; 
-      chapters: { 
-          name: string; 
+      files: FileTreeNode[];
+      chapters: {
+          name: string;
           overviewFile?: FileTreeNode;
-          files: FileTreeNode[]; 
+          files: FileTreeNode[];
           path: string;
-      }[] 
+      }[]
   }[];
 };
 
@@ -81,6 +88,8 @@ function formatEntityName(pathStr: string) {
 
 export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizard }: Props) {
   const [orderMap, setOrderMap] = useState<Record<string, string[]>>({});
+  const entityRegistry = useCampaignStore(s => s.entityRegistry);
+  const setStubPrompt = useCampaignStore(s => s.setStubPrompt);
 
   useEffect(() => {
      let mounted = true;
@@ -90,7 +99,23 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
         const fetchPromises: Promise<void>[] = [];
         
         function walkTree(node: FileTreeNode) {
-           if (node.node_type === "directory" && (node.name.startsWith("Episode_") || node.name.startsWith("Chapter_"))) {
+           if (node.node_type === "directory" && node.name === "03_Story") {
+               // Campaign-level episode order lives in Campaign_Overview.json childLinks.
+               const overview = node.children.find(c => c.node_type === "file" && c.name === "Campaign_Overview.json");
+               if (overview) {
+                   fetchPromises.push(
+                      getFileContent(overview.path).then(res => {
+                          try {
+                              const data = JSON.parse(res.content);
+                              if (Array.isArray(data.childLinks)) {
+                                  newOrderMap[CAMPAIGN_ORDER_KEY] = data.childLinks.map(String);
+                              }
+                          } catch { /* ignore */ }
+                      }).catch(() => {})
+                   );
+               }
+               node.children.forEach(walkTree);
+           } else if (node.node_type === "directory" && (node.name.startsWith("Episode_") || node.name.startsWith("Chapter_"))) {
                const allFiles: FileTreeNode[] = [];
                function gatherFiles(n: FileTreeNode) {
                    if (n.node_type === "file" && (n.path.endsWith(".md") || n.path.endsWith(".json"))) allFiles.push(n);
@@ -98,7 +123,11 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
                }
                node.children.forEach(gatherFiles);
                const isDirectChild = (f: FileTreeNode, dirPath: string) => f.path.substring(dirPath.length + 1).indexOf('/') === -1;
-               const overviewFile = allFiles.find(f => f.name.endsWith("_Overview.json") || f.name.endsWith("_Overview.md")) ||
+               // Prefer the dir's own direct-child overview — a recursive find
+               // would grab a nested chapter's overview when the chapter dir
+               // sorts before Episode_Overview.json.
+               const overviewFile = allFiles.find(f => isDirectChild(f, node.path) && (f.name.endsWith("_Overview.json") || f.name.endsWith("_Overview.md"))) ||
+                                    allFiles.find(f => f.name.endsWith("_Overview.json") || f.name.endsWith("_Overview.md")) ||
                                     allFiles.find(f => isDirectChild(f, node.path) && (f.path.endsWith(".json") || f.path.endsWith(".md")));
                
                if (overviewFile && overviewFile.path.endsWith(".json")) {
@@ -137,13 +166,14 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
     bestiary: [],
     locations: [],
     factions: [],
+    unsorted: [],
     episodes: []
   };
 
   function walk(node: FileTreeNode) {
      if (node.node_type === "file" && (node.path.endsWith(".md") || node.path.endsWith(".json"))) {
         const p = node.path;
-        if (p.endsWith("state.json") || p.includes("System_Rules.json") || p.includes("/Campaign_Overview.json") || p.includes("/World_Dossier.json")) {
+        if (p.endsWith("state.json") || p.endsWith("state.md") || p.includes("System_Rules.") || p.includes("/Campaign_Overview.json") || p.includes("/World_Dossier.json")) {
             data.core.push(node);
         } else if (p.includes("/02_Characters/PCs/")) {
             data.pcs.push(node);
@@ -155,6 +185,11 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
             data.locations.push(node);
         } else if (p.includes("/01_World_Bible/Factions/")) {
             data.factions.push(node);
+        } else if (p.startsWith("Campaign/") && !p.split("/").some(seg => seg.startsWith("."))) {
+            // Catch-all: any campaign file no curated bucket matched still shows
+            // up, so nothing written to the campaign can silently disappear.
+            // (Non-campaign workspace files like AGENTS.md stay out.)
+            data.unsorted.push(node);
         }
      } else if (node.node_type === "directory" && node.name.startsWith("Episode_") && node.path.includes("/03_Story/")) {
         const allFiles = node.children.filter((c: FileTreeNode) => c.node_type === "file" && (c.path.endsWith(".md") || c.path.endsWith(".json")));
@@ -238,7 +273,7 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
             return a.name.localeCompare(b.name);
         });
         
-        data.episodes.push({ name: formatEntityName(node.name), overviewFile, files, chapters });
+        data.episodes.push({ name: formatEntityName(node.name), path: node.path, overviewFile, files, chapters });
      }
      
      if (node.node_type === "directory" && !(node.name.startsWith("Episode_") && node.path.includes("/03_Story/"))) {
@@ -248,8 +283,44 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
 
   tree.forEach(walk);
 
-  // Default Episodes sort can just be alphabetical for now, or we could support a global Story array later.
-  data.episodes.sort((a, b) => a.name.localeCompare(b.name));
+  // Order episodes by the campaign overview's childLinks; alphabetical fallback.
+  const campaignOrder = orderMap[CAMPAIGN_ORDER_KEY] || [];
+  data.episodes.sort((a, b) => {
+    const aTitle = a.overviewFile?.title || a.name;
+    const bTitle = b.overviewFile?.title || b.name;
+    let aIdx = campaignOrder.indexOf(aTitle);
+    if (aIdx === -1) aIdx = campaignOrder.indexOf(a.name);
+    if (aIdx === -1) aIdx = campaignOrder.findIndex(item => item.endsWith(aTitle) || item.endsWith(a.name));
+    let bIdx = campaignOrder.indexOf(bTitle);
+    if (bIdx === -1) bIdx = campaignOrder.indexOf(b.name);
+    if (bIdx === -1) bIdx = campaignOrder.findIndex(item => item.endsWith(bTitle) || item.endsWith(b.name));
+    if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+    if (aIdx !== -1) return -1;
+    if (bIdx !== -1) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  // childLinks entries with no backing file anywhere in the campaign.
+  const missingChildren = (dirPath: string) =>
+    (orderMap[dirPath] || []).filter(name => isReferenceName(name) && !entityExists(entityRegistry, name));
+
+  // Ghost row: an AI-proposed entity that has no file yet — one click to materialize.
+  const renderGhostRow = (name: string, type: string, parentPath?: string) => (
+    <div key={`ghost-${name}`} style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px" }}>
+      <span style={{
+        flex: 1, color: "#ffb44d", opacity: 0.85, fontSize: "0.8rem", fontStyle: "italic",
+        border: "1px dashed rgba(255, 180, 77, 0.45)", borderRadius: "4px", padding: "2px 8px"
+      }}>
+        {name} <span style={{ fontSize: "0.65rem", opacity: 0.8 }}>(proposed)</span>
+      </span>
+      <button
+        type="button"
+        title={`Create ${type} stub`}
+        onClick={() => setStubPrompt({ name, type, parentPath })}
+        style={{ background: "rgba(255, 180, 77, 0.12)", border: "1px solid rgba(255, 180, 77, 0.4)", color: "#ffb44d", borderRadius: "4px", cursor: "pointer", padding: "0 6px", lineHeight: "18px", fontSize: "0.9rem" }}
+      >+</button>
+    </div>
+  );
 
   const renderItem = (node: FileTreeNode, overrideName?: string) => {
     const displayName = overrideName || node.title || formatEntityName(node.path);
@@ -357,13 +428,28 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
                            {ch.files.map((file, fileIndex) => renderItem(file, `${fileIndex + 1}. ${file.title || formatEntityName(file.path)}`))}
                         </div>
                     )}
+                    <div style={{ marginLeft: "16px" }}>
+                       {missingChildren(ch.path).map(name => renderGhostRow(name, "Encounter", ch.overviewFile?.path))}
+                    </div>
                  </div>
                  );
               })}
+              <div style={{ marginLeft: "8px" }}>
+                 {missingChildren(ep.path).map(name => renderGhostRow(name, "Chapter", ep.overviewFile?.path))}
+              </div>
            </div>
            );
          })}
+         {campaignOrder.filter(name => isReferenceName(name) && !entityExists(entityRegistry, name)).map(name => renderGhostRow(name, "Episode"))}
       </CollapsibleSection>
+
+      {data.unsorted.length > 0 && (
+        <CollapsibleSection title="🗃️ Unsorted" defaultOpen={false}>
+          <div className="registry-list">
+            {data.unsorted.map(n => renderItem(n))}
+          </div>
+        </CollapsibleSection>
+      )}
     </div>
   );
 }

@@ -405,8 +405,10 @@ export function HitLocationEditorList({ title, items = [], onChange }: ListProps
     );
 }
 
-import { useEffect, useState } from 'react';
-import { getCampaignRegistry, RegistryItem, createBatchStubs } from '../../lib/api';
+import { useState } from 'react';
+import { createBatchStubs } from '../../lib/api';
+import { entityExists } from '../../lib/entityResolution';
+import { useCampaignStore } from '../../stores/useCampaignStore';
 
 type EntityRelationListProps = { 
     title: string; 
@@ -415,12 +417,9 @@ type EntityRelationListProps = {
     targetCategory: "Character" | "Location" | "Story" | "Faction" | "All";
 };
 export function EntityRelationEditorList({ title, items = [], onChange, targetCategory }: EntityRelationListProps) {
-    const [registry, setRegistry] = useState<RegistryItem[]>([]);
+    const registry = useCampaignStore(s => s.entityRegistry);
+    const refreshCampaignArtifacts = useCampaignStore(s => s.refreshCampaignArtifacts);
     const [isGeneratingStubs, setIsGeneratingStubs] = useState(false);
-
-    useEffect(() => {
-        getCampaignRegistry().then(setRegistry).catch(console.error);
-    }, []);
 
     const handleAdd = () => {
         onChange([...items, { name: "", relation: "" }]);
@@ -443,7 +442,7 @@ export function EntityRelationEditorList({ title, items = [], onChange, targetCa
         onChange(newItems);
     };
 
-    const missingStubs = items.filter(item => item.name && !registry.some(r => r.title === item.name || r.id === item.name));
+    const missingStubs = items.filter(item => item.name && !entityExists(registry, item.name));
 
     const handleGenerateStubs = async () => {
         if (missingStubs.length === 0) return;
@@ -454,8 +453,7 @@ export function EntityRelationEditorList({ title, items = [], onChange, targetCa
                 type: targetCategory === "All" ? "Character" : targetCategory
             }));
             await createBatchStubs(stubsToCreate);
-            const newRegistry = await getCampaignRegistry();
-            setRegistry(newRegistry);
+            await refreshCampaignArtifacts();
         } catch (e) {
             console.error(e);
             alert("Failed to generate stubs");
@@ -492,7 +490,7 @@ export function EntityRelationEditorList({ title, items = [], onChange, targetCa
             {items.length === 0 && <p style={{ fontSize: "0.85em", opacity: 0.5, fontStyle: "italic", margin: 0 }}>No items.</p>}
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {items.map((item, i) => {
-                    const isMissing = item.name && !registry.some(r => r.title === item.name || r.id === item.name);
+                    const isMissing = item.name && !entityExists(registry, item.name);
                     return (
                     <div key={i} className="editor-array-item" style={{ display: "flex", gap: "8px", alignItems: "center", padding: "8px", borderLeft: isMissing ? "3px solid #ffb44d" : "none" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
@@ -533,12 +531,9 @@ type EntityLinkListProps = {
     targetCategory: "Character" | "Location" | "Story" | "Faction" | "All";
 };
 export function EntityLinkListEditor({ title, items = [], onChange, targetCategory }: EntityLinkListProps) {
-    const [registry, setRegistry] = useState<RegistryItem[]>([]);
+    const registry = useCampaignStore(s => s.entityRegistry);
+    const refreshCampaignArtifacts = useCampaignStore(s => s.refreshCampaignArtifacts);
     const [isGeneratingStubs, setIsGeneratingStubs] = useState(false);
-
-    useEffect(() => {
-        getCampaignRegistry().then(setRegistry).catch(console.error);
-    }, []);
 
     const handleAdd = () => {
         onChange([...items, ""]);
@@ -561,7 +556,7 @@ export function EntityLinkListEditor({ title, items = [], onChange, targetCatego
         onChange(newItems);
     };
 
-    const missingStubs = items.filter(item => item && !registry.some(r => r.title === item || r.id === item));
+    const missingStubs = items.filter(item => item && !entityExists(registry, item));
 
     const handleGenerateStubs = async () => {
         if (missingStubs.length === 0) return;
@@ -572,8 +567,7 @@ export function EntityLinkListEditor({ title, items = [], onChange, targetCatego
                 type: targetCategory === "All" ? "Character" : targetCategory
             }));
             await createBatchStubs(stubsToCreate);
-            const newRegistry = await getCampaignRegistry();
-            setRegistry(newRegistry);
+            await refreshCampaignArtifacts();
         } catch (e) {
             console.error(e);
             alert("Failed to generate stubs");
@@ -610,7 +604,7 @@ export function EntityLinkListEditor({ title, items = [], onChange, targetCatego
             {items.length === 0 && <p style={{ fontSize: "0.85em", opacity: 0.5, fontStyle: "italic", margin: 0 }}>No items.</p>}
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {items.map((item, i) => {
-                    const isMissing = item && !registry.some(r => r.title === item || r.id === item);
+                    const isMissing = item && !entityExists(registry, item);
                     return (
                     <div key={i} className="editor-array-item" style={{ display: "flex", gap: "8px", alignItems: "center", padding: "8px", borderLeft: isMissing ? "3px solid #ffb44d" : "none" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>

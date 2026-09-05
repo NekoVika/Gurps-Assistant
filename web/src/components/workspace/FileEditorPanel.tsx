@@ -11,6 +11,7 @@ import { StatePassport } from '../StatePassport';
 import { SystemRulesPassport } from '../SystemRulesPassport';
 import { CampaignOverviewPassport } from '../CampaignOverviewPassport';
 import { WorldDossierPassport } from '../WorldDossierPassport';
+import { MissingEntitiesBanner } from '../MissingEntitiesBanner';
 
 import { CharacterEditor } from '../editors/CharacterEditor';
 import { LocationEditor } from '../editors/LocationEditor';
@@ -27,7 +28,7 @@ import { parseCharacter } from "../../lib/CharacterParser";
 import { parseLocation } from "../../lib/LocationParser";
 import { parseStory } from "../../lib/StoryParser";
 import { parseFaction } from "../../lib/FactionParser";
-import { getFileTree, getFileContent } from '../../lib/api';
+import { getFileContent } from '../../lib/api';
 
 export function FileEditorPanel() {
   const { 
@@ -73,8 +74,7 @@ export function FileEditorPanel() {
               setPendingDraft(null);
             }} 
             onRefreshTree={async () => {
-              const tree = await getFileTree();
-              useCampaignStore.setState({ fileTree: tree });
+              await useCampaignStore.getState().refreshCampaignArtifacts();
               if (selectedFile && selectedFile.path === pendingDraft.path) {
                 const updated = await getFileContent(pendingDraft.path);
                 useCampaignStore.setState({ selectedFile: updated });
@@ -197,7 +197,12 @@ export function FileEditorPanel() {
                   }
                   if (selectedFile.path.includes("Episode") || selectedFile.path.includes("03_Story") || selectedFile.path.includes("sessions")) {
                     const parsed = parseStory(selectedFile.content);
-                    if (parsed && parsed.title && parsed.title !== "Unknown Story Part") return <StoryPassport data={parsed} documentPath={selectedFile.path} onNavigate={handleNavigateTo} />;
+                    if (parsed && parsed.title && parsed.title !== "Unknown Story Part") return (
+                      <>
+                        <MissingEntitiesBanner data={parsed} documentPath={selectedFile.path} />
+                        <StoryPassport data={parsed} documentPath={selectedFile.path} onNavigate={handleNavigateTo} />
+                      </>
+                    );
                   }
                   
                   if (selectedFile.path.endsWith('.json')) {

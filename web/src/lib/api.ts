@@ -67,9 +67,17 @@ export type InitCampaignResponse = {
   message: string;
 };
 
+export type DanglingRef = {
+  source_path: string;
+  field: string;
+  name: string;
+  suggested_type: string;
+};
+
 export type CampaignValidateResponse = {
   scanned_files: number;
   errors: string[];
+  dangling: DanglingRef[];
 };
 
 export type FileTreeNode = {
@@ -635,9 +643,10 @@ export async function getCampaignRegistry(): Promise<RegistryItem[]> {
 export type StubRequest = {
   name: string;
   type: string;
+  parent_path?: string;
 };
 
-export async function createBatchStubs(stubs: StubRequest[]): Promise<{ created: number, paths: string[] }> {
+export async function createBatchStubs(stubs: StubRequest[]): Promise<{ created: number, paths: string[], skipped: string[] }> {
   const response = await fetch(`${apiBaseUrl()}/campaign/stubs/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
