@@ -9,6 +9,7 @@ vi.mock('../lib/api', () => ({
   getProviderStatuses: vi.fn().mockResolvedValue([]),
   getProviderSettings: vi.fn().mockResolvedValue({}),
   getFileTree: vi.fn().mockResolvedValue([]),
+  getCampaignRegistry: vi.fn().mockResolvedValue([]),
   getCampaignSettings: vi.fn().mockResolvedValue({}),
   getSessions: vi.fn().mockResolvedValue([]),
   checkUpdate: vi.fn().mockResolvedValue({ update_available: false, latest_version: '0.2.4' })
