@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from gurpsai.app.config import ROOT
+from gurpsai.__version__ import __version__
 
 STATIC_DIR = ROOT / "web" / "dist"
 
@@ -27,7 +28,7 @@ STATIC_DIR = ROOT / "web" / "dist"
 def create_app() -> FastAPI:
     app = FastAPI(
         title="GURPS AI Local App API",
-        version="0.2.0",
+        version=__version__,
         description="Local-first backend for GURPS AI workflows, rules retrieval, and provider orchestration.",
     )
     app.add_middleware(

@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { getFileTree, type FileTreeNode } from "../../lib/api";
+import React, { useMemo } from "react";
+import { type FileTreeNode } from "../../lib/api";
+import { useCampaignStore } from "../../stores/useCampaignStore";
 
 type Category = "Character" | "Location" | "Story" | "Faction" | "All";
 
@@ -12,51 +13,36 @@ type Props = {
 };
 
 export function WorkspaceSelect({ category, value, onChange, style, placeholder }: Props) {
-  const [options, setOptions] = useState<{group: string, name: string}[]>([]);
-  const [loading, setLoading] = useState(true);
+  const fileTree = useCampaignStore(s => s.fileTree);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchOptions = async () => {
-      try {
-        const tree = await getFileTree();
-        if (!isMounted) return;
+  const options = useMemo(() => {
+    const filterNodes = (nodes: FileTreeNode[], targetCategory: string, currentGroup: string = "Uncategorized"): {group: string, name: string}[] => {
+      let results: {group: string, name: string}[] = [];
+      for (const node of nodes) {
+        if (node.node_type === "file" && node.name.endsWith(".json")) {
+          const path = node.path.toLowerCase();
+          const matchesCategory =
+            (targetCategory === "Character" && path.includes("02_characters")) ||
+            (targetCategory === "Location" && path.includes("locations")) ||
+            (targetCategory === "Story" && path.includes("03_story")) ||
+            (targetCategory === "Faction" && path.includes("factions")) ||
+            targetCategory === "All";
 
-        const filterNodes = (nodes: FileTreeNode[], targetCategory: string, currentGroup: string = "Uncategorized"): {group: string, name: string}[] => {
-          let results: {group: string, name: string}[] = [];
-          for (const node of nodes) {
-            if (node.node_type === "file" && node.name.endsWith(".json")) {
-              const path = node.path.toLowerCase();
-              const matchesCategory = 
-                (targetCategory === "Character" && path.includes("02_characters")) ||
-                (targetCategory === "Location" && path.includes("locations")) ||
-                (targetCategory === "Story" && path.includes("03_story")) ||
-                (targetCategory === "Faction" && path.includes("factions")) ||
-                targetCategory === "All";
-
-              if (matchesCategory) {
-                results.push({ group: currentGroup, name: node.name.replace(".json", "") });
-              }
-            }
-            if (node.children) {
-              results = results.concat(filterNodes(node.children, targetCategory, node.name));
-            }
+          if (matchesCategory) {
+            results.push({ group: currentGroup, name: node.name.replace(".json", "") });
           }
-          return results;
-        };
-
-        const found = filterNodes(tree, category);
-        found.sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name));
-        setOptions(found);
-      } catch (err) {
-        console.error("Failed to load workspace select options:", err);
-      } finally {
-        if (isMounted) setLoading(false);
+        }
+        if (node.children) {
+          results = results.concat(filterNodes(node.children, targetCategory, node.name));
+        }
       }
+      return results;
     };
-    fetchOptions();
-    return () => { isMounted = false; };
-  }, [category]);
+
+    const found = filterNodes(fileTree, category);
+    found.sort((a, b) => a.group.localeCompare(b.group) || a.name.localeCompare(b.name));
+    return found;
+  }, [fileTree, category]);
 
   const selectStyle = {
     padding: "8px 12px",
@@ -73,10 +59,9 @@ export function WorkspaceSelect({ category, value, onChange, style, placeholder 
       style={selectStyle}
       value={value || ""}
       onChange={(e) => onChange(e.target.value)}
-      disabled={loading}
     >
       <option value="" disabled>
-        {loading ? "Loading..." : placeholder || `Select ${category}...`}
+        {placeholder || `Select ${category}...`}
       </option>
       {/* If current value is not in options (e.g. legacy data), still show it as an option so we don't clear it immediately */}
       {value && !options.find(o => o.name === value) && (

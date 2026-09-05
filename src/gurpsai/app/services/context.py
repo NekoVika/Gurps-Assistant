@@ -32,16 +32,17 @@ def _resolve_campaign_root() -> Path:
 
 
 class ContextService:
-    def build_system_prompt(self, *, persona: str | None = None) -> str:
+    def build_system_prompt(self, *, persona: str | None = None, scope_hint: str | None = None) -> str:
         """
         Assemble the full system prompt for the in-app GM AI.
 
         Sections (in order):
           1. Static GM identity and prime directives (from prompts module)
           2. Optional persona overlay (KingCrab / Marauder / Atlas / Archer)
-          3. Dynamic campaign data: state.json + System_Rules.json
-          4. Available workspace file tree (truncated if budget exceeded)
-          5. AI tooling instructions (read_file, query_rules, draft_file)
+          3. Current scope + guardrail against global-lore bleed
+          4. Dynamic campaign data: state.json + System_Rules.json
+          5. Available workspace file tree (truncated if budget exceeded)
+          6. AI tooling instructions (read_file, query_rules, draft_file)
         """
         parts: list[str] = []
 
@@ -56,7 +57,22 @@ class ContextService:
             else:
                 logging.warning("ContextService: unknown persona %r — no overlay applied.", persona)
 
-        # --- 3. Dynamic campaign data ---
+        # --- 3. Current scope + guardrail ---
+        # Declared BEFORE the global state.json dump below so the model has a
+        # relevance anchor before it sees campaign-wide lore, instead of after.
+        scope_text = scope_hint or "General campaign chat — no specific entity in focus."
+        parts.append(
+            f"\n\n--- CURRENT SCOPE ---\n{scope_text}\n\n"
+            "SCOPE GUARDRAIL: The campaign state below (state.json) reflects GLOBAL, "
+            "HQ-level plot threads. When your output is scoped to a specific "
+            "Chapter/Encounter (see above), only pull in a global thread if it is "
+            "explicitly relevant to that scope. Do not default to weaving overarching "
+            "antagonists, apocalyptic stakes, or campaign-wide anomalies into "
+            "standalone/local scenes unless asked to.\n"
+            "--- END CURRENT SCOPE ---"
+        )
+
+        # --- 4. Dynamic campaign data ---
         camp_root = _resolve_campaign_root()
         for rel_path in _DYNAMIC_CAMPAIGN_FILES:
             full_path = camp_root / rel_path
@@ -74,7 +90,7 @@ class ContextService:
             except Exception as exc:
                 logging.error("ContextService: failed to read %s: %s", full_path, exc)
 
-        # --- 4. Available workspace file tree (with budget guard) ---
+        # --- 5. Available workspace file tree (with budget guard) ---
         try:
             from gurpsai.app.services.files import CampaignFileService
 
@@ -132,7 +148,7 @@ class ContextService:
         except Exception as exc:
             logging.error("ContextService: failed to inject file tree: %s", exc)
 
-        # --- 5. AI tooling instructions ---
+        # --- 6. AI tooling instructions ---
         parts.append(
             "\n\n--- AI CAPABILITIES & TOOLING ---\n"
             "You are equipped with a suite of tools to manage the campaign:\n"

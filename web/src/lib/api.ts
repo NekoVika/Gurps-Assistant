@@ -67,9 +67,17 @@ export type InitCampaignResponse = {
   message: string;
 };
 
+export type DanglingRef = {
+  source_path: string;
+  field: string;
+  name: string;
+  suggested_type: string;
+};
+
 export type CampaignValidateResponse = {
   scanned_files: number;
   errors: string[];
+  dangling: DanglingRef[];
 };
 
 export type FileTreeNode = {
@@ -386,7 +394,9 @@ export async function runRulesQa(query: string, limit = 3): Promise<RulesQaResul
 export async function runChat(
   provider: string,
   model: string | null,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  scopeHint?: string,
+  scopePath?: string
 ): Promise<ChatResult> {
   const response = await fetch(`${apiBaseUrl()}/chat`, {
     method: "POST",
@@ -396,7 +406,9 @@ export async function runChat(
     body: JSON.stringify({
       provider,
       model,
-      messages
+      messages,
+      scope_hint: scopeHint,
+      scope_path: scopePath
     })
   });
 
@@ -476,7 +488,9 @@ export async function streamChat(
   provider: string,
   model: string | null,
   messages: ChatMessage[],
-  onChunk: (event: ChatStreamEvent) => void
+  onChunk: (event: ChatStreamEvent) => void,
+  scopeHint?: string,
+  scopePath?: string
 ): Promise<void> {
   const response = await fetch(`${apiBaseUrl()}/chat/stream`, {
     method: "POST",
@@ -486,7 +500,9 @@ export async function streamChat(
     body: JSON.stringify({
       provider,
       model,
-      messages
+      messages,
+      scope_hint: scopeHint,
+      scope_path: scopePath
     })
   });
 
@@ -627,9 +643,10 @@ export async function getCampaignRegistry(): Promise<RegistryItem[]> {
 export type StubRequest = {
   name: string;
   type: string;
+  parent_path?: string;
 };
 
-export async function createBatchStubs(stubs: StubRequest[]): Promise<{ created: number, paths: string[] }> {
+export async function createBatchStubs(stubs: StubRequest[]): Promise<{ created: number, paths: string[], skipped: string[] }> {
   const response = await fetch(`${apiBaseUrl()}/campaign/stubs/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

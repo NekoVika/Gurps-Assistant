@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Set, Tuple
 
 from gurpsai.app.config import load_app_config, ROOT
+from gurpsai.app.services.link_resolver import normalize
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +61,8 @@ class RelationSyncService:
                 content = file_path.read_text(encoding="utf-8")
                 data = json.loads(content)
                 name = data.get("name") or data.get("title")
-                if name:
-                    self.file_index[name] = file_path
+                if name and normalize(name):
+                    self.file_index.setdefault(normalize(name), file_path)
             except Exception:
                 pass
                 
@@ -177,7 +178,7 @@ class RelationSyncService:
                 target_name = item.get("name") if source_is_obj else item
                 relation_str = item.get("relation", "") if source_is_obj else ""
                 
-                target_path = self.file_index.get(target_name)
+                target_path = self.file_index.get(normalize(target_name)) if target_name else None
                 if target_path:
                     self._update_target_file(
                         target_path=target_path,
@@ -192,7 +193,7 @@ class RelationSyncService:
                 target_name = item.get("name") if source_is_obj else item
                 relation_str = item.get("relation", "") if source_is_obj else ""
                 
-                target_path = self.file_index.get(target_name)
+                target_path = self.file_index.get(normalize(target_name)) if target_name else None
                 if target_path:
                     self._update_target_file(
                         target_path=target_path,
