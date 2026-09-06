@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any, Iterable
 from urllib import error, parse, request
@@ -10,12 +11,59 @@ from gurpsai.domain.providers import ProviderCapabilities, ProviderModel, Provid
 from gurpsai.domain.tools import Tool, ToolCall, StructuredOutputSchema
 from gurpsai.providers.base import ChatMessage, ChatResult, LlmProvider
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class GeminiConfig:
     api_key: str | None = None
     base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     timeout_seconds: float = 15.0
+
+
+_HTTP_HINTS = {
+    400: "Gemini rejected the request as malformed.",
+    401: "Gemini rejected the API key.",
+    403: "Gemini denied access with this API key.",
+    404: "That Gemini model was not found.",
+    429: "Gemini rate limit or quota reached. Wait a moment and retry.",
+    500: "Gemini had an internal error. Retrying usually works.",
+    503: "Gemini is temporarily overloaded. Retrying usually works.",
+}
+
+
+def _describe_http_error(exc: "error.HTTPError") -> str:
+    """Turn a Gemini HTTP failure into one line a GM can act on.
+
+    Google answers with a JSON envelope whose `error.message` is the only part
+    worth reading; the rest is nesting. Surfacing the raw body puts a wall of
+    JSON in the chat panel, so keep it in the log and show the sentence.
+    """
+    raw = ""
+    try:
+        raw = exc.read().decode("utf-8", errors="replace")
+    except Exception:  # noqa: BLE001 -- the status code alone still helps
+        pass
+
+    message = ""
+    try:
+        payload = json.loads(raw)
+        if isinstance(payload, dict):
+            inner = payload.get("error")
+            if isinstance(inner, dict):
+                message = str(inner.get("message") or "").strip()
+            elif isinstance(inner, str):
+                message = inner.strip()
+    except (ValueError, TypeError):
+        pass
+
+    if raw:
+        logger.warning("Gemini HTTP %s: %s", exc.code, raw)
+
+    hint = _HTTP_HINTS.get(exc.code, f"Gemini request failed (HTTP {exc.code}).")
+    if message and message.lower() not in hint.lower():
+        return f"{hint} {message}"
+    return hint
 
 
 class GeminiProvider(LlmProvider):
@@ -282,8 +330,7 @@ class GeminiProvider(LlmProvider):
                                 if isinstance(name, str):
                                     yield ToolCall(id=name, name=name, arguments=args, raw=part)
         except error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"Gemini request failed: HTTP {exc.code}: {detail}") from exc
+            raise RuntimeError(_describe_http_error(exc)) from exc
         except error.URLError as exc:
             reason = exc.reason if hasattr(exc, "reason") else exc
             raise RuntimeError(f"Could not reach Gemini API: {reason}") from exc
@@ -359,8 +406,7 @@ class GeminiProvider(LlmProvider):
             with request.urlopen(req, timeout=self._config.timeout_seconds) as response:
                 body = response.read().decode("utf-8")
         except error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"Gemini request failed: HTTP {exc.code}: {detail}") from exc
+            raise RuntimeError(_describe_http_error(exc)) from exc
         except error.URLError as exc:
             reason = exc.reason if hasattr(exc, "reason") else exc
             raise RuntimeError(f"Could not reach Gemini API: {reason}") from exc
@@ -392,8 +438,7 @@ class GeminiProvider(LlmProvider):
             with request.urlopen(req, timeout=effective_timeout) as response:
                 response_body = response.read().decode("utf-8")
         except error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"Gemini request failed: HTTP {exc.code}: {detail}") from exc
+            raise RuntimeError(_describe_http_error(exc)) from exc
         except error.URLError as exc:
             reason = exc.reason if hasattr(exc, "reason") else exc
             raise RuntimeError(f"Could not reach Gemini API: {reason}") from exc
