@@ -15,6 +15,31 @@ class UpdateCheckResponse(BaseModel):
     latest_version: str
     download_url: str | None = None
 
+def _parse_version(value: str) -> tuple[int, ...] | None:
+    """Parse a dotted numeric version into a comparable tuple, else None."""
+    try:
+        return tuple(int(part) for part in value.strip().lstrip("v").split("."))
+    except (ValueError, AttributeError):
+        return None
+
+
+def _is_newer(latest: str, current: str) -> bool:
+    """True only when `latest` is strictly ahead of `current`.
+
+    A plain inequality check would offer whatever GitHub calls "latest" even
+    when it is behind the installed build, and /update/apply reinstalls
+    silently -- so an unparseable tag on either side means no update.
+    """
+    latest_parts = _parse_version(latest)
+    current_parts = _parse_version(current)
+    if latest_parts is None or current_parts is None:
+        return False
+    width = max(len(latest_parts), len(current_parts))
+    latest_parts += (0,) * (width - len(latest_parts))
+    current_parts += (0,) * (width - len(current_parts))
+    return latest_parts > current_parts
+
+
 @router.get("/check", response_model=UpdateCheckResponse)
 def check_update() -> UpdateCheckResponse:
     from gurpsai.__version__ import __version__
@@ -33,7 +58,7 @@ def check_update() -> UpdateCheckResponse:
                     download_url = asset["browser_download_url"]
                     break
                     
-            if latest_tag and latest_tag != __version__ and download_url:
+            if latest_tag and download_url and _is_newer(latest_tag, __version__):
                 return UpdateCheckResponse(
                     update_available=True, 
                     latest_version=latest_tag, 
