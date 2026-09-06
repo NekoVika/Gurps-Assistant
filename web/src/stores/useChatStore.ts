@@ -39,8 +39,8 @@ interface ChatState {
   loadSessions: () => Promise<void>;
   setActiveSessionId: (id: string | null) => Promise<void>;
   createNewSession: () => Promise<void>;
-  deleteActiveSession: () => Promise<void>;
-  renameActiveSession: (newTitle: string) => Promise<void>;
+  removeSession: (id: string) => Promise<void>;
+  renameSession: (id: string, newTitle: string) => Promise<void>;
   
   setChatInput: (input: string) => void;
   clearChatError: () => void;
@@ -162,39 +162,50 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  deleteActiveSession: async () => {
+  removeSession: async (id) => {
     const { activeSessionId, sessions } = get();
-    if (!activeSessionId) return;
+    const remaining = sessions.filter(s => s.id !== id);
     set({ sessionsLoading: true });
     try {
-      await deleteSession(activeSessionId);
-      const updated = sessions.filter(s => s.id !== activeSessionId);
-      if (updated.length > 0) {
-        set({ sessions: updated, activeSessionId: updated[0].id });
-        const sess = await getSession(updated[0].id);
-        set({ chatMessages: sess.messages });
-      } else {
+      await deleteSession(id);
+      if (remaining.length === 0) {
         const newSess = await createSession("New Chat");
         set({ sessions: [newSess], activeSessionId: newSess.id, chatMessages: [] });
+      } else {
+        set({ sessions: remaining });
+        if (id === activeSessionId) {
+          // Any switch still in flight refers to a chat that is gone now.
+          sessionSwitchToken++;
+          const next = remaining[0];
+          set({
+            activeSessionId: next.id,
+            chatMessages: next.messages ?? [],
+            chatError: null,
+            streamingMessage: null,
+            pendingDraft: null,
+          });
+        }
       }
     } catch (e) {
-      console.error("Failed to delete session", e);
+      const detail = e instanceof Error ? e.message : "unknown error";
+      set({ chatError: `Could not delete that chat: ${detail}` });
     } finally {
       set({ sessionsLoading: false });
     }
   },
 
-  renameActiveSession: async (newTitle: string) => {
-    const { activeSessionId, sessions } = get();
-    if (!activeSessionId || newTitle.trim() === "") return;
-    set({ sessionsLoading: true });
+  renameSession: async (id, newTitle) => {
+    const title = newTitle.trim();
+    if (!title) return;
+    const previous = get().sessions;
+    // Show the new title straight away; a rename that lags feels broken.
+    set({ sessions: previous.map(s => (s.id === id ? { ...s, title } : s)) });
     try {
-      const updatedSess = await updateSession(activeSessionId, newTitle.trim(), undefined);
-      set({ sessions: sessions.map(s => s.id === updatedSess.id ? updatedSess : s) });
+      const updated = await updateSession(id, title, undefined);
+      set({ sessions: get().sessions.map(s => (s.id === updated.id ? updated : s)) });
     } catch (e) {
-      console.error("Failed to rename session", e);
-    } finally {
-      set({ sessionsLoading: false });
+      const detail = e instanceof Error ? e.message : "unknown error";
+      set({ sessions: previous, chatError: `Could not rename that chat: ${detail}` });
     }
   },
 
