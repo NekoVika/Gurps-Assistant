@@ -74,6 +74,10 @@ Goal: a GM can prepare a campaign from zero with no dead ends.
 - [ ] On a machine with the **previous** version installed: Check for update
       sees the new GitHub release
 - [ ] Apply downloads and silently reinstalls; app relaunches at new version
+- [ ] On the **new** version, no update chip appears while the latest GitHub
+      release is older than it. `/update/apply` reinstalls silently, so an
+      offered downgrade is accepted without a prompt.
+      (Regression guard: `tests/test_update_check.py`)
 
 ## Release steps (owner only)
 
