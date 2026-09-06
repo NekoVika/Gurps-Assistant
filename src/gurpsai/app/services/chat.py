@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import replace
 from typing import Iterable, Any
 from gurpsai.providers.base import ChatMessage, ChatResult
 from gurpsai.domain.tools import Tool, ToolParameter, ToolCall, StructuredOutputSchema
@@ -13,6 +14,40 @@ from gurpsai.app.services.files import CampaignFileService
 from gurpsai.app.services.rules import RulesQaService
 
 logger = logging.getLogger(__name__)
+
+
+def prune_orphaned_tool_calls(messages: list[ChatMessage]) -> list[ChatMessage]:
+    """Drop tool calls that never got a response, and responses with no call.
+
+    When a turn fails part-way -- the provider errors after announcing a tool
+    call but before the result is appended -- the history keeps an assistant
+    message advertising a call that was never answered. Providers reject that
+    pairing, so every later message in the session fails the same way and the
+    only escape is starting a new chat. Repair the history rather than replay
+    something we know will be refused.
+    """
+    answered = {m.tool_call_id for m in messages if m.role == "tool" and m.tool_call_id}
+    cleaned: list[ChatMessage] = []
+    called: set[str] = set()
+
+    for message in messages:
+        if message.role == "tool":
+            # A result whose call we dropped (or that never had one) is noise.
+            if message.tool_call_id in called:
+                cleaned.append(message)
+            continue
+
+        if message.role == "assistant" and message.tool_calls:
+            kept = [tc for tc in message.tool_calls if tc.id in answered]
+            if len(kept) != len(message.tool_calls):
+                if not kept and not message.content.strip():
+                    continue
+                message = replace(message, tool_calls=kept)
+            called.update(tc.id for tc in kept)
+
+        cleaned.append(message)
+
+    return cleaned
 
 
 class ChatService:
@@ -31,7 +66,7 @@ class ChatService:
         system_prompt = self._context_service.build_system_prompt(scope_hint=scope_hint)
         if extra_instructions:
             system_prompt += f"\n\n{extra_instructions}"
-        return [ChatMessage(role="system", content=system_prompt)] + messages
+        return [ChatMessage(role="system", content=system_prompt)] + prune_orphaned_tool_calls(messages)
 
     def chat(
         self,
