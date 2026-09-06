@@ -43,6 +43,8 @@ interface ChatState {
   renameActiveSession: (newTitle: string) => Promise<void>;
   
   setChatInput: (input: string) => void;
+  clearChatError: () => void;
+  retryLastExchange: (provider: string, model: string) => Promise<void>;
   setPendingDraft: (draft: Draft | null) => void;
   addConsumedDraft: (content: string) => void;
   
@@ -61,6 +63,10 @@ interface ChatState {
   
   handleChatSubmit: (e: React.FormEvent<HTMLFormElement>, provider: string, model: string, contextFiles?: any[]) => Promise<void>;
 }
+
+// Bumped on every session switch; a response carrying a stale token is discarded
+// so rapid switching cannot land the wrong transcript.
+let sessionSwitchToken = 0;
 
 export const useChatStore = create<ChatState>((set, get) => ({
   sessions: [],
@@ -85,6 +91,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setPendingDraft: (draft) => set({ pendingDraft: draft }),
   addConsumedDraft: (content) => set({ consumedDrafts: [...get().consumedDrafts, content] }),
   setRulesQuery: (query) => set({ rulesQuery: query }),
+  clearChatError: () => set({ chatError: null }),
+
+  retryLastExchange: async (provider, model) => {
+    const { chatMessages, chatLoading } = get();
+    if (chatLoading || chatMessages.length === 0) return;
+    set({ chatError: null });
+    await get().executeChatLoop(chatMessages, false, undefined, 0, provider, model);
+  },
 
   loadSessions: async () => {
     try {
@@ -102,15 +116,33 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setActiveSessionId: async (id) => {
-    if (!id) return;
-    set({ activeSessionId: id, sessionsLoading: true });
+    if (!id || id === get().activeSessionId) return;
+    const token = ++sessionSwitchToken;
+
+    // The session list already carries messages, so swap the transcript now
+    // rather than after a round trip -- waiting is what made this feel dead.
+    const cached = get().sessions.find(s => s.id === id);
+    set({
+      activeSessionId: id,
+      chatMessages: cached?.messages ?? [],
+      chatError: null,
+      streamingMessage: null,
+      pendingDraft: null,
+    });
+
     try {
       const sess = await getSession(id);
-      set({ chatMessages: sess.messages });
+      if (token !== sessionSwitchToken) return;
+      set({
+        chatMessages: sess.messages,
+        sessions: get().sessions.map(s => (s.id === sess.id ? sess : s)),
+      });
     } catch (e) {
-      console.error("Failed to fetch session", e);
-    } finally {
-      set({ sessionsLoading: false });
+      if (token !== sessionSwitchToken) return;
+      const detail = e instanceof Error ? e.message : "unknown error";
+      // Previously this only hit the console, so a failed switch looked like
+      // the click had simply done nothing.
+      set({ chatError: `Could not load that chat: ${detail}` });
     }
   },
 
@@ -289,7 +321,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     } catch (error) {
       const detail = error instanceof Error ? error.message : "Unknown chat error";
-      set({ 
+      // Drop the half-finished turn. If the stream died after announcing a tool
+      // call, keeping it would leave a call with no result in the history and
+      // every later message would fail the same way until the chat was abandoned.
+      set({
+        chatMessages: sanitizedMessages,
         chatError: detail,
         streamingMessage: null,
         chatLoading: false

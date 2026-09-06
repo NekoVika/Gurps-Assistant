@@ -20,6 +20,8 @@ export function ChatPanel() {
     chatError,
     chatLoading,
     handleChatSubmit,
+    clearChatError,
+    retryLastExchange,
     consumedDrafts,
     setPendingDraft
   } = useChatStore();
@@ -79,7 +81,6 @@ export function ChatPanel() {
             style={{ flexGrow: 1, padding: "4px 8px", background: "rgba(0,0,0,0.2)", border: "1px solid rgba(149, 181, 255, 0.2)", borderRadius: "4px", color: "white", fontSize: "0.8rem", overflow: "hidden", textOverflow: "ellipsis" }}
             value={activeSessionId || ""}
             onChange={(e) => setActiveSessionId(e.target.value)}
-            disabled={sessionsLoading}
           >
             {sessions.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
           </select>
@@ -167,7 +168,45 @@ export function ChatPanel() {
          handleChatSubmit(e, selectedProvider, selectedModel, activeContextFiles);
          setActiveContextFiles([]);
       }} style={{ flexShrink: 0, marginTop: 0, gap: 0 }}>
-        {chatError ? <p className="error-copy compact-error" style={{ margin: "0 0 8px 0" }}>{chatError}</p> : null}
+        {chatError ? (
+          <div
+            role="alert"
+            style={{
+              margin: "0 0 8px 0", padding: "10px 12px",
+              background: "rgba(248, 81, 73, 0.10)",
+              border: "1px solid rgba(248, 81, 73, 0.35)",
+              borderRadius: "8px", color: "#ff9c94", fontSize: "0.8rem",
+              display: "flex", flexDirection: "column", gap: "8px"
+            }}
+          >
+            <span style={{ lineHeight: 1.5, wordBreak: "break-word" }}>{chatError}</span>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                type="button"
+                onClick={() => retryLastExchange(selectedProvider, selectedModel)}
+                disabled={chatLoading}
+                style={{
+                  background: "rgba(248, 81, 73, 0.18)", border: "1px solid rgba(248, 81, 73, 0.45)",
+                  borderRadius: "6px", padding: "3px 10px", color: "#ff9c94",
+                  cursor: chatLoading ? "not-allowed" : "pointer", fontSize: "0.75rem"
+                }}
+              >
+                Retry
+              </button>
+              <button
+                type="button"
+                onClick={clearChatError}
+                style={{
+                  background: "transparent", border: "1px solid rgba(255, 255, 255, 0.18)",
+                  borderRadius: "6px", padding: "3px 10px", color: "#c9dfff",
+                  cursor: "pointer", fontSize: "0.75rem"
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div 
           style={{ 
             display: "flex", 
