@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ParentLocationField, StoryPlacementField } from './PlacementFields';
 import MDEditor from '@uiw/react-md-editor';
 import type { LocationJSON } from '../../lib/types';
 import { StringArrayEditor } from './StringArrayEditor';
@@ -52,6 +53,8 @@ export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
                     <label className="editor-label">Type</label>
                     <input type="text" className="editor-input" value={data.type} onChange={e => handleUpdate('type', e.target.value)} />
                 </div>
+                <ParentLocationField value={data.parentLocation || ""} onChange={v => handleUpdate('parentLocation', v)} />
+                <StoryPlacementField value={data.storyPlacement} onChange={v => handleUpdate('storyPlacement', v)} />
                 <div className="editor-field">
                     <label className="editor-label">Region</label>
                     <input type="text" className="editor-input" value={data.region} onChange={e => handleUpdate('region', e.target.value)} />

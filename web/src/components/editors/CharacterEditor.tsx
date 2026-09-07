@@ -3,6 +3,7 @@ import MDEditor from '@uiw/react-md-editor';
 import type { CharacterJSON } from '../../lib/types';
 import { StringArrayEditor } from './StringArrayEditor';
 import { ImageArrayEditor } from './ImageArrayEditor';
+import { KindField, WhereField, StoryPlacementField } from './PlacementFields';
 import { AttributeEditorList, TraitEditorList, SkillEditorList, GearEditorList, HitLocationEditorList, EntityRelationEditorList } from './StructuredArrayEditors';
 
 type Props = {
@@ -48,6 +49,9 @@ export function CharacterEditor({ value, onChange, documentPath = "" }: Props) {
                     <label className="editor-label">Concept</label>
                     <input type="text" className="editor-input" value={data.concept} onChange={e => handleUpdate('concept', e.target.value)} />
                 </div>
+                <KindField value={data.kind} onChange={v => handleUpdate('kind', v)} />
+                <WhereField value={data.location || ""} onChange={v => handleUpdate('location', v)} />
+                <StoryPlacementField value={data.storyPlacement} onChange={v => handleUpdate('storyPlacement', v)} />
                 <div className="editor-field">
                     <label className="editor-label">Significance</label>
                     <select className="editor-select" value={data.significance} onChange={e => handleUpdate('significance', e.target.value)}>
