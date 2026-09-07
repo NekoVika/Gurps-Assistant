@@ -172,3 +172,31 @@ def test_reciprocity_matching_folds_case_and_underscores():
                      characterRelations=[{"name": "the_watch", "relation": "Watched by"}]),
     }
     assert [e for e in collect(chars, LOCATIONS) if e.issue == "one_sided_relation"] == []
+
+
+def test_a_child_claimed_by_two_parents_is_reported():
+    # Bare "Chapter 01" is not unique across a campaign with several episodes;
+    # whichever parent wins, some fixtures reach the wrong scenes.
+    nodes = {
+        "Episode A": {"childLinks": ["Chapter 01"]},
+        "Episode B": {"childLinks": ["Chapter 01"]},
+    }
+    ends = collect({}, {}, story_nodes=nodes)
+    assert [e.issue for e in ends] == ["contested_child"]
+    assert "Episode A and Episode B" in ends[0].detail
+
+
+def test_a_child_with_one_parent_is_fine():
+    nodes = {"Episode A": {"childLinks": ["Chapter 01"]}, "Episode B": {"childLinks": ["Chapter 02"]}}
+    assert collect({}, {}, story_nodes=nodes) == []
+
+
+def test_the_same_parent_listing_a_child_twice_is_not_a_conflict():
+    nodes = {"Episode A": {"childLinks": ["Chapter 01", "Chapter 01"]}}
+    assert collect({}, {}, story_nodes=nodes) == []
+
+
+def test_contested_children_sort_above_everything_else():
+    nodes = {"A": {"childLinks": ["X"]}, "B": {"childLinks": ["X"]}}
+    ends = collect({"Rick": char("Rick")}, LOCATIONS, story_nodes=nodes)
+    assert ends[0].issue == "contested_child"

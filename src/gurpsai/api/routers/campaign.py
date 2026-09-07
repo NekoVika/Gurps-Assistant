@@ -216,6 +216,7 @@ def validate_campaign() -> CampaignValidateResponse:
     # Gathered during the same pass so the loose-ends report costs no extra IO.
     all_characters: dict[str, dict] = {}
     all_locations: dict[str, dict] = {}
+    all_story_nodes: dict[str, dict] = {}
     entity_paths: dict[str, str] = {}
 
     from gurpsai.app.services.files import CampaignFileService
@@ -247,6 +248,8 @@ def validate_campaign() -> CampaignValidateResponse:
                 elif "attributes" in data_dict and "pointTotal" in data_dict:
                     all_characters[name] = data_dict
                     entity_paths[name] = f"Campaign/{rel_path}"
+                if "childLinks" in data_dict or str(data_dict.get("type", "")).lower() in {"episode", "chapter", "encounter"}:
+                    all_story_nodes[name] = data_dict
 
             if "02_Characters" in rel_path or "Bestiary" in rel_path:
                 scanned += 1
@@ -330,6 +333,7 @@ def validate_campaign() -> CampaignValidateResponse:
         for end in collect_loose_ends(
             all_characters, all_locations,
             party_location=party_location, paths=entity_paths,
+            story_nodes=all_story_nodes,
         )
     ]
 

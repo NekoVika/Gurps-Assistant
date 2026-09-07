@@ -26,6 +26,7 @@ from gurpsai.app.services.placement import PlacementIndex
 
 #: Ordered by how much they block understanding the campaign.
 ISSUE_LABELS = {
+    "contested_child": "Claimed as a child by more than one story node",
     "containment_cycle": "Locations contain each other in a loop",
     "placement_cycle": "Characters are placed through each other in a loop",
     "unresolved_location": "Placed somewhere that has no file",
@@ -74,6 +75,7 @@ def collect(
     *,
     party_location: str = "",
     paths: dict[str, str] | None = None,
+    story_nodes: dict[str, dict] | None = None,
 ) -> list[LooseEnd]:
     """Every unfinished piece of linkage, most structural first.
 
@@ -85,6 +87,25 @@ def collect(
         locations=locations, characters=characters, party_location=party_location
     )
     found: list[LooseEnd] = []
+
+    # A child name claimed by two parents cannot be resolved to one lineage, so
+    # whichever parent is picked, some fixtures reach the wrong scenes. Bare
+    # names like "Chapter 01" are not unique across a campaign with several
+    # episodes -- the fix is to make the name say which episode it belongs to.
+    claims: dict[str, list[str]] = {}
+    for node_name, data in (story_nodes or {}).items():
+        for child in data.get("childLinks") or []:
+            if isinstance(child, str) and is_reference(child):
+                claims.setdefault(normalize(child), []).append(node_name)
+    for child_key, claimants in sorted(claims.items()):
+        unique = sorted(set(claimants))
+        if len(unique) > 1:
+            found.append(LooseEnd(
+                name=child_key,
+                source_path="",
+                issue="contested_child",
+                detail="listed as a child by " + " and ".join(unique),
+            ))
 
     # Structural problems first -- a cycle makes everything downstream unreliable.
     parents = {
