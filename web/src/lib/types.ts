@@ -55,7 +55,7 @@ export interface CharacterJSON {
     name: string;
     concept: string;
     kind?: "individual" | "type" | "pc";
-    significance: string;
+    significance: "" | "core" | "supporting" | "featured" | "background";
     role: string;
     location?: string;
     locations?: string[];

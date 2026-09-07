@@ -321,7 +321,8 @@ export const WIZARDS: WizardDef[] = [
         `- skills: array of strings like "First Aid (IQ+0)-10 [1] - Field stabilization"`,
         `- gear: array of strings like "Medkit (2 lbs, $100) - First Aid kit"`,
         `- pointTotal: a string like "150"`,
-        `- significance: the exact string provided above (e.g. "1 Extra")`,
+        `- significance: exactly one of "core", "supporting", "featured", "background"${type === "Bestiary" ? ' — but use "" here, a Bestiary template has no narrative weight of its own' : ""}`,
+        `- kind: exactly "${type === "Bestiary" ? "type" : type === "PC" ? "pc" : "individual"}"`,
         `- armorCoverage: a SPARSE object — only include locations where DR > 0. Keys are camelCase location names: eye, skull, face, rightLeg, rightArm, torso, groin, leftArm, leftLeg, hand, foot, neck, vitals. Each value is { "dr": <number>, "source": "<armor name>" }. Omit locations with DR 0 entirely.`,
         `\nOutput only the JSON object — no explanation, no markdown fences.`,
       ].filter(Boolean).join("\n");
@@ -331,7 +332,8 @@ export const WIZARDS: WizardDef[] = [
       properties: {
         name:               { type: "string" },
         concept:            { type: "string" },
-        significance:       { type: "string" },
+        kind:               { type: "string", enum: ["individual", "type", "pc"] },
+        significance:       { type: "string", enum: ["", "core", "supporting", "featured", "background"] },
         role:               { type: "string" },
         location:           { type: "string" },
         status:             { type: "string" },
@@ -478,9 +480,11 @@ export const WIZARDS: WizardDef[] = [
           },
           {
             id: "Significance",
-            label: "Significance (0=Bestiary... 5=Keystone)",
+            label: "Significance",
             type: "select",
-            options: ["1 Extra", "2 Supporting", "3 Featured", "4 Major", "5 Keystone", "0 Common Variant"]
+            // Bestiary entries are not on this scale at all -- `kind` says they
+            // are templates, and a template has no narrative weight of its own.
+            options: ["core", "supporting", "featured", "background"]
           }
         ]
       },

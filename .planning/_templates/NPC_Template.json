@@ -2,7 +2,7 @@
   "_INSTRUCTION": "CRITICAL AI INSTRUCTION: This is an EXAMPLE JSON for Characters. DO NOT output a JSON schema. Output a valid JSON object that perfectly mimics this exact structure and depth.",
   "name": "Example Character Name",
   "concept": "A brief high-level concept",
-  "significance": "Major/Minor NPC or Boss",
+  "significance": "supporting",
   "role": "Their role in the narrative",
   "location": "Where they are typically found",
   "status": "Alive, Dead, or Missing",

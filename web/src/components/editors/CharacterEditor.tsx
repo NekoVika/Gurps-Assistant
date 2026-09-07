@@ -52,11 +52,12 @@ export function CharacterEditor({ value, onChange, documentPath = "" }: Props) {
                     <label className="editor-label">Significance</label>
                     <select className="editor-select" value={data.significance} onChange={e => handleUpdate('significance', e.target.value)}>
                         <option value="">Select Significance</option>
-                        <option value="1 Core">1 Core</option>
-                        <option value="2 Supporting">2 Supporting</option>
-                        <option value="3 Featured">3 Featured</option>
-                        <option value="4 Background">4 Background</option>
-                        {!["1 Core", "2 Supporting", "3 Featured", "4 Background", ""].includes(data.significance) && <option value={data.significance}>{data.significance}</option>}
+                        <option value="core">Core</option>
+                        <option value="supporting">Supporting</option>
+                        <option value="featured">Featured</option>
+                        <option value="background">Background</option>
+                        {/* Shows a value from an unmigrated file so saving cannot silently drop it. */}
+                        {!["core", "supporting", "featured", "background", ""].includes(data.significance) && <option value={data.significance}>{data.significance}</option>}
                     </select>
                 </div>
                 <div className="editor-field">

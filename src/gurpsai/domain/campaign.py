@@ -37,7 +37,10 @@ class CharacterData(BaseModel):
         "-- exempt from placement, because instances are placed and templates are not. pc: a player character. "
         "This field is authoritative; folder placement is derived from it, never the other way round.")
     concept: str = Field("", title="Concept")
-    significance: str = Field("", title="Significance")
+    significance: Literal["", "core", "supporting", "featured", "background"] = Field(
+        "", title="Significance",
+        description="Narrative weight of this character. Empty is legitimate -- a type has no "
+        "narrative weight of its own, only its instances do.")
     role: str = Field("", title="Role")
     location: str = Field("", title="Location")
     locations: List[Any] = Field(default_factory=list, title="Locations")
