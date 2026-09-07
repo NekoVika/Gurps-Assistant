@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
@@ -181,10 +182,19 @@ class DanglingRef(BaseModel):
     name: str
     suggested_type: str
 
+class LooseEndItem(BaseModel):
+    name: str
+    source_path: str
+    issue: str
+    label: str
+    detail: str
+
 class CampaignValidateResponse(BaseModel):
     scanned_files: int
     errors: list[str]
     dangling: list[DanglingRef] = []
+    #: Linkage that is incomplete rather than broken. Meant to reach zero.
+    loose_ends: list[LooseEndItem] = []
 
 @router.get("/validate", response_model=CampaignValidateResponse)
 def validate_campaign() -> CampaignValidateResponse:
@@ -203,6 +213,10 @@ def validate_campaign() -> CampaignValidateResponse:
     errors = []
     dangling: list[DanglingRef] = []
     scanned = 0
+    # Gathered during the same pass so the loose-ends report costs no extra IO.
+    all_characters: dict[str, dict] = {}
+    all_locations: dict[str, dict] = {}
+    entity_paths: dict[str, str] = {}
 
     from gurpsai.app.services.files import CampaignFileService
     from gurpsai.app.services.link_resolver import LinkResolver, is_reference
@@ -225,6 +239,15 @@ def validate_campaign() -> CampaignValidateResponse:
             except Exception:
                 pass
                 
+            if isinstance(data_dict, dict) and data_dict.get("name"):
+                name = data_dict["name"]
+                if "internalStructure" in data_dict:
+                    all_locations[name] = data_dict
+                    entity_paths[name] = f"Campaign/{rel_path}"
+                elif "attributes" in data_dict and "pointTotal" in data_dict:
+                    all_characters[name] = data_dict
+                    entity_paths[name] = f"Campaign/{rel_path}"
+
             if "02_Characters" in rel_path or "Bestiary" in rel_path:
                 scanned += 1
                 CharacterData.model_validate_json(content)
@@ -291,7 +314,28 @@ def validate_campaign() -> CampaignValidateResponse:
         except Exception as e:
             errors.append(f"[{rel_path}] Corrupt JSON: {str(e)}")
 
-    return CampaignValidateResponse(scanned_files=scanned, errors=errors, dangling=dangling)
+    party_location = ""
+    try:
+        state = json.loads((camp_path / "state.json").read_text(encoding="utf-8"))
+        party_location = str(state.get("currentLocation") or "")
+    except Exception:
+        pass  # No state file yet is normal for a fresh campaign.
+
+    from gurpsai.app.services.loose_ends import collect as collect_loose_ends
+    loose = [
+        LooseEndItem(
+            name=end.name, source_path=end.source_path,
+            issue=end.issue, label=end.label, detail=end.detail,
+        )
+        for end in collect_loose_ends(
+            all_characters, all_locations,
+            party_location=party_location, paths=entity_paths,
+        )
+    ]
+
+    return CampaignValidateResponse(
+        scanned_files=scanned, errors=errors, dangling=dangling, loose_ends=loose,
+    )
 
 class RegistryItem(BaseModel):
     id: str
