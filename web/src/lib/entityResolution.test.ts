@@ -98,3 +98,19 @@ describe('findMissingEntities', () => {
     expect(missing).toEqual(['Ghost Chapter']);
   });
 });
+
+describe("placeholder parity with the backend", () => {
+  // link_resolver.PLACEHOLDER_VALUES must match this list exactly; if they
+  // drift, the UI and the validator disagree about what counts as dangling.
+  it.each(["", "tbd", "tba", "none", "n/a", "?", "???", "unknown"])(
+    "treats %p as a placeholder, not an entity name",
+    (value) => {
+      expect(isReferenceName(value)).toBe(false);
+    }
+  );
+
+  it("still accepts real names that merely contain a placeholder word", () => {
+    expect(isReferenceName("Unknown Soldier")).toBe(true);
+    expect(isReferenceName("The None Society")).toBe(true);
+  });
+});

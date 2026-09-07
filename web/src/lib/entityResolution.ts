@@ -9,7 +9,10 @@ import { RegistryItem } from "./api";
  */
 
 /** Values that are never real entity references. */
-const PLACEHOLDER_VALUES = new Set(["", "tbd", "none", "n/a", "?"]);
+// Mirrors link_resolver.PLACEHOLDER_VALUES. "???" is the codebase's own unset
+// marker (CharacterData.pointTotal defaults to it) and "unknown" means undecided,
+// which is a loose end rather than a place. The two lists must not drift.
+const PLACEHOLDER_VALUES = new Set(["", "tbd", "tba", "none", "n/a", "?", "???", "unknown"]);
 
 /**
  * Normalize an entity name for matching: case, underscores, extensions,

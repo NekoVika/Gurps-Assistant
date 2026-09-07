@@ -9,7 +9,9 @@ from __future__ import annotations
 import re
 
 # Values that are never real entity references.
-PLACEHOLDER_VALUES = {"", "tbd", "none", "n/a", "?"}
+# "???" is the codebase's own unset marker -- CharacterData.pointTotal defaults
+# to it -- and "unknown" means undecided, which is a loose end rather than a place.
+PLACEHOLDER_VALUES = {"", "tbd", "tba", "none", "n/a", "?", "???", "unknown"}
 
 _EXT_RE = re.compile(r"\.(json|md)$", re.IGNORECASE)
 _ORDINAL_PREFIX_RE = re.compile(r"^\d+[.\s_-]+")
