@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { CharacterJSON } from "../lib/types";
-import { getMediaUrl, mendString } from "../lib/api";
+import { getMediaUrl, mendString, resolvePlacement, type ResolvedPlacement } from "../lib/api";
 import { InternalLink } from "./InternalLink";
 import { parseAttribute, parseTrait, parseSkill, parseGear, parseHitLocation } from "../lib/TraitFormatters";
 
@@ -69,6 +69,18 @@ type Props = {
 };
 
 export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: Props) {
+
+  // Placement is resolved rather than stored -- a companion's location is
+  // wherever the person they travel with is -- so it has to be asked for.
+  const [placement, setPlacement] = useState<ResolvedPlacement | null>(null);
+  useEffect(() => {
+    let live = true;
+    if (!data.name) return;
+    resolvePlacement(data.name)
+      .then(p => { if (live) setPlacement(p); })
+      .catch(() => { if (live) setPlacement(null); });
+    return () => { live = false; };
+  }, [data.name]);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const images = data.images || [];
   const safeImageIdx = images.length > 0 && activeImageIdx < images.length ? activeImageIdx : 0;
@@ -103,6 +115,12 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
           <div className="meta-badge">
             <span className="eyebrow">Status</span>
             <span className="value">{data.status || "Unknown"}</span>
+          </div>
+          <div className="meta-badge" title={placement?.chain?.length ? `Resolved through ${placement.chain.join(" → ")}` : undefined}>
+            <span className="eyebrow">Where</span>
+            <span className="value" style={placement && placement.status !== "placed" ? { color: "#79c0ff", opacity: 0.85 } : undefined}>
+              {placement ? placement.description : "…"}
+            </span>
           </div>
           <div className="meta-badge">
             <span className="eyebrow">Points</span>

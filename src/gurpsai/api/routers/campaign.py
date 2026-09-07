@@ -337,6 +337,77 @@ def validate_campaign() -> CampaignValidateResponse:
         scanned_files=scanned, errors=errors, dangling=dangling, loose_ends=loose,
     )
 
+
+class PlacementResponse(BaseModel):
+    name: str
+    status: str
+    location: str | None = None
+    chain: list[str] = []
+    ancestors: list[str] = []
+    unresolved_target: str | None = None
+    description: str = ""
+
+
+def _placement_index(camp_path: Path):
+    """Build a placement index from the campaign on disk.
+
+    Rescans each call. At local-campaign scale that is cheap, and it keeps the
+    answer correct after an edit without any cache to invalidate.
+    """
+    from gurpsai.app.services.placement import PlacementIndex
+
+    characters: dict[str, dict] = {}
+    locations: dict[str, dict] = {}
+    for file_path in camp_path.rglob("*.json"):
+        if file_path.name.startswith("."):
+            continue
+        try:
+            data = json.loads(file_path.read_text(encoding="utf-8", errors="replace"))
+        except Exception:
+            continue
+        if not isinstance(data, dict) or not data.get("name"):
+            continue
+        if "internalStructure" in data:
+            locations[data["name"]] = data
+        elif "attributes" in data and "pointTotal" in data:
+            characters[data["name"]] = data
+
+    party = ""
+    try:
+        state = json.loads((camp_path / "state.json").read_text(encoding="utf-8"))
+        party = str(state.get("currentLocation") or "")
+    except Exception:
+        pass
+
+    return PlacementIndex(locations=locations, characters=characters, party_location=party)
+
+
+@router.get("/placement", response_model=PlacementResponse)
+def resolve_placement(name: str) -> PlacementResponse:
+    """Where an entity actually is, following any 'travels with' links."""
+    config = load_app_config()
+    active_path = config.campaign.active_path.strip()
+    if not active_path:
+        raise HTTPException(status_code=400, detail="Active campaign path is empty.")
+    camp_path = Path(active_path)
+    if not camp_path.is_absolute():
+        camp_path = (ROOT / active_path).resolve()
+    if not camp_path.exists():
+        raise HTTPException(status_code=404, detail="Campaign directory does not exist.")
+
+    index = _placement_index(camp_path)
+    placement = index.resolve(name)
+    return PlacementResponse(
+        name=name,
+        status=placement.status,
+        location=placement.location,
+        chain=list(placement.chain),
+        ancestors=list(placement.ancestors),
+        unresolved_target=placement.unresolved_target,
+        description=index.describe(name),
+    )
+
+
 class RegistryItem(BaseModel):
     id: str
     title: str

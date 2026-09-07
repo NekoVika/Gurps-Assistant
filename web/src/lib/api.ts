@@ -74,10 +74,20 @@ export type DanglingRef = {
   suggested_type: string;
 };
 
+/** Linkage that is incomplete rather than broken. Meant to reach zero. */
+export type LooseEnd = {
+  name: string;
+  source_path: string;
+  issue: string;
+  label: string;
+  detail: string;
+};
+
 export type CampaignValidateResponse = {
   scanned_files: number;
   errors: string[];
   dangling: DanglingRef[];
+  loose_ends?: LooseEnd[];
 };
 
 export type FileTreeNode = {
@@ -621,6 +631,23 @@ export async function validateCampaign(): Promise<CampaignValidateResponse> {
     const errorData = await res.json().catch(() => null);
     throw new Error(errorData?.detail || `Failed to validate campaign. Status: ${res.status}`);
   }
+  return res.json();
+}
+
+/** Where an entity actually is, after following any "travels with" links. */
+export type ResolvedPlacement = {
+  name: string;
+  status: "placed" | "unplaced" | "unresolved" | "cycle";
+  location: string | null;
+  chain: string[];
+  ancestors: string[];
+  unresolved_target: string | null;
+  description: string;
+};
+
+export async function resolvePlacement(name: string): Promise<ResolvedPlacement> {
+  const res = await fetch(`${apiBaseUrl()}/campaign/placement?name=${encodeURIComponent(name)}`);
+  if (!res.ok) throw new Error(`Failed to resolve placement. Status: ${res.status}`);
   return res.json();
 }
 

@@ -123,3 +123,18 @@ def test_describe_shows_the_answer_and_the_route():
 def test_describe_stays_plain_for_a_direct_placement():
     idx = index({"Rick": {"name": "Rick", "location": "Lower Market"}})
     assert idx.describe("Rick") == "Lower Market"
+
+
+def test_a_pc_resolves_to_the_party_regardless_of_their_own_field():
+    # Their location text is a leftover note ("HQ / Current Mission"); the
+    # authoritative answer is campaign state, and the loose-ends report exempts
+    # them on exactly this basis.
+    idx = index({"Jamie Hass": {"name": "Jamie Hass", "kind": "pc", "location": "HQ / Current Mission"}})
+    got = idx.resolve("Jamie Hass")
+    assert got.status == "placed"
+    assert got.location == "HQ"
+
+
+def test_a_pc_with_no_party_position_says_so():
+    idx = index({"Jamie": {"name": "Jamie", "kind": "pc"}}, party="")
+    assert idx.resolve("Jamie").status == "unresolved"

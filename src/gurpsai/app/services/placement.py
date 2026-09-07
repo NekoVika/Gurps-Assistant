@@ -89,6 +89,18 @@ class PlacementIndex:
             settled = start.get("name", name)
             return self._placed_at(settled, [])
 
+        # A PC is wherever the party is, whatever their file happens to say --
+        # the loose-ends report exempts them for the same reason, and the two
+        # must agree or the passport contradicts the report.
+        if start.get("kind") == "pc":
+            settled = self._location_named(self.party_location)
+            if not settled:
+                return Placement(
+                    status="unresolved",
+                    unresolved_target=self.party_location or "(party location unset)",
+                )
+            return self._placed_at(settled, [settled])
+
         chain: list[str] = []
         seen = {normalize(name)}
         current = start
