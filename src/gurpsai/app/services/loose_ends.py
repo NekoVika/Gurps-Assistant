@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from gurpsai.app.services.link_resolver import is_reference
+from gurpsai.app.services.link_resolver import is_reference, normalize
 from gurpsai.app.services.location_tree import find_cycles
 from gurpsai.app.services.placement import PlacementIndex
 
@@ -31,6 +31,7 @@ ISSUE_LABELS = {
     "unresolved_location": "Placed somewhere that has no file",
     "unplaced_spatial": "Not anywhere yet",
     "unplaced_story": "Not part of any story node yet",
+    "one_sided_relation": "Relation recorded on one side only",
 }
 
 
@@ -56,6 +57,17 @@ def _exempt_from_story(data: dict) -> bool:
     return data.get("kind", "individual") in {"type", "pc"}
 
 
+def _related_names(data: dict) -> list[tuple[str, str]]:
+    """(target name, relation text) pairs from a character's relation list."""
+    pairs: list[tuple[str, str]] = []
+    for entry in data.get("characterRelations") or []:
+        if isinstance(entry, dict) and isinstance(entry.get("name"), str):
+            pairs.append((entry["name"], str(entry.get("relation") or "")))
+        elif isinstance(entry, str):
+            pairs.append((entry, ""))
+    return pairs
+
+
 def collect(
     characters: dict[str, dict],
     locations: dict[str, dict],
@@ -76,7 +88,7 @@ def collect(
 
     # Structural problems first -- a cycle makes everything downstream unreliable.
     parents = {
-        name.lower(): data.get("parentLocation", "")
+        normalize(name): data.get("parentLocation", "")
         for name, data in locations.items()
         if (data.get("parentLocation") or "").strip()
     }
@@ -126,6 +138,35 @@ def collect(
                     issue="unplaced_story",
                     detail="belongs to no episode, chapter or encounter yet",
                 ))
+
+    # Relation sync writes both sides on save, so a half-recorded relation means
+    # a file was edited outside the app or a save did not finish. Reported from
+    # one side only, or every pair would appear twice.
+    by_norm = {normalize(n): (n, d) for n, d in characters.items()}
+    seen_pairs: set[frozenset[str]] = set()
+    for name, data in sorted(characters.items()):
+        for target_name, relation in _related_names(data):
+            if not is_reference(target_name):
+                continue
+            key = normalize(target_name)
+            match = by_norm.get(key)
+            if match is None:
+                continue  # no file for it -- already a dangling reference
+            other_name, other = match
+            pair = frozenset({name, other_name})
+            if pair in seen_pairs or other_name == name:
+                continue
+            back = {normalize(t) for t, _ in _related_names(other)}
+            if normalize(name) in back:
+                continue
+            seen_pairs.add(pair)
+            described = f" as “{relation}”" if relation else ""
+            found.append(LooseEnd(
+                name=name,
+                source_path=paths.get(name, ""),
+                issue="one_sided_relation",
+                detail=f"lists {other_name}{described}, but {other_name} does not list them back",
+            ))
 
     order = list(ISSUE_LABELS)
     found.sort(key=lambda e: (order.index(e.issue) if e.issue in order else 99, e.name))

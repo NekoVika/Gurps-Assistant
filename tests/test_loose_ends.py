@@ -126,3 +126,49 @@ def test_a_pcs_location_text_is_not_validated_either():
     # A PC is wherever the party is; whatever the field says is a leftover note.
     ends = collect({"Jamie": char("Jamie", kind="pc", location="HQ / Current Mission")}, LOCATIONS)
     assert ends == []
+
+
+def test_a_mutual_relation_is_not_a_loose_end():
+    chars = {
+        "Rick": char("Rick", location="HQ", storyPlacement={"node": "Ch 2", "mode": "fixture"},
+                     characterRelations=[{"name": "Rachel", "relation": "Handler"}]),
+        "Rachel": char("Rachel", location="HQ", storyPlacement={"node": "Ch 2", "mode": "fixture"},
+                       characterRelations=[{"name": "Rick", "relation": "Asset"}]),
+    }
+    assert collect(chars, LOCATIONS) == []
+
+
+def test_a_relation_recorded_on_one_side_only_is_reported():
+    chars = {
+        "Rick": char("Rick", location="HQ", storyPlacement={"node": "Ch 2", "mode": "fixture"},
+                     characterRelations=[{"name": "Rachel", "relation": "Handler"}]),
+        "Rachel": char("Rachel", location="HQ", storyPlacement={"node": "Ch 2", "mode": "fixture"}),
+    }
+    ends = [e for e in collect(chars, LOCATIONS) if e.issue == "one_sided_relation"]
+    assert len(ends) == 1
+    assert "Rachel" in ends[0].detail and "Handler" in ends[0].detail
+
+
+def test_each_broken_pair_is_reported_once_not_twice():
+    chars = {
+        "Rick": char("Rick", location="HQ", storyPlacement={"node": "Ch 2", "mode": "fixture"},
+                     characterRelations=[{"name": "Rachel", "relation": "Handler"}]),
+        "Rachel": char("Rachel", location="HQ", storyPlacement={"node": "Ch 2", "mode": "fixture"}),
+    }
+    assert len([e for e in collect(chars, LOCATIONS) if e.issue == "one_sided_relation"]) == 1
+
+
+def test_a_relation_to_a_missing_character_is_left_to_the_dangling_report():
+    chars = {"Rick": char("Rick", location="HQ", storyPlacement={"node": "Ch 2", "mode": "fixture"},
+                          characterRelations=[{"name": "Nobody", "relation": "Rival"}])}
+    assert [e for e in collect(chars, LOCATIONS) if e.issue == "one_sided_relation"] == []
+
+
+def test_reciprocity_matching_folds_case_and_underscores():
+    chars = {
+        "The Watch": char("The Watch", location="HQ", storyPlacement={"node": "Ch 2", "mode": "fixture"},
+                          characterRelations=[{"name": "Rick", "relation": "Watches"}]),
+        "Rick": char("Rick", location="HQ", storyPlacement={"node": "Ch 2", "mode": "fixture"},
+                     characterRelations=[{"name": "the_watch", "relation": "Watched by"}]),
+    }
+    assert [e for e in collect(chars, LOCATIONS) if e.issue == "one_sided_relation"] == []
