@@ -51,6 +51,29 @@ def is_reference(name: object) -> bool:
     return True
 
 
+def resolve_name(query: object, names: list[str]) -> str | None:
+    """Match a name against candidates: exact, then normalised, then unique tail.
+
+    The tail rule is what lets state.json's "HQ" reach a location actually named
+    "Apex Infrastructure Group HQ". Every caller must use this, or two matching
+    rules drift apart and the same link resolves in one place and not another.
+    """
+    if not isinstance(query, str) or is_placeholder(query):
+        return None
+    raw = query.strip()
+    for candidate in names:
+        if candidate == raw:
+            return candidate
+    wanted = normalize(raw)
+    if not wanted:
+        return None
+    by_norm = {normalize(n): n for n in names if n}
+    if wanted in by_norm:
+        return by_norm[wanted]
+    tails = [original for norm, original in by_norm.items() if norm.endswith(wanted)]
+    return tails[0] if len(tails) == 1 else None
+
+
 class LinkResolver:
     """Resolves referenced names against the campaign registry.
 

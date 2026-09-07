@@ -408,6 +408,76 @@ def resolve_placement(name: str) -> PlacementResponse:
     )
 
 
+
+class ScopeMemberItem(BaseModel):
+    name: str
+    via: str
+    placed_at: str
+    path: str = ""
+
+
+class ScopeResponse(BaseModel):
+    node: str
+    lineage: list[str] = []
+    members: list[ScopeMemberItem] = []
+
+
+@router.get("/scope", response_model=ScopeResponse)
+def story_scope(node: str) -> ScopeResponse:
+    """Who and what belongs to one story node.
+
+    Pinned members are placed at the node itself; inherited ones are fixtures
+    declared further up, which is the only kind of placement that reaches down.
+    """
+    from gurpsai.app.services.story_scope import StoryScope
+
+    config = load_app_config()
+    active_path = config.campaign.active_path.strip()
+    if not active_path:
+        raise HTTPException(status_code=400, detail="Active campaign path is empty.")
+    camp_path = Path(active_path)
+    if not camp_path.is_absolute():
+        camp_path = (ROOT / active_path).resolve()
+    if not camp_path.exists():
+        raise HTTPException(status_code=404, detail="Campaign directory does not exist.")
+
+    nodes: dict[str, dict] = {}
+    node_paths: dict[str, str] = {}
+    entities: dict[str, dict] = {}
+    paths: dict[str, str] = {}
+    for file_path in camp_path.rglob("*.json"):
+        if file_path.name.startswith("."):
+            continue
+        try:
+            data = json.loads(file_path.read_text(encoding="utf-8", errors="replace"))
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        name = data.get("name") or data.get("title")
+        if not name:
+            continue
+        rel = f"Campaign/{file_path.relative_to(camp_path).as_posix()}"
+        if "childLinks" in data or str(data.get("type", "")).lower() in {"episode", "chapter", "encounter"}:
+            nodes[name] = data
+            node_paths[name] = rel
+        if "attributes" in data or "internalStructure" in data:
+            entities[name] = data
+            paths[name] = rel
+
+    scope = StoryScope(nodes=nodes, entities=entities, node_paths=node_paths)
+    return ScopeResponse(
+        node=node,
+        lineage=scope.lineage(node),
+        members=[
+            ScopeMemberItem(
+                name=m.name, via=m.via, placed_at=m.placed_at, path=paths.get(m.name, "")
+            )
+            for m in scope.members(node)
+        ],
+    )
+
+
 class RegistryItem(BaseModel):
     id: str
     title: str

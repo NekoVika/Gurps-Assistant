@@ -651,6 +651,27 @@ export async function resolvePlacement(name: string): Promise<ResolvedPlacement>
   return res.json();
 }
 
+/** One entity that belongs to a story node. */
+export type ScopeMember = {
+  name: string;
+  /** "pinned" = placed at this node; "inherited" = a fixture declared above it. */
+  via: "pinned" | "inherited";
+  placed_at: string;
+  path: string;
+};
+
+export type StoryScopeResponse = {
+  node: string;
+  lineage: string[];
+  members: ScopeMember[];
+};
+
+export async function getStoryScope(node: string): Promise<StoryScopeResponse> {
+  const res = await fetch(`${apiBaseUrl()}/campaign/scope?node=${encodeURIComponent(node)}`);
+  if (!res.ok) throw new Error(`Failed to load story scope. Status: ${res.status}`);
+  return res.json();
+}
+
 export type RegistryItem = {
   id: string;
   title: string;

@@ -15,7 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from gurpsai.app.services.link_resolver import is_reference, normalize
+from gurpsai.app.services.link_resolver import is_reference, normalize, resolve_name
 from gurpsai.app.services.location_tree import ancestors
 
 Status = Literal["placed", "unplaced", "unresolved", "cycle"]
@@ -65,8 +65,10 @@ class PlacementIndex:
     # -- internals ---------------------------------------------------------
 
     def _location_named(self, target: str) -> str | None:
-        entry = self._loc.get(normalize(target))
-        return entry.get("name") if entry else None
+        # Same rule the rest of the app resolves links by, so "HQ" reaches a
+        # location named "Apex Infrastructure Group HQ" here too.
+        matched = resolve_name(target, [d.get("name", n) for n, d in self.locations.items()])
+        return matched
 
     def _placed_at(self, location: str, chain: list[str]) -> Placement:
         return Placement(

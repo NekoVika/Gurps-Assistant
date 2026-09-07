@@ -13,6 +13,10 @@ from __future__ import annotations
 import re
 
 from gurpsai.app.services.link_resolver import normalize
+# Re-exported: the walk is identical on both axes, so it lives in tree.py.
+from gurpsai.app.services.tree import ancestors, find_cycles
+
+__all__ = ["split_region", "resolve_parent", "ancestors", "find_cycles"]
 
 # "Rain World (Lower Regions)" / "Rain World - Drowned Zone" -- a parent with a
 # sub-area stapled on. The qualifier is not always spatial ("circa 1983"), so it
@@ -71,47 +75,3 @@ def resolve_parent(candidate: str, self_name: str, known_names: list[str]) -> st
         if wanted.startswith(norm) and (best is None or len(norm) > len(normalize(best))):
             best = original
     return best
-
-
-def ancestors(name: str, parents: dict[str, str]) -> list[str]:
-    """Every containing Location, nearest first.
-
-    Stops on a cycle rather than looping, so a malformed tree degrades to a
-    partial answer instead of hanging the caller.
-    """
-    chain: list[str] = []
-    seen = {normalize(name)}
-    current = parents.get(normalize(name))
-
-    while current:
-        key = normalize(current)
-        if key in seen:
-            break
-        seen.add(key)
-        chain.append(current)
-        current = parents.get(key)
-
-    return chain
-
-
-def find_cycles(parents: dict[str, str]) -> list[list[str]]:
-    """Every containment cycle, each reported once from its lowest member."""
-    cycles: list[list[str]] = []
-    reported: set[frozenset[str]] = set()
-
-    for start in parents:
-        seen: list[str] = []
-        current: str | None = start
-        while current:
-            key = normalize(current)
-            if key in seen:
-                loop = seen[seen.index(key):]
-                fingerprint = frozenset(loop)
-                if fingerprint not in reported:
-                    reported.add(fingerprint)
-                    cycles.append(loop)
-                break
-            seen.append(key)
-            current = parents.get(key)
-
-    return cycles
