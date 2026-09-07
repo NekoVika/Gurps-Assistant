@@ -45,7 +45,8 @@ class CharacterData(BaseModel):
 class LocationData(BaseModel):
     name: str = Field("Unknown Location", title="Name")
     type: str = Field("", title="Type")
-    region: str = Field("", title="Region")
+    parentLocation: str = Field("", title="Parent Location", description="Name of the Location that contains this one. Empty means top level. Containment rolls upward only: being in a room implies being in the building, never the reverse.")
+    region: str = Field("", title="Region", description="Human-readable label for where/when this sits. Not structural -- parentLocation carries containment.")
     techLevel: str = Field("", title="Tech Level")
     manaLevel: str = Field("", title="Mana Level")
     

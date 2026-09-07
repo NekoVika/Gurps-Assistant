@@ -84,6 +84,7 @@ export interface CharacterJSON {
 export interface LocationJSON {
     name: string;
     type: string;
+    parentLocation?: string;
     region: string;
     techLevel: string;
     manaLevel: string;
