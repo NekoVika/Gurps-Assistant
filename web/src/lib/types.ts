@@ -1,3 +1,10 @@
+export interface StoryPlacementJSON {
+    /** Episode, chapter or encounter name. Empty means unplaced. */
+    node: string;
+    /** "appearance" rolls upward only; "fixture" is present throughout, including descendants. */
+    mode: "appearance" | "fixture";
+}
+
 export interface InternalStructureJSON {
     title: string;
     items: string[];
@@ -47,6 +54,7 @@ export interface RelationItem {
 export interface CharacterJSON {
     name: string;
     concept: string;
+    kind?: "individual" | "type" | "pc";
     significance: string;
     role: string;
     location?: string;
@@ -64,6 +72,7 @@ export interface CharacterJSON {
     characterRelations?: RelationItem[];
     locationRelations?: RelationItem[];
     factionRelations?: RelationItem[];
+    storyPlacement?: StoryPlacementJSON;
     storyAppearances?: string[];
 
     pointTotal: string;
@@ -84,6 +93,7 @@ export interface CharacterJSON {
 export interface LocationJSON {
     name: string;
     type: string;
+    storyPlacement?: StoryPlacementJSON;
     parentLocation?: string;
     region: string;
     techLevel: string;
