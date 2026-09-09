@@ -6,7 +6,9 @@ Goal: a GM can prepare a campaign from zero with no dead ends.
 ## 0. Pre-flight (dev machine)
 
 - [ ] `python -m pytest tests/` — all green
-- [ ] `cd web && npx tsc --noEmit && npx vitest run` — all green
+- [ ] `cd web && npm run typecheck && npx vitest run` — all green
+      (not `npx tsc --noEmit`: the root tsconfig is a solution file with
+      `"files": []`, so that command checks nothing and reports clean)
 - [ ] Version parity — covered by `tests/test_version_parity.py`, which asserts
       `__version__.py`, `setup.py`, `web/package.json`, the OpenAPI app version
       and `/health` all agree. Drift breaks `/update/check` and makes a fresh
