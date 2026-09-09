@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { inferPlacement } from '../lib/placementContext';
 import {
   FileTreeNode,
   FileContent,
@@ -34,6 +35,8 @@ interface CampaignState {
 
   // Pending "create stub for missing entity?" prompt (ConfirmModal in MainWorkspace)
   stubPrompt: { name: string; type: string; parentPath?: string } | null;
+  /** Why the last stub attempt was refused, shown in the prompt. */
+  stubNotice: string | null;
 
   isEditing: boolean;
   editedContent: string;
@@ -57,7 +60,8 @@ interface CampaignState {
   setEditedContent: (content: string) => void;
   setIsDeleteModalOpen: (isOpen: boolean) => void;
   setStubPrompt: (prompt: { name: string; type: string; parentPath?: string } | null) => void;
-  executeCreateStub: () => Promise<void>;
+  /** `open` navigates to the new file; by default the GM stays where they were. */
+  executeCreateStub: (open?: boolean) => Promise<void>;
   handleSaveEdit: () => Promise<void>;
   handleSaveParsedData: (newData: any) => Promise<void>;
   handleMendFile: (targetType: string, provider: string, model: string) => Promise<void>;
@@ -85,6 +89,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   selectedFile: null,
   fileContentError: null,
   stubPrompt: null,
+  stubNotice: null,
 
   isEditing: false,
   editedContent: "",
@@ -117,25 +122,35 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     }
   },
 
-  setStubPrompt: (prompt) => set({ stubPrompt: prompt }),
+  setStubPrompt: (prompt) => set({ stubPrompt: prompt, stubNotice: null }),
 
-  executeCreateStub: async () => {
+  executeCreateStub: async (open = false) => {
     const prompt = get().stubPrompt;
     if (!prompt) return;
+    // Placement is read from where the GM was standing, not asked for.
+    const context = inferPlacement(get().selectedFile?.content, prompt.type);
     try {
       const res = await createBatchStubs([{
         name: prompt.name,
         type: prompt.type,
-        parent_path: prompt.parentPath
+        parent_path: prompt.parentPath,
+        ...context,
       }]);
-      set({ stubPrompt: null });
+      if (res.paths.length === 0 && res.rejected && res.rejected.length > 0) {
+        // Keep the prompt open so the reason is read where the name is.
+        set({ stubNotice: res.rejected[0].reason });
+        return;
+      }
+      set({ stubPrompt: null, stubNotice: null });
       await get().refreshCampaignArtifacts();
-      if (res.paths.length > 0) {
+      // Creating from context leaves the GM in context. "Rick exists, moving
+      // on" is the common case; being yanked to an empty sheet is the
+      // interruption, so opening it is an explicit choice.
+      if (open && res.paths.length > 0) {
         get().setSelectedPath(res.paths[0]);
       }
     } catch (err: any) {
-      set({ stubPrompt: null });
-      alert("Failed to create stub: " + (err?.message ?? err));
+      set({ stubNotice: "Could not create it: " + (err?.message ?? err) });
     }
   },
 

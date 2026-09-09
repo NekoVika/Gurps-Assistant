@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import json
 from pathlib import Path
+from typing import Literal
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
@@ -502,14 +503,27 @@ class StubRequest(BaseModel):
     name: str
     type: str
     parent_path: str | None = None
+    # Placement inferred from where the GM was standing when they clicked create.
+    # All optional: a stub with none of these is still a valid, unplaced entity.
+    location: str | None = None
+    parent_location: str | None = None
+    story_node: str | None = None
+    story_mode: Literal["appearance", "fixture"] = "appearance"
+    kind: Literal["individual", "type", "pc"] | None = None
 
 class BatchStubRequest(BaseModel):
     stubs: list[StubRequest]
+
+class RejectedStub(BaseModel):
+    name: str
+    reason: str
 
 class BatchStubResponse(BaseModel):
     created: int
     paths: list[str]
     skipped: list[str] = []
+    #: Names refused outright, with why. A batch never fails on one bad name.
+    rejected: list[RejectedStub] = []
 
 @router.post("/stubs/batch", response_model=BatchStubResponse)
 def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
@@ -524,7 +538,18 @@ def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
     created_paths = []
     skipped = []
 
+    from gurpsai.app.services.naming import generic_name_problem
+    rejected: list[RejectedStub] = []
+
     for stub in request.stubs:
+        # A bare category word collides with every other entity given the same
+        # non-name; refusing it here costs a retype instead of a mis-parented
+        # chapter later.
+        problem = generic_name_problem(stub.name)
+        if problem:
+            rejected.append(RejectedStub(name=stub.name, reason=problem))
+            continue
+
         safe_name = "".join(c for c in stub.name if c.isalnum() or c in (" ", "-", "_")).strip()
         safe_name = re.sub(r'^[\d_]+', '', safe_name).strip()
         if not safe_name:
@@ -538,11 +563,23 @@ def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
 
         filename = safe_name.replace(" ", "_") + ".json"
         t_lower = stub.type.lower()
+        placement = {"node": stub.story_node or "", "mode": stub.story_mode}
         if "char" in t_lower or "npc" in t_lower:
-            data = CharacterData(name=stub.name).model_dump()
-            rel_path = f"Campaign/02_Characters/Main_Cast/{filename}"
+            data = CharacterData(
+                name=stub.name,
+                kind=stub.kind or "individual",
+                location=stub.location or "",
+                storyPlacement=placement,
+            ).model_dump()
+            # kind decides the folder, never the other way round.
+            folder = {"type": "Bestiary", "pc": "PCs"}.get(stub.kind or "individual", "Main_Cast")
+            rel_path = f"Campaign/02_Characters/{folder}/{filename}"
         elif "loc" in t_lower:
-            data = LocationData(name=stub.name).model_dump()
+            data = LocationData(
+                name=stub.name,
+                parentLocation=stub.parent_location or "",
+                storyPlacement=placement,
+            ).model_dump()
             rel_path = f"Campaign/01_World_Bible/Locations/{filename}"
         elif "fac" in t_lower:
             data = FactionData(name=stub.name).model_dump()
@@ -581,7 +618,7 @@ def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
             service.write_file(rel_path, json.dumps(data, indent=2))
             created_paths.append(rel_path)
 
-    return BatchStubResponse(created=len(created_paths), paths=created_paths, skipped=skipped)
+    return BatchStubResponse(created=len(created_paths), paths=created_paths, skipped=skipped, rejected=rejected)
 
 from gurpsai.app.services.chat import ChatService
 from gurpsai.providers.base import ChatMessage as ProviderChatMessage

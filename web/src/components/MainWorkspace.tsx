@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { inferPlacement, describePlacement } from '../lib/placementContext';
 import { useWorkspaceStore } from "../stores/useWorkspaceStore";
 import { useCampaignStore } from "../stores/useCampaignStore";
 import { useChatStore } from "../stores/useChatStore";
@@ -36,8 +37,10 @@ export function MainWorkspace() {
     handleCampaignInit,
     setSelectedPath,
     stubPrompt,
+    stubNotice,
     setStubPrompt,
-    executeCreateStub
+    executeCreateStub,
+    selectedFile
   } = useCampaignStore();
   const { loadSessions } = useChatStore();
 
@@ -283,10 +286,19 @@ export function MainWorkspace() {
       <ConfirmModal
         isOpen={stubPrompt !== null}
         title="Create proposed entity?"
-        message={`No file exists for "${stubPrompt?.name ?? ""}" yet. Create a ${stubPrompt?.type ?? "Character"} stub for it?`}
-        confirmText="Create Stub"
+        message={[
+          `No file exists for "${stubPrompt?.name ?? ""}" yet. Create a ${stubPrompt?.type ?? "Character"} stub for it?`,
+          // Placement is read from where the GM is standing; say so, so it can be
+          // corrected in the editor rather than discovered later.
+          stubPrompt ? describePlacement(inferPlacement(selectedFile?.content, stubPrompt.type)) : "",
+        ].filter(Boolean).join(" ")}
+        note={stubNotice}
+        confirmDisabled={stubNotice !== null}
+        confirmText="Create"
+        secondaryText="Create & open"
+        onSecondary={() => executeCreateStub(true)}
         cancelText="Cancel"
-        onConfirm={executeCreateStub}
+        onConfirm={() => executeCreateStub(false)}
         onCancel={() => setStubPrompt(null)}
       />
 

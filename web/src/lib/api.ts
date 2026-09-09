@@ -692,9 +692,25 @@ export type StubRequest = {
   name: string;
   type: string;
   parent_path?: string;
+  /** Placement inferred from where the GM was standing; all optional. */
+  location?: string;
+  parent_location?: string;
+  story_node?: string;
+  story_mode?: "appearance" | "fixture";
+  kind?: "individual" | "type" | "pc";
 };
 
-export async function createBatchStubs(stubs: StubRequest[]): Promise<{ created: number, paths: string[], skipped: string[] }> {
+export type RejectedStub = { name: string; reason: string };
+
+export type BatchStubResult = {
+  created: number;
+  paths: string[];
+  skipped: string[];
+  /** Names refused outright, with why. A batch never fails on one bad name. */
+  rejected?: RejectedStub[];
+};
+
+export async function createBatchStubs(stubs: StubRequest[]): Promise<BatchStubResult> {
   const response = await fetch(`${apiBaseUrl()}/campaign/stubs/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
