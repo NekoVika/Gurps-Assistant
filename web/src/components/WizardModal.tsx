@@ -4,6 +4,10 @@ import type { WizardDef } from "../lib/wizards";
 type WizardModalProps = {
   wizard: WizardDef | null;
   dynamicOptions?: { episodes: string[]; chapters: string[]; encounters: string[] };
+  /** Deepening an entity that already exists rather than creating one.
+   *  `path` overrides the computed target and `answers` pre-fills the form from
+   *  what the entity already says, so the GM is not retyping their own NPC. */
+  deepen?: { path: string; answers: Record<string, string> } | null;
   onClose: () => void;
   /** Structured generation path — the only generation path now. */
   onSubmitStructured: (compiledPrompt: string, schema: Record<string, any>, targetPath: string, pydanticModel: string | undefined, answers: Record<string, string>) => Promise<void>;
@@ -11,7 +15,7 @@ type WizardModalProps = {
 };
 
 export const WizardModal: React.FC<WizardModalProps> = ({
-  wizard, dynamicOptions, onClose, onSubmitStructured, onCreateStub
+  wizard, dynamicOptions, deepen, onClose, onSubmitStructured, onCreateStub
 }) => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -41,9 +45,10 @@ export const WizardModal: React.FC<WizardModalProps> = ({
           }
         });
       });
-      setAnswers(initial);
+      // What the entity already says wins over the field defaults.
+      setAnswers(deepen ? { ...initial, ...deepen.answers } : initial);
     }
-  }, [wizard]);
+  }, [wizard, deepen]);
 
   // ── Step logic (hoisted above hooks that depend on it) ─────────────────────
 
@@ -96,7 +101,9 @@ export const WizardModal: React.FC<WizardModalProps> = ({
     setGenerating(true);
     try {
       const prompt = interpolate(wizard!.aiPromptTemplate);
-      const targetPath = interpolate(wizard!.stubTargetPath);
+      // Deepening writes back to the entity being deepened, never to a path
+      // derived from the name -- an edited name would otherwise fork the file.
+      const targetPath = deepen ? deepen.path : interpolate(wizard!.stubTargetPath);
       await onSubmitStructured(prompt, wizard!.outputSchema, targetPath, wizard!.pydanticModel, answers);
       // Success: parent closes the modal via setActiveWizard(null)
     } catch (err: any) {

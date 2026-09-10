@@ -16,7 +16,8 @@ import { ActivityPanel } from "./ActivityPanel";
 import { TrashbinPanel } from "./TrashbinPanel";
 import { ConfirmModal } from "./ConfirmModal";
 import { WizardModal } from "./WizardModal";
-import { type WizardDef } from "../lib/wizards";
+import { mergeGenerated, describeMerge } from "../lib/mergeGenerated";
+import { WIZARDS, type WizardDef } from "../lib/wizards";
 import { getFileContent, writeFileContent, runStructuredChat } from '../lib/api';
 import { updateParentChildLinks } from '../lib/parentLinks';
 import { useToast } from '../context/ToastContext';
@@ -45,6 +46,21 @@ export function MainWorkspace() {
   const { loadSessions } = useChatStore();
 
   const [activeWizard, setActiveWizard] = useState<WizardDef | null>(null);
+  const [deepenTarget, setDeepenTarget] = useState<{ path: string; answers: Record<string, string> } | null>(null);
+
+  // A passport can ask for a wizard to be re-opened against an existing entity;
+  // the modal lives here, so the request is answered here.
+  const deepenRequest = useCampaignStore(s => s.deepenRequest);
+  const setDeepenRequest = useCampaignStore(s => s.setDeepenRequest);
+  useEffect(() => {
+    if (!deepenRequest) return;
+    const wizard = WIZARDS.find(w => w.id === deepenRequest.wizardId);
+    if (wizard) {
+      setDeepenTarget({ path: deepenRequest.path, answers: deepenRequest.answers });
+      setActiveWizard(wizard);
+    }
+    setDeepenRequest(null);
+  }, [deepenRequest, setDeepenRequest]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,7 +172,8 @@ export function MainWorkspace() {
       <WizardModal 
          wizard={activeWizard}
          dynamicOptions={dynamicWizardOptions}
-         onClose={() => setActiveWizard(null)}
+         deepen={deepenTarget}
+         onClose={() => { setActiveWizard(null); setDeepenTarget(null); }}
          onSubmitStructured={async (compiledPrompt, schema, targetPath, pydanticModel, answers) => {
             const tempWizard = activeWizard;
             // NOTE: do NOT call setActiveWizard(null) here.
@@ -217,7 +234,21 @@ export function MainWorkspace() {
                );
                // Apply wizard-level post-processing (e.g. expand armorCoverage → hitLocations).
                const result = tempWizard?.postProcess ? tempWizard.postProcess(rawResult) : rawResult;
-               const jsonStr = JSON.stringify(result, null, 2);
+
+               // Creating writes the result; deepening folds it into what is
+               // already there, so a generated field can fill a blank but can
+               // never replace something the GM wrote.
+               let toWrite = result;
+               let mergeNote = "";
+               if (deepenTarget) {
+                  const current = await getFileContent(deepenTarget.path);
+                  const existing = JSON.parse(current.content) as Record<string, unknown>;
+                  const report = mergeGenerated(existing, result);
+                  toWrite = report.merged;
+                  mergeNote = describeMerge(report);
+               }
+
+               const jsonStr = JSON.stringify(toWrite, null, 2);
                const writeResponse = await writeFileContent(targetPath, jsonStr);
                if (writeResponse.success) {
                  try {
@@ -228,8 +259,10 @@ export function MainWorkspace() {
                  await useCampaignStore.getState().refreshCampaignArtifacts();
                  setSelectedPath(targetPath);
                  setActiveWizard(null);
+                 const wasDeepening = deepenTarget !== null;
+                 setDeepenTarget(null);
                  const fileName = targetPath.split("/").pop() ?? targetPath;
-                 toast.success(`${fileName} created successfully ✓`);
+                 toast.success(wasDeepening ? mergeNote : `${fileName} created successfully ✓`);
                } else {
                  const errMsg = (writeResponse as any).error ?? "File write failed";
                  toast.error(errMsg);
