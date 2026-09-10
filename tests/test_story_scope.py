@@ -147,3 +147,31 @@ def test_a_fixture_on_the_episode_reaches_a_folder_nested_encounter():
         node_paths=PATHS,
     )
     assert [m.name for m in s.members("Flooded Passages")] == ["Watcher"]
+
+
+def test_the_campaign_overview_is_the_root_of_the_story_tree():
+    # It carries no childLinks and sits beside the episodes rather than above
+    # them, so only its type identifies it. Leaving it out put every
+    # campaign-level fixture in nobody's scope.
+    from gurpsai.app.services.story_scope import is_story_node
+    assert is_story_node({"title": "Anomaly Hunters", "type": "Campaign"})
+    assert is_story_node({"title": "Ep", "type": "Episode"})
+    assert is_story_node({"title": "Anything", "childLinks": []})
+    assert not is_story_node({"name": "Rick", "attributes": []})
+    assert not is_story_node({"name": "HQ", "internalStructure": []})
+
+
+def test_a_campaign_fixture_reaches_every_scene():
+    nodes = {"My Campaign": {"type": "Campaign"}, "Ep 1": {"childLinks": ["Scene A"]}, "Scene A": {}}
+    paths = {
+        "My Campaign": "Campaign/03_Story/Campaign_Overview.json",
+        "Ep 1": "Campaign/03_Story/Episode_01/Episode_Overview.json",
+        "Scene A": "Campaign/03_Story/Episode_01/Encounters/A.json",
+    }
+    s = StoryScope(
+        nodes=nodes,
+        entities={"Rachel": {"storyPlacement": {"node": "My Campaign", "mode": "fixture"}}},
+        node_paths=paths,
+    )
+    assert s.lineage("Scene A") == ["Scene A", "Ep 1", "My Campaign"]
+    assert [m.name for m in s.members("Scene A")] == ["Rachel"]

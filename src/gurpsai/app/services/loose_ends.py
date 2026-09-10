@@ -30,6 +30,7 @@ ISSUE_LABELS = {
     "containment_cycle": "Locations contain each other in a loop",
     "placement_cycle": "Characters are placed through each other in a loop",
     "unresolved_location": "Placed somewhere that has no file",
+    "unresolved_story_node": "Placed in a story node that is not in the story",
     "unplaced_spatial": "Not anywhere yet",
     "unplaced_story": "Not part of any story node yet",
     "one_sided_relation": "Relation recorded on one side only",
@@ -87,6 +88,7 @@ def collect(
         locations=locations, characters=characters, party_location=party_location
     )
     found: list[LooseEnd] = []
+    known_nodes = {normalize(n) for n in (story_nodes or {})}
 
     # A child name claimed by two parents cannot be resolved to one lineage, so
     # whichever parent is picked, some fixtures reach the wrong scenes. Bare
@@ -158,6 +160,16 @@ def collect(
                     source_path=paths.get(name, ""),
                     issue="unplaced_story",
                     detail="belongs to no episode, chapter or encounter yet",
+                ))
+            elif story_nodes is not None and normalize(node) not in known_nodes:
+                # A placement naming something outside the story tree looks
+                # settled and is invisible to scope -- worse than being unplaced,
+                # because nothing reports it.
+                found.append(LooseEnd(
+                    name=name,
+                    source_path=paths.get(name, ""),
+                    issue="unresolved_story_node",
+                    detail=f"placed in “{node}”, which is not a story node",
                 ))
 
     # Relation sync writes both sides on save, so a half-recorded relation means

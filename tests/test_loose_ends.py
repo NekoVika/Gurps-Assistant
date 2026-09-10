@@ -200,3 +200,28 @@ def test_contested_children_sort_above_everything_else():
     nodes = {"A": {"childLinks": ["X"]}, "B": {"childLinks": ["X"]}}
     ends = collect({"Rick": char("Rick")}, LOCATIONS, story_nodes=nodes)
     assert ends[0].issue == "contested_child"
+
+
+def test_a_placement_naming_something_outside_the_story_is_reported():
+    # Worse than being unplaced: it looks settled, and scope cannot see it.
+    chars = {"Rick": char("Rick", location="HQ", storyPlacement={"node": "Nowhere Arc", "mode": "fixture"})}
+    ends = collect(chars, LOCATIONS, story_nodes={"Ep 1": {}})
+    assert [e.issue for e in ends] == ["unresolved_story_node"]
+    assert "Nowhere Arc" in ends[0].detail
+
+
+def test_a_placement_naming_a_real_node_is_settled():
+    chars = {"Rick": char("Rick", location="HQ", storyPlacement={"node": "Ep 1", "mode": "fixture"})}
+    assert collect(chars, LOCATIONS, story_nodes={"Ep 1": {}}) == []
+
+
+def test_story_node_matching_folds_case_and_underscores():
+    chars = {"Rick": char("Rick", location="HQ", storyPlacement={"node": "ep_1", "mode": "fixture"})}
+    assert collect(chars, LOCATIONS, story_nodes={"Ep 1": {}}) == []
+
+
+def test_without_a_node_list_placements_are_taken_on_trust():
+    # Callers that do not supply story_nodes get the old behaviour rather than
+    # a report full of false positives.
+    chars = {"Rick": char("Rick", location="HQ", storyPlacement={"node": "Anything", "mode": "fixture"})}
+    assert collect(chars, LOCATIONS) == []

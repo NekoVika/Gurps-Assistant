@@ -249,7 +249,8 @@ def validate_campaign() -> CampaignValidateResponse:
                 elif "attributes" in data_dict and "pointTotal" in data_dict:
                     all_characters[name] = data_dict
                     entity_paths[name] = f"Campaign/{rel_path}"
-                if "childLinks" in data_dict or str(data_dict.get("type", "")).lower() in {"episode", "chapter", "encounter"}:
+                from gurpsai.app.services.story_scope import is_story_node as _is_node
+                if _is_node(data_dict):
                     all_story_nodes[name] = data_dict
 
             if "02_Characters" in rel_path or "Bestiary" in rel_path:
@@ -434,7 +435,7 @@ def story_scope(node: str) -> ScopeResponse:
     Pinned members are placed at the node itself; inherited ones are fixtures
     declared further up, which is the only kind of placement that reaches down.
     """
-    from gurpsai.app.services.story_scope import StoryScope
+    from gurpsai.app.services.story_scope import StoryScope, is_story_node
 
     config = load_app_config()
     active_path = config.campaign.active_path.strip()
@@ -463,7 +464,7 @@ def story_scope(node: str) -> ScopeResponse:
         if not name:
             continue
         rel = f"Campaign/{file_path.relative_to(camp_path).as_posix()}"
-        if "childLinks" in data or str(data.get("type", "")).lower() in {"episode", "chapter", "encounter"}:
+        if is_story_node(data):
             nodes[name] = data
             node_paths[name] = rel
         if "attributes" in data or "internalStructure" in data:

@@ -23,6 +23,22 @@ from gurpsai.app.services.link_resolver import is_reference, normalize
 from gurpsai.app.services.tree import ancestors
 
 
+#: Types that place a document in the story hierarchy. "campaign" is the root:
+#: the campaign overview is the parent of every episode, and entities declared
+#: fixtures of it -- the HQ staff who are around all game -- must reach down
+#: into every scene. Leaving it out put nine characters in nobody's scope.
+STORY_NODE_TYPES = {"campaign", "episode", "chapter", "encounter"}
+
+
+def is_story_node(data: dict) -> bool:
+    """Whether a document takes part in the story hierarchy."""
+    if not isinstance(data, dict):
+        return False
+    if "childLinks" in data:
+        return True
+    return str(data.get("type", "")).strip().lower() in STORY_NODE_TYPES
+
+
 def build_parents(
     nodes: dict[str, dict], paths: dict[str, str] | None = None
 ) -> dict[str, str]:
