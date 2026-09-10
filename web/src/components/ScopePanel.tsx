@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getStoryScope, type ScopeMember } from "../lib/api";
 import { InternalLink } from "./InternalLink";
+import { useCampaignStore } from "../stores/useCampaignStore";
 
 type Props = {
   /** Name of the episode, chapter or encounter being viewed. */
@@ -18,6 +19,8 @@ type Props = {
  * which is why the episode's whole cast does not flood every encounter.
  */
 export function ScopePanel({ node, onNavigate }: Props) {
+  const focusNode = useCampaignStore(s => s.focusNode);
+  const setFocusNode = useCampaignStore(s => s.setFocusNode);
   const [members, setMembers] = useState<ScopeMember[] | null>(null);
   const [lineage, setLineage] = useState<string[]>([]);
 
@@ -55,7 +58,21 @@ export function ScopePanel({ node, onNavigate }: Props) {
       border: "1px solid rgba(149, 181, 255, 0.2)", borderRadius: "8px",
       padding: "12px 14px", marginBottom: "20px", background: "rgba(0,0,0,0.15)",
     }}>
-      <p className="section-label" style={{ margin: "0 0 2px 0" }}>In scope here</p>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "8px" }}>
+        <p className="section-label" style={{ margin: "0 0 2px 0" }}>In scope here</p>
+        {/* Narrowing the sidebar to this node -- the GM running one encounter
+            does not need every NPC and bestiary entry in the campaign. */}
+        <button
+          type="button"
+          onClick={() => setFocusNode(focusNode === node ? null : node)}
+          style={{
+            background: "none", border: "none", padding: 0, cursor: "pointer",
+            fontSize: "0.72rem", color: focusNode === node ? "#ffb44d" : "#58a6ff",
+          }}
+        >
+          {focusNode === node ? "Stop focusing" : "Focus the sidebar"}
+        </button>
+      </div>
       {lineage.length > 1 && (
         <p style={{ color: "#8b949e", fontSize: "0.72rem", margin: "0 0 10px 0" }}>
           {lineage.slice(1).reverse().join(" › ")} › <strong style={{ color: "#c9dfff" }}>{node}</strong>

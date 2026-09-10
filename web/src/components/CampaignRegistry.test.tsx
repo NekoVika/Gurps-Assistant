@@ -29,6 +29,15 @@ vi.mock('../lib/api', () => ({
   renameCampaignEntity: vi.fn(),
   writeFileContent: vi.fn(),
   mendFileString: vi.fn(),
+  getStoryScope: vi.fn(async (node: string) => ({
+    node,
+    lineage: [node],
+    // Only Grim and Docks belong to this scene; Hero and Ring do not.
+    members: [
+      { name: 'Grim', via: 'pinned', placed_at: node, path: '' },
+      { name: 'Docks', via: 'inherited', placed_at: 'Pilot', path: '' },
+    ],
+  })),
 }));
 
 const file = (path: string, title?: string): FileTreeNode => ({
@@ -74,7 +83,7 @@ const REGISTRY: RegistryItem[] = [
 
 describe('CampaignRegistry', () => {
   beforeEach(() => {
-    useCampaignStore.setState({ entityRegistry: REGISTRY });
+    useCampaignStore.setState({ entityRegistry: REGISTRY, focusNode: null });
   });
 
   it('renders every entity in its curated section', async () => {
@@ -97,5 +106,43 @@ describe('CampaignRegistry', () => {
     render(<CampaignRegistry tree={TREE} selectedPath="" onSelect={() => {}} />);
     expect(await screen.findByText('Ghost Chapter')).toBeInTheDocument();
     expect((await screen.findAllByText(/\(proposed\)/)).length).toBeGreaterThan(0);
+  });
+
+  describe('focusing the sidebar on one scene', () => {
+    it('lists only the cast in scope, and says what it is focused on', async () => {
+      // The GM running one encounter does not need every NPC in the campaign.
+      useCampaignStore.setState({ entityRegistry: REGISTRY, focusNode: 'First Steps' });
+      render(<CampaignRegistry tree={TREE} selectedPath="" onSelect={() => {}} />);
+
+      expect(await screen.findByText('Grim')).toBeInTheDocument();
+      expect(await screen.findByText('Docks')).toBeInTheDocument();
+      expect(screen.queryByText('Hero')).not.toBeInTheDocument();
+      expect(screen.queryByText('Ring')).not.toBeInTheDocument();
+      expect(screen.getByText(/Focused on/)).toBeInTheDocument();
+    });
+
+    it('leaves the story arcs navigable while focused', async () => {
+      // Narrowing who is listed must not strand the GM in the scene.
+      useCampaignStore.setState({ entityRegistry: REGISTRY, focusNode: 'First Steps' });
+      render(<CampaignRegistry tree={TREE} selectedPath="" onSelect={() => {}} />);
+      expect(await screen.findByText(/Pilot/)).toBeInTheDocument();
+    });
+
+    it('restores the whole campaign when focus is dropped', async () => {
+      useCampaignStore.setState({ entityRegistry: REGISTRY, focusNode: 'First Steps' });
+      render(<CampaignRegistry tree={TREE} selectedPath="" onSelect={() => {}} />);
+      fireEvent.click(await screen.findByText('show all'));
+      expect(await screen.findByText('Hero')).toBeInTheDocument();
+      expect(useCampaignStore.getState().focusNode).toBeNull();
+    });
+
+    it('shows everything when scope cannot be loaded', async () => {
+      // Failing open is wrong but harmless; failing closed looks like data loss.
+      const api = await import('../lib/api');
+      (api.getStoryScope as any).mockRejectedValueOnce(new Error('offline'));
+      useCampaignStore.setState({ entityRegistry: REGISTRY, focusNode: 'First Steps' });
+      render(<CampaignRegistry tree={TREE} selectedPath="" onSelect={() => {}} />);
+      expect(await screen.findByText('Hero')).toBeInTheDocument();
+    });
   });
 });

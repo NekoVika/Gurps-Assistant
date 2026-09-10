@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { FileTreeNode } from "../lib/api";
-import { getFileContent } from "../lib/api";
-import { entityExists, isReferenceName } from "../lib/entityResolution";
+import { getFileContent, getStoryScope } from "../lib/api";
+import { entityExists, isReferenceName, normalizeEntityName } from "../lib/entityResolution";
 import { useCampaignStore } from "../stores/useCampaignStore";
 
 // orderMap key for the campaign-level episode order (03_Story/Campaign_Overview.json)
@@ -90,6 +90,21 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
   const [orderMap, setOrderMap] = useState<Record<string, string[]>>({});
   const entityRegistry = useCampaignStore(s => s.entityRegistry);
   const setStubPrompt = useCampaignStore(s => s.setStubPrompt);
+  const focusNode = useCampaignStore(s => s.focusNode);
+  const setFocusNode = useCampaignStore(s => s.setFocusNode);
+  // Names in scope for the focused node, or null when not focused. Fetched
+  // rather than derived: scope needs the whole campaign, the sidebar has a tree.
+  const [inScope, setInScope] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    let live = true;
+    if (!focusNode) { setInScope(null); return; }
+    getStoryScope(focusNode)
+      .then(res => { if (live) setInScope(new Set(res.members.map(m => normalizeEntityName(m.name)))); })
+      // Failing open shows the whole campaign, which is wrong but harmless.
+      // Failing closed would hide everything and look like data loss.
+      .catch(() => { if (live) setInScope(null); });
+    return () => { live = false; };
+  }, [focusNode]);
 
   useEffect(() => {
      let mounted = true;
@@ -284,6 +299,18 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
   tree.forEach(walk);
 
   // Order episodes by the campaign overview's childLinks; alphabetical fallback.
+  // Focus narrows who is listed, never what exists. Story arcs and core docs
+  // are left alone so the GM can still move around the campaign.
+  if (inScope) {
+    const keep = (n: FileTreeNode) =>
+      inScope.has(normalizeEntityName(n.title || formatEntityName(n.path)));
+    data.pcs = data.pcs.filter(keep);
+    data.npcs = data.npcs.filter(keep);
+    data.bestiary = data.bestiary.filter(keep);
+    data.locations = data.locations.filter(keep);
+    data.factions = data.factions.filter(keep);
+  }
+
   const campaignOrder = orderMap[CAMPAIGN_ORDER_KEY] || [];
   data.episodes.sort((a, b) => {
     const aTitle = a.overviewFile?.title || a.name;
@@ -339,6 +366,25 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
 
   return (
     <div className="campaign-registry">
+      {focusNode && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
+          margin: "0 0 10px 0", padding: "6px 10px", borderRadius: "6px",
+          background: "rgba(255, 180, 77, 0.10)", border: "1px solid rgba(255, 180, 77, 0.4)",
+          color: "#ffb44d", fontSize: "0.75rem",
+        }}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            Focused on <strong>{focusNode}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={() => setFocusNode(null)}
+            style={{ background: "none", border: "none", color: "#ffb44d", cursor: "pointer", fontSize: "0.72rem", flexShrink: 0 }}
+          >
+            show all
+          </button>
+        </div>
+      )}
       <CollapsibleSection title="📌 Core Docs" defaultOpen={true}>
         <div className="registry-list">
           {data.core.map(n => renderItem(n, formatEntityName(n.path)))}

@@ -40,6 +40,8 @@ interface CampaignState {
   /** A request to re-open a wizard against an entity that already exists.
    *  Raised from a passport, answered by MainWorkspace, which owns the modal. */
   deepenRequest: { wizardId: string; path: string; answers: Record<string, string> } | null;
+  /** Story node the sidebar is narrowed to, or null for the whole campaign. */
+  focusNode: string | null;
 
   isEditing: boolean;
   editedContent: string;
@@ -64,6 +66,7 @@ interface CampaignState {
   setIsDeleteModalOpen: (isOpen: boolean) => void;
   setStubPrompt: (prompt: { name: string; type: string; parentPath?: string } | null) => void;
   setDeepenRequest: (req: { wizardId: string; path: string; answers: Record<string, string> } | null) => void;
+  setFocusNode: (node: string | null) => void;
   /** `open` navigates to the new file; by default the GM stays where they were. */
   executeCreateStub: (open?: boolean) => Promise<void>;
   handleSaveEdit: () => Promise<void>;
@@ -95,6 +98,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   stubPrompt: null,
   stubNotice: null,
   deepenRequest: null,
+  focusNode: null,
 
   isEditing: false,
   editedContent: "",
@@ -129,6 +133,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   setStubPrompt: (prompt) => set({ stubPrompt: prompt, stubNotice: null }),
   setDeepenRequest: (req) => set({ deepenRequest: req }),
+  setFocusNode: (node) => set({ focusNode: node }),
 
   executeCreateStub: async (open = false) => {
     const prompt = get().stubPrompt;
