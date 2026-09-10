@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { CollapsibleSection, hasAnyValue } from './CollapsibleSection';
 import { ParentLocationField, StoryPlacementField } from './PlacementFields';
 import MDEditor from '@uiw/react-md-editor';
 import type { LocationJSON } from '../../lib/types';
@@ -86,7 +87,7 @@ export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
                 <MDEditor value={data.overview} onChange={val => handleUpdate('overview', val || "")} height={200} preview="edit" />
             </div>
 
-            <h2 className="editor-section-title">Details & Connections</h2>
+            <CollapsibleSection title="Details & Connections" addLabel="Add connections — factions, NPCs, links" hasContent={hasAnyValue(data.factions, data.notableNpcs, data.landmarks, data.locationRelations, data.characterRelations, data.storyAppearances)}>
             <div className="editor-grid-2">
                 <EntityRelationEditorList title="Character Relations" items={data.characterRelations || []} onChange={items => handleUpdate('characterRelations', items)} targetCategory="Character" />
                 <EntityRelationEditorList title="Faction Relations" items={data.factionRelations || []} onChange={items => handleUpdate('factionRelations', items)} targetCategory="Faction" />
@@ -104,7 +105,8 @@ export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
                 <StringArrayEditor title="Plot Hooks" items={data.plotHooks || []} onChange={(val) => handleUpdate('plotHooks', val)} />
             </div>
 
-            <h2 className="editor-section-title">Internal Zones & Maps</h2>
+            </CollapsibleSection>
+            <CollapsibleSection title="Internal Zones & Maps" addLabel="Add internal zones" hasContent={hasAnyValue(data.internalStructure)}>
             <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
                     <label className="editor-label" style={{ marginBottom: 0 }}>Internal Structure</label>
@@ -151,8 +153,10 @@ export function LocationEditor({ value, onChange, documentPath = "" }: Props) {
                 </div>
             </div>
 
-            <h2 className="editor-section-title">Media</h2>
+            </CollapsibleSection>
+            <CollapsibleSection title="Media" addLabel="Add images" hasContent={hasAnyValue(data.images)}>
             <ImageArrayEditor title="Image Links" items={data.images} onChange={(val) => handleUpdate('images', val)} documentPath={documentPath} />
+            </CollapsibleSection>
 
             {Object.keys(data).filter(k => !KNOWN_KEYS.has(k)).length > 0 && (
                 <>

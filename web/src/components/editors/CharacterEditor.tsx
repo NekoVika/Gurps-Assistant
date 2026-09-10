@@ -4,6 +4,7 @@ import type { CharacterJSON } from '../../lib/types';
 import { StringArrayEditor } from './StringArrayEditor';
 import { ImageArrayEditor } from './ImageArrayEditor';
 import { KindField, WhereField, StoryPlacementField } from './PlacementFields';
+import { CollapsibleSection, hasAnyValue } from './CollapsibleSection';
 import { AttributeEditorList, TraitEditorList, SkillEditorList, GearEditorList, HitLocationEditorList, EntityRelationEditorList } from './StructuredArrayEditors';
 
 type Props = {
@@ -72,6 +73,12 @@ export function CharacterEditor({ value, onChange, documentPath = "" }: Props) {
                     <label className="editor-label">Status</label>
                     <input type="text" className="editor-input" value={data.status} onChange={e => handleUpdate('status', e.target.value)} />
                 </div>
+                {/* The one prose field every character has. A GM who wants to write
+                    a paragraph and stop should not have to open a section to find it. */}
+                <div className="editor-field" style={{ gridColumn: "1 / -1" }}>
+                    <label className="editor-label">GM Summary (Hidden Archive)</label>
+                    <MDEditor value={data.gmSummary} onChange={val => handleUpdate('gmSummary', val || "")} height={150} preview="edit" />
+                </div>
                 {/* Legacy field, keeping for fallback */}
                 {data.locations && data.locations.length > 0 && (
                     <div style={{ gridColumn: "1 / -1" }}>
@@ -80,7 +87,14 @@ export function CharacterEditor({ value, onChange, documentPath = "" }: Props) {
                 )}
             </div>
 
-            <h2 className="editor-section-title">Mechanics & Stats</h2>
+            <CollapsibleSection
+                title="Mechanics & Stats"
+                addLabel="Add stats — attributes, skills, gear, tactics"
+                hasContent={hasAnyValue(
+                    data.pointTotal, data.attributes, data.skills, data.advantages,
+                    data.disadvantages, data.gear, data.hitLocations, data.tactics,
+                )}
+            >
             <div className="editor-grid-3">
                 <div className="editor-field">
                     <label className="editor-label">Point Total</label>
@@ -133,8 +147,17 @@ export function CharacterEditor({ value, onChange, documentPath = "" }: Props) {
                     <MDEditor value={data.tactics} onChange={val => handleUpdate('tactics', val || "")} height={200} preview="live" />
                 </div>
             </div>
+            </CollapsibleSection>
 
-            <h2 className="editor-section-title">Narrative & Lore</h2>
+            <CollapsibleSection
+                title="Narrative & Lore"
+                addLabel="Add narrative — appearance, personality, relations, hooks"
+                hasContent={hasAnyValue(
+                    data.characterRelations, data.factionRelations, data.locationRelations,
+                    data.storyAppearances, data.relations, data.appearances,
+                    data.appearance, data.personality, data.motivation, data.speech, data.pcHooks,
+                )}
+            >
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div className="editor-grid-2">
                     <EntityRelationEditorList title="Character Relations" items={data.characterRelations || []} onChange={items => handleUpdate('characterRelations', items)} targetCategory="Character" />
@@ -170,14 +193,12 @@ export function CharacterEditor({ value, onChange, documentPath = "" }: Props) {
                     <label className="editor-label">PC Hooks</label>
                     <MDEditor value={data.pcHooks} onChange={val => handleUpdate('pcHooks', val || "")} height={150} preview="live" />
                 </div>
-                <div className="editor-field">
-                    <label className="editor-label">GM Summary (Hidden Archive)</label>
-                    <MDEditor value={data.gmSummary} onChange={val => handleUpdate('gmSummary', val || "")} height={150} preview="edit" />
-                </div>
             </div>
+            </CollapsibleSection>
 
-            <h2 className="editor-section-title">Media</h2>
-            <ImageArrayEditor title="Image Links" items={data.images || []} onChange={(val) => handleUpdate('images', val)} documentPath={documentPath} />
+            <CollapsibleSection title="Media" addLabel="Add images" hasContent={hasAnyValue(data.images)}>
+                <ImageArrayEditor title="Image Links" items={data.images || []} onChange={(val) => handleUpdate('images', val)} documentPath={documentPath} />
+            </CollapsibleSection>
         </div>
     );
 }
