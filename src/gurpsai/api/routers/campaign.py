@@ -540,6 +540,7 @@ def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
     skipped = []
 
     from gurpsai.app.services.naming import generic_name_problem
+    from gurpsai.app.services.link_resolver import link_text
     rejected: list[RejectedStub] = []
 
     for stub in request.stubs:
@@ -550,6 +551,9 @@ def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
         if problem:
             rejected.append(RejectedStub(name=stub.name, reason=problem))
             continue
+
+        # Migrated references arrive as "[Name](path)"; the entity is the name.
+        stub = stub.model_copy(update={"name": link_text(stub.name)})
 
         safe_name = "".join(c for c in stub.name if c.isalnum() or c in (" ", "-", "_")).strip()
         safe_name = re.sub(r'^[\d_]+', '', safe_name).strip()

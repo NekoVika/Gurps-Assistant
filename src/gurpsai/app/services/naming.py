@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import re
 
+from gurpsai.app.services.link_resolver import link_text
+
 _CATEGORY = (
     r"(?:chapter|episode|encounter|scene|session|arc|npc|character|char|"
     r"location|place|faction|item|new|untitled|unnamed|test|temp|tmp|draft|stub)"
@@ -28,11 +30,20 @@ _ONLY_NUMBER = re.compile(r"^[\d\s._-]+$")
 
 def generic_name_problem(name: object) -> str | None:
     """A sentence saying why this cannot be a name, or None when it can."""
-    text = name.strip() if isinstance(name, str) else ""
+    raw = name.strip() if isinstance(name, str) else ""
+    if not raw:
+        return "Give it a name."
+    # A migrated reference is a link, not a name. Unwrap before judging, so
+    # "[The Shoals](../x.md)" is accepted as "The Shoals" rather than sanitised
+    # into a filename made of its punctuation.
+    text = link_text(raw)
     if not text:
         return "Give it a name."
     if _ONLY_NUMBER.match(text):
         return f"“{text}” is just a number. Say what it is — a name never collides, a number always does."
+    # A path fragment reaching this far means an unwrap failed upstream.
+    if "/" in text or "\\" in text or text.lower().endswith((".md", ".json")):
+        return f"“{text[:60]}” looks like a file path, not a name."
     if _GENERIC.match(text):
         return (
             f"“{text}” is a category, not a name. Add what makes it this one — "

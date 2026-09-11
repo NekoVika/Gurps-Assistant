@@ -1,6 +1,6 @@
 import React from "react";
 import { useCampaignStore } from "../stores/useCampaignStore";
-import { entityExists, isReferenceName } from "../lib/entityResolution";
+import { entityExists, isReferenceName, linkText } from "../lib/entityResolution";
 
 type Props = {
   target: string;
@@ -17,6 +17,10 @@ export function InternalLink({ target, onNavigate, className, style, suggestedTy
 
   if (!target) return null;
 
+  // A migrated reference may still be "[Name](path/to/file.md)". The GM should
+  // see the name; the path is an implementation detail of an old format.
+  const shown = linkText(target);
+
   const isMissing = isReferenceName(target) && !entityExists(entityRegistry, target);
 
   const handleClick = (e: React.MouseEvent) => {
@@ -25,9 +29,9 @@ export function InternalLink({ target, onNavigate, className, style, suggestedTy
     if (isMissing) {
       // No file backs this name — route through the store so the user gets
       // the "create stub?" prompt instead of a silent no-op.
-      handleNavigateTo(target, suggestedType);
+      handleNavigateTo(shown, suggestedType);
     } else if (onNavigate) {
-      onNavigate(target);
+      onNavigate(shown);
     }
   };
 
@@ -46,9 +50,9 @@ export function InternalLink({ target, onNavigate, className, style, suggestedTy
           transition: "color 0.2s",
           ...style
         }}
-        title={`No file exists for "${target}" yet — click to create a stub`}
+        title={`No file exists for "${shown}" yet — click to create a stub`}
       >
-        {target}<span style={{ fontSize: "0.7em", opacity: 0.8 }}> (proposed)</span>
+        {shown}<span style={{ fontSize: "0.7em", opacity: 0.8 }}> (proposed)</span>
       </span>
     );
   }
@@ -72,9 +76,9 @@ export function InternalLink({ target, onNavigate, className, style, suggestedTy
       onMouseOut={(e) => {
         if (onNavigate) (e.currentTarget as HTMLElement).style.color = "#58a6ff";
       }}
-      title={onNavigate ? `Go to ${target}` : undefined}
+      title={onNavigate ? `Go to ${shown}` : undefined}
     >
-      {target}
+      {shown}
     </span>
   );
 }

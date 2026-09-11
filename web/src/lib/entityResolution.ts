@@ -18,8 +18,31 @@ const PLACEHOLDER_VALUES = new Set(["", "tbd", "tba", "none", "n/a", "?", "???",
  * Normalize an entity name for matching: case, underscores, extensions,
  * leading ordinal prefixes ("2. Ambush" -> "ambush").
  */
+const MARKDOWN_LINK = /^\s*\[([^\]]*)\]\(([^)]*)\)\s*$/;
+
+/**
+ * The readable half of a markdown link, or the string unchanged.
+ *
+ * Mirrors link_resolver.link_text. The MD2JSON migration left references like
+ * "[The Shoals](../../01_World_Bible/Locations/The_Shoals.md)" in fields the UI
+ * renders as entity links; shown whole they leak a file path at the GM and
+ * resolve to nothing. The two implementations must not drift.
+ */
+export function linkText(name: unknown): string {
+  if (typeof name !== "string") return "";
+  const text = name.trim();
+  const match = MARKDOWN_LINK.exec(text);
+  if (!match) return text;
+  const label = match[1].trim();
+  if (label) return label;
+  const target = match[2].split("#")[0].replace(/\/+$/, "");
+  if (!target) return text;
+  const file = target.split("/").pop() || text;
+  return file.replace(/\.[^.]+$/, "");
+}
+
 export function normalizeEntityName(name: string | null | undefined): string {
-  let text = (name ?? "").trim();
+  let text = linkText(name ?? "");
   text = text.replace(/\.(json|md)$/i, "");
   text = text.replace(/_/g, " ");
   text = text.replace(/^\d+[.\s_-]+/, "");
@@ -41,6 +64,11 @@ export function isReferenceName(name: unknown): boolean {
   if (typeof name !== "string" || isPlaceholderName(name)) return false;
   if (name.includes("**")) return false;
   if (name.trim().length > 100) return false;
+  // Mirrors link_resolver.is_reference: migrated prose sits in the same arrays
+  // as names ("None currently present."), and entity names do not end in
+  // sentence punctuation.
+  const t = String(name).trim();
+  if (/[.!?]$/.test(t) && !t.endsWith("...")) return false;
   return true;
 }
 

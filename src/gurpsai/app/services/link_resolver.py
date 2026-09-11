@@ -18,10 +18,34 @@ _ORDINAL_PREFIX_RE = re.compile(r"^\d+[.\s_-]+")
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
+_MARKDOWN_LINK = re.compile(r"^\s*\[([^\]]*)\]\(([^)]*)\)\s*$")
+
+
+def link_text(name: str) -> str:
+    """The readable half of a markdown link, or the string unchanged.
+
+    The MD2JSON migration left references like
+    "[The Shoals](../../01_World_Bible/Locations/The_Shoals.md)" in fields the
+    UI renders as entity links. Left whole they resolve to nothing, so the
+    passport shows them as proposed -- path and all -- and offers to create a
+    file named after the punctuation.
+    """
+    text = (name or "").strip()
+    match = _MARKDOWN_LINK.match(text)
+    if not match:
+        return text
+    label = match.group(1).strip()
+    if label:
+        return label
+    # "[](path/to/The_Shoals.md)" -- fall back to the file it points at.
+    target = match.group(2).split("#")[0].rstrip("/")
+    return target.rsplit("/", 1)[-1].rsplit(".", 1)[0] if target else text
+
+
 def normalize(name: str) -> str:
     """Normalize an entity name for matching: case, underscores, extensions,
     leading ordinal prefixes ("2. Ambush" -> "ambush")."""
-    text = (name or "").strip()
+    text = link_text(name)
     text = _EXT_RE.sub("", text)
     text = text.replace("_", " ")
     text = _ORDINAL_PREFIX_RE.sub("", text)
@@ -47,6 +71,11 @@ def is_reference(name: object) -> bool:
     if "**" in name:
         return False
     if len(name.strip()) > 100:
+        return False
+    # Migrated prose sits in the same arrays as names: "None currently present."
+    # Entity names do not end in sentence punctuation, so this separates a
+    # sentence from a title without needing to understand either.
+    if name.strip().endswith((".", "!", "?")) and not name.strip().endswith("..."):
         return False
     return True
 
