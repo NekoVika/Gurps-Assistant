@@ -241,8 +241,11 @@ def validate_campaign() -> CampaignValidateResponse:
             except Exception:
                 pass
                 
-            if isinstance(data_dict, dict) and data_dict.get("name"):
-                name = data_dict["name"]
+            # Characters and locations carry `name`; story nodes carry `title`.
+            # Requiring `name` meant no story node was ever collected, so every
+            # placement looked like it pointed outside the story.
+            if isinstance(data_dict, dict) and (data_dict.get("name") or data_dict.get("title")):
+                name = data_dict.get("name") or data_dict["title"]
                 if "internalStructure" in data_dict:
                     all_locations[name] = data_dict
                     entity_paths[name] = f"Campaign/{rel_path}"

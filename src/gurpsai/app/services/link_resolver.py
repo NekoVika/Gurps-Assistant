@@ -19,28 +19,33 @@ _WHITESPACE_RE = re.compile(r"\s+")
 
 
 _TRAILING_PAREN = re.compile(r"\s*\([^)]*\)\s*$")
-_MARKDOWN_LINK = re.compile(r"^\s*\[([^\]]*)\]\(([^)]*)\)\s*$")
+_MARKDOWN_LINK = re.compile(r"\[([^\]]*)\]\(([^)]*)\)")
 
 
 def link_text(name: str) -> str:
-    """The readable half of a markdown link, or the string unchanged.
+    """A reference with its markdown link syntax flattened to the label.
 
-    The MD2JSON migration left references like
-    "[The Shoals](../../01_World_Bible/Locations/The_Shoals.md)" in fields the
-    UI renders as entity links. Left whole they resolve to nothing, so the
-    passport shows them as proposed -- path and all -- and offers to create a
-    file named after the punctuation.
+    The MD2JSON migration left links in fields the UI renders as entity names,
+    and rarely as the whole value -- "[The Shoals](../Locations/The_Shoals.md)
+    (Surface)" is typical. Shown whole they leak a file path at the GM and
+    resolve to nothing, so every link is replaced by its label wherever it sits.
+
+    Prose is never passed through here: a link inside a paragraph is a link and
+    renders as one.
     """
     text = (name or "").strip()
-    match = _MARKDOWN_LINK.match(text)
-    if not match:
+    if not text:
         return text
-    label = match.group(1).strip()
-    if label:
-        return label
-    # "[](path/to/The_Shoals.md)" -- fall back to the file it points at.
-    target = match.group(2).split("#")[0].rstrip("/")
-    return target.rsplit("/", 1)[-1].rsplit(".", 1)[0] if target else text
+
+    def flatten(match: "re.Match[str]") -> str:
+        label = match.group(1).strip()
+        if label:
+            return label
+        # "[](path/to/The_Shoals.md)" -- fall back to the file it points at.
+        target = match.group(2).split("#")[0].rstrip("/")
+        return target.rsplit("/", 1)[-1].rsplit(".", 1)[0] if target else ""
+
+    return _MARKDOWN_LINK.sub(flatten, text).strip()
 
 
 def normalize(name: str) -> str:
@@ -97,7 +102,16 @@ def resolve_name(query: object, names: list[str]) -> str | None:
     wanted = normalize(raw)
     if not wanted:
         return None
-    by_norm = {normalize(n): n for n in names if n}
+    by_norm: dict[str, str] = {}
+    for candidate_name in names:
+        if not candidate_name:
+            continue
+        by_norm.setdefault(normalize(candidate_name), candidate_name)
+        # "Povo Witiko (225 pts)" must also answer to "Povo_Witiko": PC files
+        # carry their point total, story files reference the plain name.
+        bare = _TRAILING_PAREN.sub("", candidate_name).strip()
+        if bare and bare != candidate_name:
+            by_norm.setdefault(normalize(bare), candidate_name)
     if wanted in by_norm:
         return by_norm[wanted]
     tails = [original for norm, original in by_norm.items() if norm.endswith(wanted)]

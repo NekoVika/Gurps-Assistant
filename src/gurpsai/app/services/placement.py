@@ -117,7 +117,10 @@ class PlacementIndex:
                 chain.append(settled)
                 return self._placed_at(settled, chain)
 
-            nxt = self._chr.get(normalize(target))
+    # Same matching rule as everywhere else, so a companion pointed at
+            # "Povo_Witiko" reaches "Povo Witiko (225 pts)".
+            matched_name = resolve_name(target, [d.get("name", n) for n, d in self.characters.items()])
+            nxt = self._chr.get(normalize(matched_name)) if matched_name else None
             if nxt is None:
                 return Placement(
                     status="unresolved", chain=tuple(chain), unresolved_target=target
