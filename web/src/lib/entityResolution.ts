@@ -18,7 +18,7 @@ const PLACEHOLDER_VALUES = new Set(["", "tbd", "tba", "none", "n/a", "?", "???",
  * Normalize an entity name for matching: case, underscores, extensions,
  * leading ordinal prefixes ("2. Ambush" -> "ambush").
  */
-const MARKDOWN_LINK = /^\s*\[([^\]]*)\]\(([^)]*)\)\s*$/;
+const MARKDOWN_LINK = /\[([^\]]*)\]\(([^)]*)\)/g;
 
 /**
  * The readable half of a markdown link, or the string unchanged.
@@ -31,14 +31,16 @@ const MARKDOWN_LINK = /^\s*\[([^\]]*)\]\(([^)]*)\)\s*$/;
 export function linkText(name: unknown): string {
   if (typeof name !== "string") return "";
   const text = name.trim();
-  const match = MARKDOWN_LINK.exec(text);
-  if (!match) return text;
-  const label = match[1].trim();
-  if (label) return label;
-  const target = match[2].split("#")[0].replace(/\/+$/, "");
-  if (!target) return text;
-  const file = target.split("/").pop() || text;
-  return file.replace(/\.[^.]+$/, "");
+  if (!text) return text;
+  return text
+    .replace(MARKDOWN_LINK, (_m, label: string, target: string) => {
+      const trimmed = (label || "").trim();
+      if (trimmed) return trimmed;
+      const path = (target || "").split("#")[0].replace(/\/+$/, "");
+      if (!path) return "";
+      return (path.split("/").pop() || "").replace(/\.[^.]+$/, "");
+    })
+    .trim();
 }
 
 export function normalizeEntityName(name: string | null | undefined): string {

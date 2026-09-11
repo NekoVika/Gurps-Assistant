@@ -28,7 +28,10 @@ from gurpsai.app.services.link_resolver import link_text  # noqa: E402
 # earlier migrations but are listed so a re-import cannot reintroduce them.
 SCALAR_FIELDS = ("primaryLocation", "location", "region", "parentLocation")
 LIST_FIELDS = ("characters", "locations", "factions", "storyAppearances",
-               "childLinks", "notableNpcs")
+               "childLinks", "notableNpcs", "landmarks")
+
+# Prose fields are deliberately absent: a link inside a paragraph is a link and
+# renders as one. Only fields the UI treats as entity names are flattened.
 
 
 def main() -> int:
