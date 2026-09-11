@@ -82,8 +82,17 @@ export function isReferenceName(name: unknown): boolean {
  * ("Chapter 01" -> Chapter_01/Chapter_Overview.json), so files inside an
  * Episode_/Chapter_ directory also answer to that directory's name.
  */
+const TRAILING_PAREN = /\s*\([^)]*\)\s*$/;
+
 function itemKeys(item: RegistryItem): string[] {
   const keys = [normalizeEntityName(item.id), normalizeEntityName(item.title)];
+  // Mirrors LinkResolver: PC files carry their point total in the name --
+  // "Jamie Hass (225 pts)" -- while story files reference plain "Jamie_Hass".
+  // Without this alias an existing PC reads as proposed.
+  for (const key of [item.id, item.title]) {
+    const bare = (key || "").replace(TRAILING_PAREN, "").trim();
+    if (bare && bare !== key) keys.push(normalizeEntityName(bare));
+  }
   const parts = (item.path || "").split("/");
   if (parts.length >= 2) {
     const parentDir = parts[parts.length - 2];

@@ -18,6 +18,7 @@ _ORDINAL_PREFIX_RE = re.compile(r"^\d+[.\s_-]+")
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
+_TRAILING_PAREN = re.compile(r"\s*\([^)]*\)\s*$")
 _MARKDOWN_LINK = re.compile(r"^\s*\[([^\]]*)\]\(([^)]*)\)\s*$")
 
 
@@ -121,6 +122,15 @@ class LinkResolver:
                 norm = normalize(key)
                 if norm:
                     self._normalized.setdefault(norm, item)
+                # PC files carry their point total in the name -- "Jamie Hass
+                # (225 pts)" -- while story files reference plain "Jamie_Hass".
+                # Without this alias an existing PC reads as proposed, and
+                # accepting the offer creates a duplicate.
+                bare = _TRAILING_PAREN.sub("", key).strip()
+                if bare and bare != key:
+                    bare_norm = normalize(bare)
+                    if bare_norm:
+                        self._normalized.setdefault(bare_norm, item)
             # Story childLinks often reference the containing directory name
             # ("Chapter 01" -> Chapter_01/Chapter_Overview.json), so alias the
             # parent Episode_/Chapter_ directory of any file inside it. If the

@@ -69,3 +69,30 @@ def test_a_sentence_is_not_an_entity_name(prose):
 def test_real_names_are_still_references(name):
     from gurpsai.app.services.link_resolver import is_reference
     assert is_reference(name)
+
+
+def test_a_pc_referenced_without_its_point_total_still_resolves():
+    # Story files say "Jamie_Hass"; the file is "Jamie Hass (225 pts)". Without
+    # the alias the PC reads as proposed and accepting creates a duplicate.
+    registry = [{"title": "Jamie Hass (225 pts)", "path": "Campaign/02_Characters/PCs/Jamie.json"}]
+    resolver = LinkResolver(registry)
+    assert resolver.exists("Jamie_Hass")
+    assert resolver.exists("Jamie Hass")
+    assert resolver.resolve("Jamie_Hass")["title"] == "Jamie Hass (225 pts)"
+
+
+def test_the_full_name_still_resolves_too():
+    registry = [{"title": "Jamie Hass (225 pts)", "path": "Campaign/02_Characters/PCs/Jamie.json"}]
+    assert LinkResolver(registry).exists("Jamie Hass (225 pts)")
+
+
+def test_a_parenthetical_that_distinguishes_two_entities_is_not_collapsed():
+    # Both alias to "the watcher"; first wins for the alias, but each still
+    # resolves exactly. Nothing is silently merged.
+    registry = [
+        {"title": "The Watcher (Rain World)", "path": "a.json"},
+        {"title": "The Watcher (Hinamizawa)", "path": "b.json"},
+    ]
+    r = LinkResolver(registry)
+    assert r.resolve("The Watcher (Hinamizawa)")["path"] == "b.json"
+    assert r.resolve("The Watcher (Rain World)")["path"] == "a.json"
