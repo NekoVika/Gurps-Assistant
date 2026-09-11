@@ -12,10 +12,17 @@ import type { StoryPlacementJSON } from "../../lib/types";
 
 const EMPTY: StoryPlacementJSON = { node: "", mode: "appearance" };
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, children, aside }: {
+  label: string; hint?: string; children: React.ReactNode;
+  /** Sits on the label row, so the cell stays the same height as its siblings. */
+  aside?: React.ReactNode;
+}) {
   return (
     <div className="editor-field">
-      <label className="editor-label">{label}</label>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", minHeight: "18px" }}>
+        <label className="editor-label" style={{ margin: 0 }}>{label}</label>
+        {aside}
+      </div>
       {children}
       {hint && (
         <span style={{ color: "#8b949e", fontSize: "0.7rem", marginTop: "2px", display: "block" }}>
@@ -62,20 +69,28 @@ export function WhereField({ value, onChange }: { value: string; onChange: (v: s
       hint={mode === "person"
         ? "Resolves to wherever they are — nothing to update when the party moves."
         : "The place this character is normally found."}
+      aside={
+        <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+          {(["place", "person"] as const).map(option => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => { setMode(option); onChange(""); }}
+              title={option === "place" ? "Point at a place" : "Point at someone they travel with"}
+              style={{
+                width: "auto", margin: 0, padding: "1px 7px", fontSize: "0.62rem",
+                borderRadius: "10px", cursor: "pointer",
+                background: mode === option ? "rgba(56, 139, 253, 0.22)" : "transparent",
+                border: `1px solid ${mode === option ? "rgba(56, 139, 253, 0.5)" : "rgba(255,255,255,0.15)"}`,
+                color: mode === option ? "#79c0ff" : "#8b949e",
+              }}
+            >
+              {option === "place" ? "place" : "travels with"}
+            </button>
+          ))}
+        </div>
+      }
     >
-      <div style={{ display: "flex", gap: "6px", marginBottom: "4px" }}>
-        {(["place", "person"] as const).map(option => (
-          <button
-            key={option}
-            type="button"
-            onClick={() => { setMode(option); onChange(""); }}
-            className={mode === option ? "primary-button" : "ghost-button"}
-            style={{ width: "auto", margin: 0, padding: "2px 10px", fontSize: "0.7rem" }}
-          >
-            {option === "place" ? "A place" : "Travels with"}
-          </button>
-        ))}
-      </div>
       <WorkspaceSelect
         category={mode === "person" ? "Character" : "Location"}
         value={value}

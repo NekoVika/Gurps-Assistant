@@ -27,8 +27,8 @@ beforeEach(() => {
 describe("WhereField", () => {
   it("offers a place picker by default", () => {
     render(<WhereField value="" onChange={() => {}} />);
-    expect(screen.getByText("A place")).toBeInTheDocument();
-    expect(screen.getByText("Travels with")).toBeInTheDocument();
+    expect(screen.getByText("place")).toBeInTheDocument();
+    expect(screen.getByText("travels with")).toBeInTheDocument();
   });
 
   it("starts in travels-with mode when the link already names a person", () => {
@@ -46,7 +46,7 @@ describe("WhereField", () => {
   it("clears the link when switching what kind of thing it points at", () => {
     const onChange = vi.fn();
     render(<WhereField value="HQ" onChange={onChange} />);
-    fireEvent.click(screen.getByText("Travels with"));
+    fireEvent.click(screen.getByText("travels with"));
     expect(onChange).toHaveBeenCalledWith("");
   });
 });

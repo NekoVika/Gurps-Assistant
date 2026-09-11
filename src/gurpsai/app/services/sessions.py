@@ -53,8 +53,9 @@ class SessionService:
         session = ChatSession(title=title)
         return self.save_session(session)
 
-    def save_session(self, session: ChatSession) -> ChatSession:
-        session.updated_at = time.time()
+    def save_session(self, session: ChatSession, touch: bool = True) -> ChatSession:
+        if touch:
+            session.updated_at = time.time()
         fp = self._get_sessions_dir() / f"{session.id}.json"
         fp.write_text(session.model_dump_json(indent=2), encoding="utf-8")
         return session

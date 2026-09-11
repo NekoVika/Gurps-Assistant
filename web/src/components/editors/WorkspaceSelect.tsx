@@ -29,7 +29,10 @@ export function WorkspaceSelect({ category, value, onChange, style, placeholder 
             targetCategory === "All";
 
           if (matchesCategory) {
-            results.push({ group: currentGroup, name: node.name.replace(".json", "") });
+            // Story files are all called Episode_Overview.json / Chapter_Overview.json,
+            // so the filename says nothing about which one this is. The title is
+            // the entity's real name and the value other entities reference.
+            results.push({ group: currentGroup, name: node.title || node.name.replace(".json", "") });
           }
         }
         if (node.children) {
