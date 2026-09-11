@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import type { WizardDef } from "../lib/wizards";
+import { genericNameProblem } from "../lib/naming";
 
 type WizardModalProps = {
   wizard: WizardDef | null;
@@ -75,6 +76,14 @@ export const WizardModal: React.FC<WizardModalProps> = ({
     visibleFields.forEach(f => {
       if (f.required && (!answers[f.id] || answers[f.id].trim() === "")) {
         errors[f.id] = "This field is required.";
+        return;
+      }
+      // The wizard writes files directly, so the stub endpoint's name check
+      // never sees these. Catching it here is better anyway: the GM is told
+      // while typing rather than after a generation has already run.
+      if (/^name$/i.test(f.id) && answers[f.id]?.trim()) {
+        const problem = genericNameProblem(answers[f.id]);
+        if (problem) errors[f.id] = problem;
       }
     });
     setFieldErrors(errors);

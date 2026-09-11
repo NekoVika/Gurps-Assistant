@@ -321,7 +321,7 @@ export const WIZARDS: WizardDef[] = [
         `- skills: array of strings like "First Aid (IQ+0)-10 [1] - Field stabilization"`,
         `- gear: array of strings like "Medkit (2 lbs, $100) - First Aid kit"`,
         `- pointTotal: a string like "150"`,
-        `- significance: exactly one of "core", "supporting", "featured", "background"${type === "Bestiary" ? ' — but use "" here, a Bestiary template has no narrative weight of its own' : ""}`,
+        `- significance: exactly one of "core", "supporting", "featured", "background"${type === "Bestiary" ? " (ignored for a Bestiary template — it is cleared afterwards)" : ""}`,
         `- kind: exactly "${type === "Bestiary" ? "type" : type === "PC" ? "pc" : "individual"}"`,
         `- armorCoverage: a SPARSE object — only include locations where DR > 0. Keys are camelCase location names: eye, skull, face, rightLeg, rightArm, torso, groin, leftArm, leftLeg, hand, foot, neck, vitals. Each value is { "dr": <number>, "source": "<armor name>" }. Omit locations with DR 0 entirely.`,
         `\nOutput only the JSON object — no explanation, no markdown fences.`,
@@ -333,7 +333,9 @@ export const WIZARDS: WizardDef[] = [
         name:               { type: "string" },
         concept:            { type: "string" },
         kind:               { type: "string", enum: ["individual", "type", "pc"] },
-        significance:       { type: "string", enum: ["", "core", "supporting", "featured", "background"] },
+        // No "" member: providers reject an empty enum value outright. A type
+        // carries no significance, so postProcess clears it after generation.
+        significance:       { type: "string", enum: ["core", "supporting", "featured", "background"] },
         role:               { type: "string" },
         location:           { type: "string" },
         status:             { type: "string" },
@@ -436,6 +438,9 @@ export const WIZARDS: WizardDef[] = [
       const { armorCoverage, ...rest } = result;
       return {
         ...rest,
+        // A template has no narrative weight of its own; only its instances do.
+        // The schema cannot express "" so the model always picks something.
+        significance: rest.kind === "type" ? "" : rest.significance,
         hitLocations: expandArmorCoverage(
           armorCoverage as Record<string, { dr: number; source?: string }> | undefined
         ),
