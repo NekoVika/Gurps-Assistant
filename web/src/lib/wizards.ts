@@ -319,8 +319,17 @@ export const WIZARDS: WizardDef[] = [
         `- advantages: array of strings like "Combat Reflexes [15] - Reacts quickly (B43)"`,
         `- disadvantages: array of strings like "Curious [-5] - CR: 12 (B129)"`,
         `- skills: array of strings like "First Aid (IQ+0)-10 [1] - Field stabilization"`,
-        `- gear: array of strings like "Medkit (2 lbs, $100) - First Aid kit"`,
+        // The parenthetical is parsed as exactly (weight, cost). A model left to
+        // itself puts the tech level there and the weight in the notes, and the
+        // entry then cannot be decomposed by the editor at all.
+        `- gear: array of strings formatted EXACTLY as "Name [Qty] (Weight, Cost) - Notes".`,
+        `  The parentheses hold ONLY weight and cost, comma-separated. Everything else — tech level,`,
+        `  damage, RoF, Acc — goes after the dash. Correct: "Assault Rifle [1] (9 lbs, $2000) - TL8, 7d pi, Acc 6, RoF 9".`,
+        `  Wrong: "Assault Rifle (TL8) - 7d pi, Wt 9 lbs, $2000".`,
         `- pointTotal: a string like "150"`,
+        `- concept: a short archetype phrase of 2-5 words — "Ex-military smuggling pilot", "Sewer-dwelling scavenger".`,
+        `  NOT a sentence and NOT a summary of their situation; the GM reads it as a label beside the name.`,
+        `- role: the exact value provided above, unchanged. Do not expand it into a sentence.`,
         `- significance: exactly one of "core", "supporting", "featured", "background"${type === "Bestiary" ? " (ignored for a Bestiary template — it is cleared afterwards)" : ""}`,
         `- kind: exactly "${type === "Bestiary" ? "type" : type === "PC" ? "pc" : "individual"}"`,
         `- armorCoverage: a SPARSE object — only include locations where DR > 0. Keys are camelCase location names: eye, skull, face, rightLeg, rightArm, torso, groin, leftArm, leftLeg, hand, foot, neck, vitals. Each value is { "dr": <number>, "source": "<armor name>" }. Omit locations with DR 0 entirely.`,

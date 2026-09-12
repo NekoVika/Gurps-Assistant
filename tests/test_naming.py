@@ -45,5 +45,7 @@ def test_anything_carrying_a_real_word_passes(name):
 
 def test_the_message_shows_what_a_good_name_looks_like():
     problem = generic_name_problem("Chapter 04")
-    assert "Chapter 04:" in problem
+    assert "Chapter 04" in problem
     assert "category" in problem
+    # No invented title: the message explains the collision instead.
+    assert "Rat King" not in problem

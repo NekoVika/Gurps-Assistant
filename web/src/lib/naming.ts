@@ -41,8 +41,9 @@ export function genericNameProblem(name: unknown): string | null {
   }
   if (GENERIC.test(text)) {
     return (
-      `“${text}” is a category, not a name. Add what makes it this one — ` +
-      `“${text}: The Rat King's Lair”, not “${text}”.`
+      `“${text}” names a category, not this particular one. Give it a title ` +
+      `as well — two episodes can each have a “${text}”, and then neither ` +
+      `can be told from the other.`
     );
   }
   return null;

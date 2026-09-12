@@ -38,7 +38,9 @@ describe("names that say nothing", () => {
 
   it("shows what a good name looks like", () => {
     const problem = genericNameProblem("Chapter 04");
-    expect(problem).toContain("Chapter 04:");
+    expect(problem).toContain("Chapter 04");
     expect(problem).toContain("category");
+    // No invented title: the message explains the collision instead.
+    expect(problem).not.toContain("Rat King");
   });
 });

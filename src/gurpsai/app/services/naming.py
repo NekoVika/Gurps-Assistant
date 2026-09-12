@@ -46,8 +46,9 @@ def generic_name_problem(name: object) -> str | None:
         return f"“{text[:60]}” looks like a file path, not a name."
     if _GENERIC.match(text):
         return (
-            f"“{text}” is a category, not a name. Add what makes it this one — "
-            f"“{text}: The Rat King's Lair”, not “{text}”."
+            f"“{text}” names a category, not this particular one. Give it a title "
+            f"as well — two episodes can each have a “{text}”, and then neither "
+            f"can be told from the other."
         )
     return None
 
