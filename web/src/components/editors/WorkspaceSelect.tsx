@@ -36,7 +36,15 @@ export function WorkspaceSelect({ category, value, onChange, style, placeholder 
           }
         }
         if (node.children) {
-          results = results.concat(filterNodes(node.children, targetCategory, node.name));
+          // Group by what the folder *is*, not what it is called on disk. Story
+          // folders are Chapter_00, Chapter_01... while the overview inside
+          // carries the real title, so grouping by name produced a list of
+          // numbered headings with one item each.
+          const overview = node.children.find(
+            c => c.node_type === "file" && /overview/i.test(c.name) && c.title
+          );
+          const groupName = overview?.title || node.name.replace(/_/g, " ");
+          results = results.concat(filterNodes(node.children, targetCategory, groupName));
         }
       }
       return results;

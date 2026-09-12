@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { WorkspaceSelect } from "./WorkspaceSelect";
+import { StoryNodeSelect } from "./StoryNodeSelect";
 import { useCampaignStore } from "../../stores/useCampaignStore";
 import type { StoryPlacementJSON } from "../../lib/types";
 
@@ -132,11 +133,9 @@ export function StoryPlacementField({
   return (
     <>
       <Field label="Story placement" hint="Episode, chapter or encounter.">
-        <WorkspaceSelect
-          category="Story"
+        <StoryNodeSelect
           value={current.node}
           onChange={node => onChange({ ...current, node })}
-          placeholder="— not in the story yet —"
         />
       </Field>
       <Field
