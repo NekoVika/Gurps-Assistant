@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { inferPlacement } from '../lib/placementContext';
+import { resolveEntity } from '../lib/entityResolution';
 import {
   FileTreeNode,
   FileContent,
@@ -391,27 +392,21 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
       return null;
     };
 
-    const findByName = (nodes: any[]): any | null => {
-      for (const node of nodes) {
-        if (node.node_type === "file") {
-          const nameWithoutExt = node.name.replace(/\.[^/.]+$/, "").toLowerCase();
-          if (nameWithoutExt === lowerName || node.name.toLowerCase() === lowerName) {
-            return node;
-          }
-        }
-        if (node.children) {
-          const found = findByName(node.children);
-          if (found) return found;
-        }
-      }
-      return null;
-    };
-    
     let targetNode = findByPath(state.fileTree);
+
     if (!targetNode) {
-      targetNode = findByName(state.fileTree);
+      // Resolve names through the shared rule rather than comparing filenames.
+      // This used to be a third, weaker implementation: it lowercased the
+      // filename and compared it literally, so "Missing Hunter (NPC)" never
+      // matched Missing_Hunter_NPC.json. The chip rendered blue because the
+      // registry resolved it, then clicking offered to create it again.
+      const item = resolveEntity(state.entityRegistry, targetName);
+      if (item) {
+        get().setSelectedPath(item.path);
+        return;
+      }
     }
-    
+
     if (targetNode) {
       get().setSelectedPath(targetNode.path);
     } else {

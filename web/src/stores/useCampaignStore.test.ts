@@ -69,3 +69,36 @@ describe("creating a stub from where the GM is standing", () => {
     expect(useCampaignStore.getState().stubNotice).toBeNull();
   });
 });
+
+describe("following a link to an entity that exists", () => {
+  const registry = [
+    { id: "Missing_Hunter_NPC", title: "Missing Hunter (NPC)", path: "Campaign/02_Characters/Main_Cast/Missing_Hunter_NPC.json", type: "" },
+    { id: "The_Watch", title: "The Watch", path: "Campaign/01_World_Bible/Factions/The_Watch.json", type: "" },
+  ];
+
+  beforeEach(() => {
+    useCampaignStore.setState({ entityRegistry: registry as any, fileTree: [], stubPrompt: null, selectedPath: "" });
+  });
+
+  it("opens the file when the name resolves, however it is spelled", async () => {
+    // The chip renders blue because the registry resolves it; navigation must
+    // agree, or clicking offers to create something that already exists.
+    await useCampaignStore.getState().handleNavigateTo("Missing Hunter (NPC)");
+    expect(useCampaignStore.getState().selectedPath).toContain("Missing_Hunter_NPC.json");
+    expect(useCampaignStore.getState().stubPrompt).toBeNull();
+  });
+
+  it.each(["missing hunter (npc)", "Missing_Hunter_NPC", "Missing Hunter"])(
+    "resolves the variant %p to the same file",
+    async (variant) => {
+      await useCampaignStore.getState().handleNavigateTo(variant);
+      expect(useCampaignStore.getState().selectedPath).toContain("Missing_Hunter_NPC.json");
+    }
+  );
+
+  it("still offers a stub for a name nothing backs", async () => {
+    await useCampaignStore.getState().handleNavigateTo("Nobody At All", "Character");
+    expect(useCampaignStore.getState().stubPrompt).toEqual({ name: "Nobody At All", type: "Character" });
+    expect(useCampaignStore.getState().selectedPath).toBe("");
+  });
+});
