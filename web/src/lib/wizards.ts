@@ -340,6 +340,15 @@ export const WIZARDS: WizardDef[] = [
         `- role: the exact value provided above, unchanged. Do not expand it into a sentence.`,
         `- significance: exactly one of "core", "supporting", "featured", "background"${type === "Bestiary" ? " (ignored for a Bestiary template — it is cleared afterwards)" : ""}`,
         `- kind: exactly "${type === "Bestiary" ? "type" : type === "PC" ? "pc" : "individual"}"`,
+        `- status: one of "Alive", "Dead", "Missing" — "Alive" unless the parameters say otherwise.`,
+        `- speech: one characteristic line in their own voice, in quotes.`,
+        `- pcHooks: one or two concrete ways the PCs could become entangled with them. Openings, not a summary.`,
+        // A guessed place or acquaintance becomes a link to something that does
+        // not exist, and the GM is then chasing a loose end the model invented.
+        // Where an entity sits and who it knows is the GM's to say.
+        `\nLeave these EMPTY — they are the GM's, not yours: location, storyAppearances,`,
+        `characterRelations, locationRelations, factionRelations, images. Do not invent a place`,
+        `or a person; a name you make up becomes a broken link in their campaign.`,
         `- armorCoverage: a SPARSE object — only include locations where DR > 0. Keys are camelCase location names: eye, skull, face, rightLeg, rightArm, torso, groin, leftArm, leftLeg, hand, foot, neck, vitals. Each value is { "dr": <number>, "source": "<armor name>" }. Omit locations with DR 0 entirely.`,
         `\nOutput only the JSON object — no explanation, no markdown fences.`,
       ].filter(Boolean).join("\n");
@@ -443,9 +452,21 @@ export const WIZARDS: WizardDef[] = [
         images:           { type: "array", items: { type: "string" } },
         variations:       { type: "array", items: { type: "string" } },
       },
+      // One pass should finish everything it has any business finishing. A
+      // field left off this list is one the model may silently omit, and the
+      // GM then reads the blank as the feature failing.
+      //
+      // `kind` is required because postProcess tests `rest.kind === "type"` to
+      // clear significance; omitted, a bestiary template keeps whatever
+      // significance the model picked.
+      //
+      // Deliberately absent, and the prompt says so too: location,
+      // storyAppearances, the three relation arrays, images, variations. Those
+      // are placement and acquaintance — the GM's to set — and a guessed name
+      // is a link to something that does not exist.
       required: [
-        "name", "concept", "significance", "role",
-        "appearance", "personality", "motivation",
+        "name", "concept", "kind", "significance", "role", "status",
+        "appearance", "personality", "motivation", "speech", "pcHooks",
         "pointTotal", "attributes", "advantages", "disadvantages",
         "skills", "gear", "armorCoverage", "tactics"
       ]
