@@ -269,7 +269,15 @@ export const WIZARDS: WizardDef[] = [
     id: "create_npc",
     title: "Create Entity",
     description: "Generates a fully statted GURPS 4e character sheet and narrative anchor for an NPC, PC, or Bestiary entity.",
-    stubTargetPath: (answers) => `Campaign/02_Characters/Main_Cast/${answers.Name ? answers.Name.replace(/ /g, "_") : "Untitled"}.json`,
+    // The folder follows the entity type, as it does in the stub endpoint:
+    // a bestiary template dropped into Main_Cast reads as an individual, and
+    // then the loose-ends report asks where that wolf is standing.
+    stubTargetPath: (answers) => {
+      const folder = answers.EntityType === "Bestiary" ? "Bestiary"
+                   : answers.EntityType === "PC" ? "PCs"
+                   : "Main_Cast";
+      return `Campaign/02_Characters/${folder}/${answers.Name ? answers.Name.replace(/ /g, "_") : "Untitled"}.json`;
+    },
     stubTemplatePath: ".planning/_templates/NPC_Template.json",
     workflowPath: ".agents/workflows/create_npc.md",
     aiPromptTemplate: (answers) => {

@@ -17,6 +17,7 @@ import { TrashbinPanel } from "./TrashbinPanel";
 import { ConfirmModal } from "./ConfirmModal";
 import { WizardModal } from "./WizardModal";
 import { mergeGenerated, describeMerge } from "../lib/mergeGenerated";
+import { instantiateTemplate } from "../lib/instantiateTemplate";
 import { WIZARDS, type WizardDef } from "../lib/wizards";
 import { getFileContent, writeFileContent, runStructuredChat } from '../lib/api';
 import { updateParentChildLinks } from '../lib/parentLinks';
@@ -285,12 +286,14 @@ export function MainWorkspace() {
                   const tpl = await getFileContent(templatePath);
                   templateContent = tpl.content;
                } catch { /* template missing, start blank */ }
-               
-               for (const [key, val] of Object.entries(variables)) {
-                 templateContent = templateContent.replace(new RegExp(`\\[(${key}|${key} Name)\\]`, "gi"), val as string);
-               }
 
-               const writeResponse = await writeFileContent(targetPath, templateContent);
+               // The templates are examples: every field holds a description of
+               // itself. Written verbatim they produce an entity that looks
+               // complete, which made "Flesh out with AI" a permanent no-op --
+               // the merge fills blanks only, and nothing was blank.
+               const stubContent = instantiateTemplate(templateContent, variables);
+
+               const writeResponse = await writeFileContent(targetPath, stubContent);
                if (writeResponse.success) {
                   try {
                       await updateParentChildLinks(targetPath, variables);
