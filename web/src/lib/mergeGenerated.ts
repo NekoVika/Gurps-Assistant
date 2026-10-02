@@ -57,6 +57,28 @@ export function mergeGenerated(
   return { merged, filled: filled.filter(k => k !== "name" && k !== "title"), kept };
 }
 
+/**
+ * Would a pass have anything to fill?
+ *
+ * Deepening an already-complete entity costs a full generation and then throws
+ * all of it away, because the merge keeps what is already written. The GM sees
+ * ten seconds of spinner and reasonably concludes something was generated.
+ *
+ * `required` is the schema's own required list — the fields generation is
+ * contracted to return. Anything outside it the model may omit, so a blank
+ * there is no evidence a pass would help. The check is deliberately
+ * conservative: it skips only when *every* contracted field is already
+ * written, because wrongly skipping would look exactly like the no-op bug this
+ * release spent two rounds chasing.
+ */
+export function nothingLeftToFill(
+  existing: Record<string, unknown>,
+  required: string[] | undefined
+): boolean {
+  if (!required || required.length === 0) return false;
+  return required.every(key => hasValue(existing[key]));
+}
+
 /** One line for the toast: what the pass actually changed. */
 export function describeMerge(report: MergeReport): string {
   if (report.filled.length === 0) {

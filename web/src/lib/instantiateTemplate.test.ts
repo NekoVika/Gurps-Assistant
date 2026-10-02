@@ -153,3 +153,34 @@ describe("templates that are not JSON", () => {
     expect(instantiateTemplate("not json {", {})).toBe("not json {");
   });
 });
+
+describe("the visual anchor the GM typed", () => {
+  // Reported three times: typed once in the wizard, then every later pass
+  // asked for it again with an empty box. It was being discarded entirely.
+  it("is stored, so it survives the stub", () => {
+    const stub = JSON.parse(
+      instantiateTemplate(template("NPC_Template.json"), {
+        Name: "Killian",
+        Visuals: "Old and scarred, a slight limp.",
+      })
+    );
+    expect(stub.appearance).toBe("Old and scarred, a slight limp.");
+  });
+
+  it("is left to the model when the GM says nothing", () => {
+    const stub = JSON.parse(
+      instantiateTemplate(template("NPC_Template.json"), { Name: "Killian", Visuals: "   " })
+    );
+    expect(stub.appearance).toBe("");
+  });
+
+  it("is canon once written — generation cannot overwrite it", () => {
+    const stub = JSON.parse(
+      instantiateTemplate(template("NPC_Template.json"), { Name: "Killian", Visuals: "One clouded eye." })
+    );
+    const report = mergeGenerated(stub, { appearance: "A model's richer paragraph.", personality: "Wary." });
+    expect(report.merged.appearance).toBe("One clouded eye.");
+    expect(report.kept).toContain("appearance");
+    expect(report.filled).toContain("personality");
+  });
+});

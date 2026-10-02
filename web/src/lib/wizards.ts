@@ -581,8 +581,11 @@ export const WIZARDS: WizardDef[] = [
             id: "Visuals",
             label: "Visual Anchor",
             type: "textarea",
-            placeholder: "Descriptive appearance to treat as absolute canon...",
-            required: true
+            placeholder: "Appearance to treat as canon — or leave blank and let the AI invent it",
+            // Not required. It is stored as the appearance and the merge never
+            // replaces it, so demanding it meant every manual stub had a look
+            // the model was then forbidden to improve on. Blank is a real
+            // answer here: "you decide".
           },
           {
             id: "Exceptions",

@@ -36,6 +36,13 @@ const ANSWER_TO_FIELD: Record<string, string> = {
   Description: "gmSummary",
   Type: "type",
   Region: "region",
+  // The Visual Anchor asks for "appearance to treat as absolute canon", which
+  // is the appearance field in every sense -- so it is stored there rather
+  // than beside it. Keeping both would mean asking the GM to understand two
+  // overlapping description fields. The merge then protects it, which is what
+  // "canon" has to mean; a GM who would rather the model invent the look
+  // leaves the anchor blank and generation fills it.
+  Visuals: "appearance",
 };
 
 /** The wizard asks for "NPC / Bestiary / PC"; the entity stores a `kind`.

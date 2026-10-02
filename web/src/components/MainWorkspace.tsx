@@ -16,7 +16,7 @@ import { ActivityPanel } from "./ActivityPanel";
 import { TrashbinPanel } from "./TrashbinPanel";
 import { ConfirmModal } from "./ConfirmModal";
 import { WizardModal } from "./WizardModal";
-import { mergeGenerated, describeMerge } from "../lib/mergeGenerated";
+import { mergeGenerated, describeMerge, nothingLeftToFill } from "../lib/mergeGenerated";
 import { instantiateTemplate } from "../lib/instantiateTemplate";
 import { WIZARDS, type WizardDef } from "../lib/wizards";
 import { getFileContent, writeFileContent, runStructuredChat } from '../lib/api';
@@ -221,6 +221,22 @@ export function MainWorkspace() {
                messages.push({ role: "system", content: systemContent });
             }
             messages.push({ role: "user", content: compiledPrompt });
+
+            // A second pass over a finished entity would generate a whole sheet
+            // and then discard it, after ten seconds of spinner that reads as
+            // work being done. Say so immediately instead, and spend nothing.
+            if (deepenTarget) {
+               try {
+                  const current = await getFileContent(deepenTarget.path);
+                  const existing = JSON.parse(current.content) as Record<string, unknown>;
+                  if (nothingLeftToFill(existing, (schema as { required?: string[] })?.required)) {
+                     setActiveWizard(null);
+                     setDeepenTarget(null);
+                     toast.success("Nothing to add — every field was already written.");
+                     return;
+                  }
+               } catch { /* unreadable: let the generation decide */ }
+            }
 
             try {
                const { result: rawResult } = await runStructuredChat(

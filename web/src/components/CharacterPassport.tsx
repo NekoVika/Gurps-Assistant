@@ -110,6 +110,10 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
       Description: data.gmSummary || "",
       Role: data.role || "",
       Significance: data.significance || "",
+      // The anchor was typed once, at creation, and then every later pass asked
+      // for it again with an empty box -- so it read as not persisting. It
+      // lives in `appearance`, so that is where it comes back from.
+      Visuals: data.appearance || "",
     },
   });
 

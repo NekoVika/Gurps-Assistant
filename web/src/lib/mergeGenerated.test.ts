@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mergeGenerated, describeMerge } from "./mergeGenerated";
+import { mergeGenerated, describeMerge, nothingLeftToFill } from "./mergeGenerated";
 
 describe("deepening an entity that already exists", () => {
   it("fills a blank field", () => {
@@ -88,5 +88,35 @@ describe("describeMerge", () => {
 
   it("is honest when there was nothing to add", () => {
     expect(describeMerge({ merged: {}, filled: [], kept: ["concept"] })).toContain("already written");
+  });
+});
+
+describe('nothingLeftToFill', () => {
+  const required = ['name', 'appearance', 'personality'];
+
+  it('is false when a contracted field is still blank', () => {
+    expect(nothingLeftToFill({ name: 'Killian', appearance: 'Scarred.', personality: '' }, required)).toBe(false);
+  });
+
+  it('is true only when every contracted field is written', () => {
+    expect(nothingLeftToFill({ name: 'Killian', appearance: 'Scarred.', personality: 'Gruff.' }, required)).toBe(true);
+  });
+
+  it('ignores fields outside the contract', () => {
+    // Relations and placement are the GM's; the model is told to leave them, so
+    // a blank there is no reason to spend a generation.
+    const full = { name: 'K', appearance: 'a', personality: 'p', characterRelations: [], location: '' };
+    expect(nothingLeftToFill(full, required)).toBe(true);
+  });
+
+  it('never skips when there is no contract to judge by', () => {
+    // Wrongly skipping looks exactly like the no-op bug, so absent a required
+    // list the generation must run.
+    expect(nothingLeftToFill({ name: 'K' }, undefined)).toBe(false);
+    expect(nothingLeftToFill({ name: 'K' }, [])).toBe(false);
+  });
+
+  it('treats a placeholder as blank, the way the editor does', () => {
+    expect(nothingLeftToFill({ name: 'K', appearance: '???', personality: 'p' }, required)).toBe(false);
   });
 });
