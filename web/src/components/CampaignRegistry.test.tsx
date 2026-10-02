@@ -52,7 +52,10 @@ const TREE: FileTreeNode[] = [
     file('Campaign/state.json'),
     dir('Campaign/02_Characters', [
       dir('Campaign/02_Characters/PCs', [file('Campaign/02_Characters/PCs/Hero.json', 'Hero')]),
-      dir('Campaign/02_Characters/Main_Cast', [file('Campaign/02_Characters/Main_Cast/Grim.json', 'Grim')]),
+      dir('Campaign/02_Characters/Main_Cast', [
+        file('Campaign/02_Characters/Main_Cast/Grim.json', 'Grim'),
+        file('Campaign/02_Characters/Main_Cast/Vagrant.json', 'Vagrant'),
+      ]),
     ]),
     dir('Campaign/01_World_Bible', [
       dir('Campaign/01_World_Bible/Locations', [file('Campaign/01_World_Bible/Locations/Docks.json', 'Docks')]),
@@ -116,9 +119,21 @@ describe('CampaignRegistry', () => {
 
       expect(await screen.findByText('Grim')).toBeInTheDocument();
       expect(await screen.findByText('Docks')).toBeInTheDocument();
-      expect(screen.queryByText('Hero')).not.toBeInTheDocument();
-      expect(screen.queryByText('Ring')).not.toBeInTheDocument();
+      // Narrowing is real: an NPC outside the scene is dropped.
+      expect(screen.queryByText('Vagrant')).not.toBeInTheDocument();
       expect(screen.getByText(/Focused on/)).toBeInTheDocument();
+    });
+
+    it('leaves a section whole when scope cannot speak about it', async () => {
+      // Scope admits an entity by its shape, so a faction can never be a
+      // member -- and filtering factions by it emptied the section outright.
+      // Same for the party: no PC is in this scene's scope, and making the
+      // GM's own characters vanish reads as the sidebar breaking.
+      useCampaignStore.setState({ entityRegistry: REGISTRY, focusNode: 'First Steps' });
+      render(<CampaignRegistry tree={TREE} selectedPath="" onSelect={() => {}} />);
+
+      expect(await screen.findByText('Ring')).toBeInTheDocument();
+      expect(await screen.findByText('Hero')).toBeInTheDocument();
     });
 
     it('leaves the story arcs navigable while focused', async () => {

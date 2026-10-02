@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { FileTreeNode } from "../lib/api";
 import { getFileContent, getStoryScope } from "../lib/api";
+import { narrowToScope } from "../lib/scopeFilter";
 import { entityExists, isReferenceName, normalizeEntityName } from "../lib/entityResolution";
 import { useCampaignStore } from "../stores/useCampaignStore";
 
@@ -304,11 +305,13 @@ export function CampaignRegistry({ tree, selectedPath, onSelect, onActivateWizar
   if (inScope) {
     const keep = (n: FileTreeNode) =>
       inScope.has(normalizeEntityName(n.title || formatEntityName(n.path)));
-    data.pcs = data.pcs.filter(keep);
-    data.npcs = data.npcs.filter(keep);
-    data.bestiary = data.bestiary.filter(keep);
-    data.locations = data.locations.filter(keep);
-    data.factions = data.factions.filter(keep);
+    // Only narrow a section scope can actually speak about -- see narrowToScope.
+    const narrow = (items: FileTreeNode[]) => narrowToScope(items, keep);
+    data.pcs = narrow(data.pcs);
+    data.npcs = narrow(data.npcs);
+    data.bestiary = narrow(data.bestiary);
+    data.locations = narrow(data.locations);
+    data.factions = narrow(data.factions);
   }
 
   const campaignOrder = orderMap[CAMPAIGN_ORDER_KEY] || [];
