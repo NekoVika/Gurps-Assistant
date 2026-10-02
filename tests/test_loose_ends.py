@@ -225,3 +225,64 @@ def test_without_a_node_list_placements_are_taken_on_trust():
     # a report full of false positives.
     chars = {"Rick": char("Rick", location="HQ", storyPlacement={"node": "Anything", "mode": "fixture"})}
     assert collect(chars, LOCATIONS) == []
+
+
+class TestPlaceReferencesOnEveryEntity:
+    """Locations, factions and story nodes carry place references too.
+
+    Nothing checked them, so the report read zero while fifty-two links in the
+    real campaign pointed at nothing -- two thirds of the story nodes' own
+    primaryLocation values among them.
+    """
+
+    LOCATIONS = {
+        "Apex Infrastructure Group HQ": {
+            "name": "Apex Infrastructure Group HQ",
+            "internalStructure": [{"title": "Sub-Level 2: Operations & Logistics"}],
+        },
+        "Industrial Complex": {"name": "Industrial Complex"},
+    }
+
+    def test_a_faction_based_nowhere_real_is_reported(self):
+        ends = collect(
+            {}, self.LOCATIONS,
+            factions={"The Watch": {"name": "The Watch", "headquarters": "Fort Nonexistent"}},
+        )
+        assert [(e.name, e.issue) for e in ends] == [("The Watch", "unresolved_location")]
+        assert "Fort Nonexistent" in ends[0].detail
+
+    def test_a_story_node_set_nowhere_real_is_reported(self):
+        ends = collect(
+            {}, self.LOCATIONS,
+            story_nodes={"Drone Defense": {"title": "Drone Defense", "type": "Encounter",
+                                           "primaryLocation": "Flooded Corridor"}},
+        )
+        assert [(e.name, e.issue) for e in ends] == [("Drone Defense", "unresolved_location")]
+
+    def test_a_reference_to_an_internal_zone_resolves(self):
+        # 0.4 moved rooms into internalStructure; references to them must still
+        # land, at the location that contains the room.
+        ends = collect(
+            {}, self.LOCATIONS,
+            factions={"Apex": {"name": "Apex", "headquarters": "Sub-Level 2: Operations & Logistics"}},
+        )
+        assert ends == []
+
+    def test_a_decorated_reference_resolves(self):
+        ends = collect(
+            {}, self.LOCATIONS,
+            story_nodes={"Scene": {"title": "Scene", "type": "Encounter",
+                                   "primaryLocation": "Industrial Complex (Sector 1)"}},
+        )
+        assert ends == []
+
+    def test_having_no_place_at_all_is_not_a_loose_end(self):
+        # A world-bible location outside any plot, a faction with no seat and an
+        # episode spanning several places are all legitimate. An entry with no
+        # honest way to close is how a report stops being able to reach zero.
+        ends = collect(
+            {}, self.LOCATIONS,
+            factions={"Nomads": {"name": "Nomads", "headquarters": ""}},
+            story_nodes={"Arc": {"title": "Arc", "type": "Episode", "primaryLocation": ""}},
+        )
+        assert ends == []

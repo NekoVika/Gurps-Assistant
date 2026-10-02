@@ -77,6 +77,7 @@ def collect(
     party_location: str = "",
     paths: dict[str, str] | None = None,
     story_nodes: dict[str, dict] | None = None,
+    factions: dict[str, dict] | None = None,
 ) -> list[LooseEnd]:
     """Every unfinished piece of linkage, most structural first.
 
@@ -199,6 +200,31 @@ def collect(
                 source_path=paths.get(name, ""),
                 issue="one_sided_relation",
                 detail=f"lists {other_name}{described}, but {other_name} does not list them back",
+            ))
+
+    # Locations, factions and story nodes carry place references too, and until
+    # now nothing checked them -- so the report read zero while fifty-two links
+    # pointed at nothing. Only *unresolvable* references are reported, never
+    # absent ones: a world-bible location outside any plot, a faction with no
+    # seat and an episode spanning several places are all legitimate, and an
+    # entry with no honest way to close is how a report stops reaching zero.
+    elsewhere: list[tuple[dict[str, dict], str, str]] = [
+        (locations, "parentLocation", "is inside"),
+        (factions or {}, "headquarters", "is based at"),
+        (story_nodes or {}, "primaryLocation", "takes place at"),
+    ]
+    for collection, field, verb in elsewhere:
+        for name, data in sorted(collection.items()):
+            target = (data.get(field) or "").strip()
+            if not target or not is_reference(target):
+                continue
+            if index.location_named(target):
+                continue
+            found.append(LooseEnd(
+                name=name,
+                source_path=paths.get(name, ""),
+                issue="unresolved_location",
+                detail=f"{verb} “{target}”, which has no file",
             ))
 
     order = list(ISSUE_LABELS)

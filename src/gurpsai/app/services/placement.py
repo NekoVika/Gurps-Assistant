@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from gurpsai.app.services.link_resolver import is_reference, normalize, resolve_name
+from gurpsai.app.services.location_tree import zone_owners
 from gurpsai.app.services.location_tree import ancestors
 
 Status = Literal["placed", "unplaced", "unresolved", "cycle"]
@@ -61,14 +62,27 @@ class PlacementIndex:
             for name, data in self.locations.items()
             if (data.get("parentLocation") or "").strip()
         }
+        self._zones = zone_owners(self.locations)
 
     # -- internals ---------------------------------------------------------
 
-    def _location_named(self, target: str) -> str | None:
-        # Same rule the rest of the app resolves links by, so "HQ" reaches a
-        # location named "Apex Infrastructure Group HQ" here too.
+    def location_named(self, target: str) -> str | None:
+        """The Location a free-text place reference settles on, or None.
+
+        Public because the loose-ends report asks the same question of a
+        faction's headquarters and a story node's primaryLocation, and a second
+        copy of this rule is how the same link came to resolve in one place and
+        not another.
+        """
+        # "HQ" reaches a location named "Apex Infrastructure Group HQ".
         matched = resolve_name(target, [d.get("name", n) for n, d in self.locations.items()])
-        return matched
+        if matched:
+            return matched
+        # A zone is part of a location, so naming one places you at the
+        # location. Checked second: a place of its own always wins over a room
+        # inside something else.
+        zone = resolve_name(target, list(self._zones))
+        return self._zones[zone] if zone else None
 
     def _placed_at(self, location: str, chain: list[str]) -> Placement:
         return Placement(
@@ -95,7 +109,7 @@ class PlacementIndex:
         # the loose-ends report exempts them for the same reason, and the two
         # must agree or the passport contradicts the report.
         if start.get("kind") == "pc":
-            settled = self._location_named(self.party_location)
+            settled = self.location_named(self.party_location)
             if not settled:
                 return Placement(
                     status="unresolved",
@@ -112,7 +126,7 @@ class PlacementIndex:
             if not is_reference(target):
                 return Placement(status="unplaced", chain=tuple(chain))
 
-            settled = self._location_named(target)
+            settled = self.location_named(target)
             if settled:
                 chain.append(settled)
                 return self._placed_at(settled, chain)
@@ -134,7 +148,7 @@ class PlacementIndex:
 
             # PCs move with the party, and the party's position is campaign state.
             if nxt.get("kind") == "pc":
-                settled = self._location_named(self.party_location)
+                settled = self.location_named(self.party_location)
                 if not settled:
                     return Placement(
                         status="unresolved",

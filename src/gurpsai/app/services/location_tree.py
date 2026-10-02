@@ -16,7 +16,34 @@ from gurpsai.app.services.link_resolver import normalize
 # Re-exported: the walk is identical on both axes, so it lives in tree.py.
 from gurpsai.app.services.tree import ancestors, find_cycles
 
-__all__ = ["split_region", "resolve_parent", "ancestors", "find_cycles"]
+__all__ = ["split_region", "resolve_parent", "ancestors", "find_cycles", "zone_owners"]
+
+
+def zone_owners(locations: dict[str, dict]) -> dict[str, str]:
+    """Internal zone title -> the location that contains it.
+
+    "Sector C: Scavenger Territory" names a part of the Shaded Citadel, not a
+    place of its own, so a reference to it is placed at the Citadel —
+    containment rolls upward, as everywhere else.
+
+    This exists because of our own migration. 0.4 lifted rooms out of character
+    files into ``internalStructure``, and every reference already pointing at
+    one of those rooms stopped resolving the moment it moved. Fourteen of this
+    campaign's story nodes named a zone that had just become invisible.
+    """
+    owners: dict[str, str] = {}
+    for key, data in locations.items():
+        location_name = (data.get("name") or key or "").strip()
+        if not location_name:
+            continue
+        for zone in data.get("internalStructure") or []:
+            title = (zone.get("title") if isinstance(zone, dict) else zone) or ""
+            title = str(title).strip()
+            # First writer wins: two locations may both have a "Main Floor",
+            # and guessing between them is worse than leaving it unresolved.
+            if title and title not in owners:
+                owners[title] = location_name
+    return owners
 
 # "Rain World (Lower Regions)" / "Rain World - Drowned Zone" -- a parent with a
 # sub-area stapled on. The qualifier is not always spatial ("circa 1983"), so it

@@ -1,4 +1,8 @@
-from gurpsai.app.services.link_resolver import LinkResolver, is_placeholder, is_reference, normalize
+import pytest
+
+from gurpsai.app.services.link_resolver import (
+    LinkResolver, is_placeholder, is_reference, normalize, resolve_name,
+)
 
 
 REGISTRY = [
@@ -98,3 +102,36 @@ def test_tail_match_only_when_unique():
     assert not r.exists("Watch")
     # unique tail still resolves
     assert r.exists("Bartender")
+
+
+class TestDecoratedQueries:
+    """A qualifier in the *query* must be stripped too, not only in the candidate.
+
+    The alias ran one way only: "Povo Witiko (225 pts)" as a stored name could
+    be found by "Povo Witiko", but a story node pointing at "Rain World
+    (Decaying Megastructures)" found nothing though the location is plainly
+    "Rain World". Thirty-three of the campaign's fifty primaryLocation values
+    failed on this.
+    """
+
+    NAMES = ["Rain World", "The Broken Bridge", "The Leg", "Povo Witiko (225 pts)"]
+
+    @pytest.mark.parametrize("query, expected", [
+        ("Rain World (Decaying Megastructures)", "Rain World"),
+        ("The Broken Bridge (Sector C: Midway)", "The Broken Bridge"),
+        ("The Leg (Zone A: Upper Leg)", "The Leg"),
+    ])
+    def test_a_qualifier_does_not_break_the_link(self, query, expected):
+        assert resolve_name(query, self.NAMES) == expected
+
+    def test_the_exact_name_still_wins(self):
+        # Stripping is a last resort, never a shortcut past an exact match.
+        assert resolve_name("Povo Witiko (225 pts)", self.NAMES) == "Povo Witiko (225 pts)"
+
+    def test_stripping_cannot_invent_a_match(self):
+        assert resolve_name("Somewhere Else (Sector A)", self.NAMES) is None
+
+    def test_an_ambiguous_strip_stays_unresolved(self):
+        # Two candidates would answer to it, so neither is the answer.
+        names = ["North Gate", "South Gate"]
+        assert resolve_name("Gate (Outer)", names) is None

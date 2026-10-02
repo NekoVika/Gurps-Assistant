@@ -115,7 +115,20 @@ def resolve_name(query: object, names: list[str]) -> str | None:
     if wanted in by_norm:
         return by_norm[wanted]
     tails = [original for norm, original in by_norm.items() if norm.endswith(wanted)]
-    return tails[0] if len(tails) == 1 else None
+    if len(tails) == 1:
+        return tails[0]
+
+    # The alias above runs one way only -- a candidate's parenthetical is
+    # stripped, a query's is not. So "Povo Witiko (225 pts)" could be found by
+    # "Povo Witiko", but a story node pointing at "Rain World (Decaying
+    # Megastructures)" found nothing, though the location is plainly "Rain
+    # World". Thirty-three of this campaign's fifty primaryLocation values
+    # failed this way. Last resort, after every exact rule, and still subject
+    # to the uniqueness requirement below.
+    bare_query = _TRAILING_PAREN.sub("", raw).strip()
+    if bare_query and bare_query != raw:
+        return resolve_name(bare_query, names)
+    return None
 
 
 class LinkResolver:

@@ -218,6 +218,7 @@ def validate_campaign() -> CampaignValidateResponse:
     all_characters: dict[str, dict] = {}
     all_locations: dict[str, dict] = {}
     all_story_nodes: dict[str, dict] = {}
+    all_factions: dict[str, dict] = {}
     entity_paths: dict[str, str] = {}
 
     from gurpsai.app.services.files import CampaignFileService
@@ -251,6 +252,12 @@ def validate_campaign() -> CampaignValidateResponse:
                     entity_paths[name] = f"Campaign/{rel_path}"
                 elif "attributes" in data_dict and "pointTotal" in data_dict:
                     all_characters[name] = data_dict
+                    entity_paths[name] = f"Campaign/{rel_path}"
+                # A faction has neither of those keys, so shape alone cannot
+                # find one -- which is why factions were invisible to every
+                # placement check. The folder says what it is.
+                elif "Factions" in rel_path:
+                    all_factions[name] = data_dict
                     entity_paths[name] = f"Campaign/{rel_path}"
                 from gurpsai.app.services.story_scope import is_story_node as _is_node
                 if _is_node(data_dict):
@@ -339,6 +346,7 @@ def validate_campaign() -> CampaignValidateResponse:
             all_characters, all_locations,
             party_location=party_location, paths=entity_paths,
             story_nodes=all_story_nodes,
+            factions=all_factions,
         )
     ]
 

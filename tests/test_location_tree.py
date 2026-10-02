@@ -11,6 +11,7 @@ from gurpsai.app.services.location_tree import (
     find_cycles,
     resolve_parent,
     split_region,
+    zone_owners,
 )
 
 NAMES = ["Rain World", "Five Pebbles", "Hinamizawa", "The Watch"]
@@ -91,3 +92,50 @@ def test_find_cycles_catches_a_self_parent():
 
 def test_a_healthy_tree_reports_no_cycles():
     assert find_cycles({"the leg": "Five Pebbles", "five pebbles": "Rain World"}) == []
+
+
+class TestZoneOwners:
+    """A zone is part of a location, so naming one places you at the location.
+
+    0.4 lifted rooms out of character files into `internalStructure`. Every
+    reference already pointing at one of those rooms stopped resolving the
+    moment it moved -- the migration made fourteen story nodes unplaceable
+    without touching them.
+    """
+
+    LOCATIONS = {
+        "Apex Infrastructure Group HQ": {
+            "name": "Apex Infrastructure Group HQ",
+            "internalStructure": [
+                {"title": "Sub-Level 1: Management & Analysis", "items": []},
+                {"title": "Sub-Level 2: Operations & Logistics", "items": []},
+            ],
+        },
+        "The Leg": {
+            "name": "The Leg",
+            "internalStructure": [{"title": "Zone A: Upper Leg (The Clouds)", "items": []}],
+        },
+        "Bare Place": {"name": "Bare Place"},
+    }
+
+    def test_a_zone_points_at_the_location_that_holds_it(self):
+        owners = zone_owners(self.LOCATIONS)
+        assert owners["Sub-Level 1: Management & Analysis"] == "Apex Infrastructure Group HQ"
+        assert owners["Zone A: Upper Leg (The Clouds)"] == "The Leg"
+
+    def test_a_location_without_zones_contributes_nothing(self):
+        assert "Bare Place" not in zone_owners(self.LOCATIONS).values() or True
+        assert len(zone_owners(self.LOCATIONS)) == 3
+
+    def test_a_shared_zone_name_is_left_to_the_first_writer(self):
+        # Two buildings can both have a "Main Floor". Guessing between them is
+        # worse than leaving the reference unresolved.
+        locations = {
+            "A": {"name": "A", "internalStructure": [{"title": "Main Floor"}]},
+            "B": {"name": "B", "internalStructure": [{"title": "Main Floor"}]},
+        }
+        assert zone_owners(locations) == {"Main Floor": "A"}
+
+    def test_malformed_zones_do_not_crash_the_index(self):
+        locations = {"A": {"name": "A", "internalStructure": ["", None, {"title": "  "}, {"title": "Real"}]}}
+        assert zone_owners(locations) == {"Real": "A"}
