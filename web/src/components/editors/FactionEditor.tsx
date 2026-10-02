@@ -4,6 +4,7 @@ import type { FactionJSON } from '../../lib/types';
 import { StringArrayEditor } from './StringArrayEditor';
 import { ImageArrayEditor } from './ImageArrayEditor';
 import { EntityRelationEditorList } from './StructuredArrayEditors';
+import { CollapsibleSection, hasAnyValue } from './CollapsibleSection';
 
 type Props = {
     value: string;
@@ -58,7 +59,7 @@ export function FactionEditor({ value, onChange, documentPath = "" }: Props) {
                 </div>
             </div>
 
-            <h2 className="editor-section-title">Overview & Goals</h2>
+            <CollapsibleSection title="Overview & Goals" addLabel="Add overview and goals" hasContent={hasAnyValue(data.overview, data.goals)}>
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div className="editor-field">
                     <label className="editor-label">Overview</label>
@@ -69,8 +70,9 @@ export function FactionEditor({ value, onChange, documentPath = "" }: Props) {
                     <MDEditor value={data.goals} onChange={val => handleUpdate('goals', val || "")} height={150} preview="edit" />
                 </div>
             </div>
+            </CollapsibleSection>
 
-            <h2 className="editor-section-title">Relationships & Assets</h2>
+            <CollapsibleSection title="Relationships & Assets" addLabel="Add relations, allies, assets" hasContent={hasAnyValue(data.characterRelations, data.factionRelations, data.locationRelations, data.storyAppearances, data.allies, data.enemies, data.notableMembers, data.assets)}>
             <div className="editor-grid-2">
                 <EntityRelationEditorList title="Character Relations" items={data.characterRelations || []} onChange={items => handleUpdate('characterRelations', items)} targetCategory="Character" />
                 <EntityRelationEditorList title="Faction Relations" items={data.factionRelations || []} onChange={items => handleUpdate('factionRelations', items)} targetCategory="Faction" />
@@ -88,9 +90,11 @@ export function FactionEditor({ value, onChange, documentPath = "" }: Props) {
                 )}
                 <StringArrayEditor title="Assets" items={data.assets || []} onChange={(val) => handleUpdate('assets', val)} />
             </div>
+            </CollapsibleSection>
 
-            <h2 className="editor-section-title">Media</h2>
+            <CollapsibleSection title="Media" addLabel="Add images" hasContent={hasAnyValue(data.images)}>
             <ImageArrayEditor title="Image Links" items={data.images || []} onChange={(val) => handleUpdate('images', val)} documentPath={documentPath} />
+            </CollapsibleSection>
         </div>
     );
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import MDEditor from '@uiw/react-md-editor';
 import type { StoryJSON } from '../../lib/types';
 import { ImageArrayEditor } from './ImageArrayEditor';
+import { CollapsibleSection, hasAnyValue } from './CollapsibleSection';
 import { EntityLinkListEditor } from './StructuredArrayEditors';
 
 type Props = {
@@ -64,14 +65,15 @@ export function StoryEditor({ value, onChange, documentPath = "" }: Props) {
                 </div>
             </div>
 
-            <h2 className="editor-section-title">Involved Entities</h2>
+            <CollapsibleSection title="Involved Entities" addLabel="Add the cast — characters, locations, factions" hasContent={hasAnyValue(data.characters, data.locations, data.factions)}>
             <div className="editor-grid-3">
                 <EntityLinkListEditor title="Characters" items={data.characters || []} onChange={items => handleUpdate('characters', items)} targetCategory="Character" />
                 <EntityLinkListEditor title="Locations" items={data.locations || []} onChange={items => handleUpdate('locations', items)} targetCategory="Location" />
                 <EntityLinkListEditor title="Factions" items={data.factions || []} onChange={items => handleUpdate('factions', items)} targetCategory="Faction" />
             </div>
+            </CollapsibleSection>
 
-            <h2 className="editor-section-title">Core Content</h2>
+            <CollapsibleSection title="Core Content" addLabel="Add the brief, premise and objectives" hasContent={hasAnyValue(data.gmBrief, data.premise, data.objectives)}>
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div className="editor-field">
                     <label className="editor-label">GM Brief (Hidden)</label>
@@ -86,8 +88,9 @@ export function StoryEditor({ value, onChange, documentPath = "" }: Props) {
                     <MDEditor value={data.objectives} onChange={val => handleUpdate('objectives', val || "")} height={150} preview="edit" />
                 </div>
             </div>
+            </CollapsibleSection>
 
-            <h2 className="editor-section-title">Encounters & Mechanics</h2>
+            <CollapsibleSection title="Encounters &amp; Mechanics" addLabel="Add stakes, hazards, clues, rewards" hasContent={hasAnyValue(data.stakesAndAntagonists, data.mechanicsAndHazards, data.cluesAndProps, data.rewards)}>
             <div className="editor-grid-2">
                 <div className="editor-field">
                     <label className="editor-label">Stakes & Antagonists</label>
@@ -106,8 +109,9 @@ export function StoryEditor({ value, onChange, documentPath = "" }: Props) {
                     <MDEditor value={data.rewards} onChange={val => handleUpdate('rewards', val || "")} height={150} preview="edit" />
                 </div>
             </div>
+            </CollapsibleSection>
 
-            <h2 className="editor-section-title">Progression</h2>
+            <CollapsibleSection title="Progression" addLabel="Add the outline and what it leads to" hasContent={hasAnyValue(data.mainOutline, data.branchingPath, data.childLinks)}>
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 <div className="editor-field">
                     <label className="editor-label">Main Outline / Expected Path</label>
@@ -119,8 +123,9 @@ export function StoryEditor({ value, onChange, documentPath = "" }: Props) {
                 </div>
                 <EntityLinkListEditor title="Child Links (Chapters/Encounters)" items={Array.isArray(data.childLinks) ? data.childLinks : []} onChange={items => handleUpdate('childLinks', items)} targetCategory="Story" />
             </div>
+            </CollapsibleSection>
 
-            <h2 className="editor-section-title">Resolution & Hooks</h2>
+            <CollapsibleSection title="Resolution &amp; Hooks" addLabel="Add assumptions, questions, hooks, outcomes" hasContent={hasAnyValue(data.assumptions, data.openQuestions, data.pcHooks, data.outcomes)}>
             <div className="editor-grid-2">
                 <div className="editor-field">
                     <label className="editor-label">Assumptions (Prerequisites)</label>
@@ -141,9 +146,11 @@ export function StoryEditor({ value, onChange, documentPath = "" }: Props) {
                     <MDEditor value={data.outcomes} onChange={val => handleUpdate('outcomes', val || "")} height={150} preview="edit" />
                 </div>
             </div>
+            </CollapsibleSection>
 
-            <h2 className="editor-section-title">Media</h2>
+            <CollapsibleSection title="Media" addLabel="Add images" hasContent={hasAnyValue(data.images)}>
             <ImageArrayEditor title="Image Links" items={data.images || []} onChange={(val) => handleUpdate('images', val)} documentPath={documentPath} />
+            </CollapsibleSection>
         </div>
     );
 }
