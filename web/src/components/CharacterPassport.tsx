@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { CharacterJSON } from "../lib/types";
 import { getMediaUrl, mendString, resolvePlacement, type ResolvedPlacement } from "../lib/api";
-import { useCampaignStore } from "../stores/useCampaignStore";
 import { InternalLink } from "./InternalLink";
 import { parseAttribute, parseTrait, parseSkill, parseGear, parseHitLocation } from "../lib/TraitFormatters";
 
@@ -73,7 +72,6 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
 
   // Placement is resolved rather than stored -- a companion's location is
   // wherever the person they travel with is -- so it has to be asked for.
-  const setDeepenRequest = useCampaignStore(s => s.setDeepenRequest);
   const [placement, setPlacement] = useState<ResolvedPlacement | null>(null);
   useEffect(() => {
     let live = true;
@@ -97,25 +95,6 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
       : (data.hitLocations || []).map(parseHitLocation);
 
 
-  // Depth is re-enterable: an NPC who started as a name can be fleshed out
-  // when he turns out to matter. Generated fields fill blanks only, so this is
-  // safe to run on a character who is already half written.
-  const askToDeepen = () => setDeepenRequest({
-    wizardId: "create_npc",
-    path: documentPath,
-    answers: {
-      EntityType: data.kind === "type" ? "Bestiary" : data.kind === "pc" ? "PC" : "NPC",
-      Name: data.name || "",
-      Concept: data.concept || "",
-      Description: data.gmSummary || "",
-      Role: data.role || "",
-      Significance: data.significance || "",
-      // The anchor was typed once, at creation, and then every later pass asked
-      // for it again with an empty box -- so it read as not persisting. It
-      // lives in `appearance`, so that is where it comes back from.
-      Visuals: data.appearance || "",
-    },
-  });
 
   return (
     <div className="character-passport">
@@ -125,16 +104,9 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
             <div style={{ fontSize: "1.35rem", color: "#c9dfff", fontStyle: "italic", letterSpacing: "1px", borderLeft: "3px solid rgba(149, 181, 255, 0.4)", paddingLeft: "16px", textTransform: "uppercase" }}>{data.concept}</div>
           </div>
         ) : <div style={{ flexGrow: 1 }} />}
-        {/* Invitation, never a nag: the assistant only acts when asked. */}
-        <button
-          type="button"
-          onClick={askToDeepen}
-          title="Ask the assistant to fill in blank fields. Nothing you have written is changed."
-          className="ghost-button"
-          style={{ width: "auto", margin: 0, padding: "4px 12px", fontSize: "0.75rem", alignSelf: "center" }}
-        >
-          Flesh out with AI
-        </button>
+        {/* "Flesh out with AI" used to sit here, wedged between the concept and
+            the significance badges. It belongs on the document toolbar with
+            Edit and Delete — see FileEditorPanel. */}
         <div className="passport-meta" style={{ display: "flex", gap: "16px" }}>
           <div className="meta-badge significance-badge">
             <span className="eyebrow">Significance</span>

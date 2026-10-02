@@ -540,6 +540,12 @@ button {
   width: auto;
   border-radius: 999px;
   padding: 10px 14px;
+  /* A pill keeps its label on one line. Without this the document toolbar
+     squeezed five of them into the space beside the title and each wrapped to
+     two or three lines, which is what made the row look broken. The row wraps
+     instead — see the toolbar in FileEditorPanel. */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .hero-card,
