@@ -134,3 +134,64 @@ describe("reading the sheet's attributes", () => {
     expect(checkMechanics(null).findings).toEqual([]);
   });
 });
+
+describe("advantage and disadvantage costs", () => {
+  const CATALOGUE = buildTraitIndex([
+    { book_id: 1, kind: "advantage", name: "Combat Reflexes", cost_kind: "flat", cost_value: 15 },
+    { book_id: 1, kind: "advantage", name: "Insubstantiality", cost_kind: "flat", cost_value: 80 },
+    { book_id: 1, kind: "advantage", name: "Damage Resistance", cost_kind: "per_level", cost_value: 5 },
+    { book_id: 1, kind: "advantage", name: "Allies", cost_kind: "variable", cost_value: null },
+    { book_id: 1, kind: "disadvantage", name: "Bad Temper", cost_kind: "flat", cost_value: -10 },
+  ]);
+
+  it("passes a plain trait priced as the book prices it", () => {
+    const check = checkMechanics({ advantages: ["Combat Reflexes [15]"] }, CATALOGUE);
+    expect(check.findings).toEqual([]);
+    expect(check.checked).toBe(1);
+  });
+
+  it("reports one priced differently", () => {
+    const check = checkMechanics({ advantages: ["Combat Reflexes [20]"] }, CATALOGUE);
+    expect(check.findings[0]).toMatchObject({ name: "Combat Reflexes", stated: 20, expected: 15 });
+  });
+
+  it("prices a modified trait from its base and its percentages", () => {
+    // Straight off Lambdadelta's sheet: 80 base at +60% is 128.
+    const check = checkMechanics({
+      advantages: ["Insubstantiality (Affect Substantial, +100%; Always On, -50%; Switchable, +10%) [128]"],
+    }, CATALOGUE);
+    expect(check.findings).toEqual([]);
+  });
+
+  it("prices a levelled trait by the level written into its name", () => {
+    // Damage Resistance 50 at 5/level is 250, and +20% makes 300.
+    const check = checkMechanics({
+      advantages: ["Damage Resistance 50 (Force Field, +20%) [300]"],
+    }, CATALOGUE);
+    expect(check.findings).toEqual([]);
+  });
+
+  it("explains a modified cost in terms of its base and net percentage", () => {
+    const check = checkMechanics({
+      advantages: ["Insubstantiality (Always On, -50%) [50]"],
+    }, CATALOGUE);
+    expect(check.findings[0].because).toContain("80 base at -50% comes to 40");
+  });
+
+  it("claims nothing about a trait the book prices as Variable", () => {
+    const check = checkMechanics({ advantages: ["Allies [20]"] }, CATALOGUE);
+    expect(check.findings).toEqual([]);
+    expect(check.unchecked).toBe(1);
+  });
+
+  it("claims nothing about a trait no book contains", () => {
+    const check = checkMechanics({ advantages: ["Rot-Sense [12]"] }, CATALOGUE);
+    expect(check.findings).toEqual([]);
+    expect(check.unchecked).toBe(1);
+  });
+
+  it("checks nothing in these sections without a catalogue", () => {
+    const check = checkMechanics({ advantages: ["Combat Reflexes [20]"] });
+    expect(check.findings).toEqual([]);
+  });
+});

@@ -18,6 +18,9 @@ import {
   DIFFICULTY_NAMES,
 } from "./gurpsRules";
 import { resolveTrait, type TraitIndex } from "./traitResolver";
+import {
+  baseCost, modifiedCost, modifiersArePriced, netModifier, parseModifiers, traitLevel,
+} from "./modifiers";
 
 export type Finding = {
   /** The line as stored, so the GM can find it. */
@@ -170,21 +173,67 @@ function skillFindings(
   return { findings, checked, unchecked };
 }
 
+/**
+ * Advantages and disadvantages, where the catalogue prices them with a number.
+ *
+ * This is where modifiers earn their place: a trait with enhancements and
+ * limitations is a base cost and a percentage, so once the base is known the
+ * whole thing is computable. Where the book prices a trait as Variable, a range
+ * or a choice there is no base, and nothing is claimed.
+ */
+function traitCostFindings(
+  entries: Entry[],
+  kind: string,
+  index: TraitIndex | null,
+): { findings: Finding[]; checked: number; unchecked: number } {
+  const findings: Finding[] = [];
+  let checked = 0;
+  let unchecked = 0;
+  if (!index) return { findings, checked, unchecked: entries.length };
+
+  for (const entry of entries) {
+    if (entry.points === null) { unchecked++; continue; }
+    const found = resolveTrait(entry.name, index, kind).entry;
+    const base = baseCost(found, traitLevel(entry.name));
+    if (base === null) { unchecked++; continue; }
+
+    // A line that names a modifier without pricing it cannot be totalled, and
+    // totalling the rest would report a gap the sheet does not have.
+    if (!modifiersArePriced(entry.raw)) { unchecked++; continue; }
+    const modifiers = parseModifiers(entry.raw);
+    const expected = modifiedCost(base, modifiers);
+    if (expected === null) { unchecked++; continue; }
+    checked++;
+    if (expected !== entry.points) {
+      const net = netModifier(modifiers);
+      const how = modifiers.length
+        ? `${base} base at ${net >= 0 ? "+" : ""}${net}% comes to ${expected}`
+        : `the book prices it at ${expected}`;
+      findings.push({ raw: entry.raw, name: entry.name, stated: entry.points, expected, because: how });
+    }
+  }
+  return { findings, checked, unchecked };
+}
+
 /** Everything tier two can say about one character. */
 export function checkMechanics(
   character: Record<string, unknown> | null | undefined,
   index: TraitIndex | null = null,
 ): MechanicsCheck {
   const build = pointBuild(character);
-  const [attributes, , , skills] = build.sections;
+  const [attributes, advantages, disadvantages, skills] = build.sections;
   const scores = primaryAttributes(character);
 
-  const fromAttributes = attributeFindings(attributes.entries);
-  const fromSkills = skillFindings(skills.entries, scores, index);
+  const parts = [
+    attributeFindings(attributes.entries),
+    traitCostFindings(advantages.entries, "advantage", index),
+    traitCostFindings(disadvantages.entries, "disadvantage", index),
+    skillFindings(skills.entries, scores, index),
+  ];
 
   return {
-    findings: [...fromAttributes.findings, ...fromSkills.findings],
-    checked: fromAttributes.checked + fromSkills.checked,
-    unchecked: fromAttributes.unchecked + fromSkills.unchecked,
+    findings: parts.flatMap(p => p.findings),
+    checked: parts.reduce((n, p) => n + p.checked, 0),
+    unchecked: parts.reduce((n, p) => n + p.unchecked, 0),
   };
 }
