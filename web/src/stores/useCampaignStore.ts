@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { inferPlacement } from '../lib/placementContext';
 import { resolveEntity } from '../lib/entityResolution';
+import { buildIndex } from '../lib/traitAudit';
+import type { TraitIndex } from '../lib/traitResolver';
+import type { CustomTraitJSON, SystemRulesJSON } from '../lib/types';
 import {
   FileTreeNode,
   FileContent,
@@ -10,6 +13,7 @@ import {
   getFileTree,
   getFileContent,
   getCampaignRegistry,
+  getTraitCatalogue,
   createBatchStubs,
   saveCampaignSettings,
   initCampaign,
@@ -30,6 +34,11 @@ interface CampaignState {
   fileTree: FileTreeNode[];
   fileTreeError: string | null;
   entityRegistry: RegistryItem[];
+  /** Books plus this campaign's own declared traits, in one lookup. Null until
+   *  loaded; a campaign with no rules database keeps it null and the UI says
+   *  why rather than reporting everything as unrecognised. */
+  traitIndex: TraitIndex | null;
+  traitCatalogueReason: string;
   selectedPath: string;
   selectedFile: FileContent | null;
   fileContentError: string | null;
@@ -60,6 +69,7 @@ interface CampaignState {
   loadFileContent: (path: string) => Promise<void>;
   refreshEntityRegistry: () => Promise<void>;
   refreshCampaignArtifacts: () => Promise<void>;
+  loadTraitIndex: () => Promise<void>;
   setCampaignPathDraft: (path: string) => void;
   setSelectedPath: (path: string) => void;
   setIsEditing: (isEditing: boolean) => void;
@@ -93,6 +103,8 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   fileTree: [],
   fileTreeError: null,
   entityRegistry: [],
+  traitIndex: null,
+  traitCatalogueReason: "",
   selectedPath: "",
   selectedFile: null,
   fileContentError: null,
@@ -123,6 +135,24 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
 
   // Refetch everything derived from campaign files (tree + registry).
   // Call after any mutation that creates, renames, moves or deletes entities.
+  loadTraitIndex: async () => {
+    // Two sources, one index: what the books price and what this campaign
+    // invented. Kept together so no caller can forget to ask the second.
+    const catalogue = await getTraitCatalogue();
+    let custom: CustomTraitJSON[] = [];
+    try {
+      const file = await getFileContent("Campaign/System_Rules.json");
+      const parsed = JSON.parse(file.content) as SystemRulesJSON;
+      if (Array.isArray(parsed.customTraits)) custom = parsed.customTraits;
+    } catch {
+      // No System Rules file, or it is not JSON. Books alone is a fine answer.
+    }
+    set({
+      traitIndex: buildIndex(catalogue.traits as never[], custom as never[]),
+      traitCatalogueReason: catalogue.available ? "" : catalogue.reason,
+    });
+  },
+
   refreshCampaignArtifacts: async () => {
     try {
       const [tree, registry] = await Promise.all([getFileTree(), getCampaignRegistry()]);

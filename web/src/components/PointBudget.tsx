@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { useCampaignStore } from "../stores/useCampaignStore";
+import { auditTraits } from "../lib/traitAudit";
 import { pointBuild, type PointBuild } from "../lib/pointBuild";
 import type { CharacterJSON } from "../lib/types";
 
@@ -33,6 +35,10 @@ function summarise(build: PointBuild): string {
 
 export function PointBudget({ data }: { data: CharacterJSON }) {
   const build = useMemo(() => pointBuild(data as unknown as Record<string, unknown>), [data]);
+  const traitIndex = useCampaignStore(s => s.traitIndex);
+  const audit = useMemo(
+    () => (traitIndex ? auditTraits(data as unknown as Record<string, unknown>, traitIndex) : null),
+    [data, traitIndex]);
 
   // A template carries a nominal figure, not a budget. Show the arithmetic,
   // claim no disagreement.
@@ -63,10 +69,30 @@ export function PointBudget({ data }: { data: CharacterJSON }) {
     note = `${build.computed} in the parts`;
   }
 
+  // What the catalogue could say about this sheet. Silent when there is no
+  // rules database: reporting every trait as unrecognised would be a lie about
+  // the sheet rather than a statement about the app.
+  const provenance = audit && audit.entries.length
+    ? `${audit.catalogued} priced by a book`
+      + (audit.custom ? `, ${audit.custom} by this campaign` : "")
+      + (audit.unrecognised.length ? `, ${audit.unrecognised.length} nobody prices` : "")
+    : "";
+
   return (
-    <div className="meta-badge" style={tone} title={summarise(build)}>
+    <div
+      className="meta-badge"
+      style={tone}
+      title={summarise(build) + (provenance ? `\n\nTraits: ${provenance}.` : "")}
+    >
       <span className="eyebrow">Points</span>
       <span className="value">{value || "???"}</span>
+      {provenance && (
+        <span style={{ fontSize: "0.58rem", color: "#6b7280", marginTop: 1, whiteSpace: "nowrap" }}>
+          {audit!.unrecognised.length
+            ? `${audit!.unrecognised.length} trait${audit!.unrecognised.length === 1 ? "" : "s"} unpriced`
+            : "every trait priced"}
+        </span>
+      )}
       {note && (
         <span
           style={{

@@ -933,3 +933,28 @@ export async function applyUpdate(download_url: string): Promise<{status: string
   }
   return (await response.json()) as {status: string};
 }
+
+export type TraitCatalogueResponse = {
+  available: boolean;
+  reason: string;
+  books: Array<{ id: number; title: string; label: string }>;
+  traits: Array<Record<string, unknown>>;
+};
+
+/** Every priced trait the local rules database knows about.
+ *
+ *  Served whole rather than per name: a few hundred rows, checked against
+ *  every line of every character. An absent rules database is normal — it is
+ *  built from the GM's own PDFs — so this never throws for that, it reports it.
+ */
+export async function getTraitCatalogue(): Promise<TraitCatalogueResponse> {
+  try {
+    const response = await fetch(`${apiBaseUrl()}/rules/traits`);
+    if (!response.ok) {
+      return { available: false, reason: `Rules catalogue unavailable (${response.status})`, books: [], traits: [] };
+    }
+    return (await response.json()) as TraitCatalogueResponse;
+  } catch (err) {
+    return { available: false, reason: `Rules catalogue unreachable: ${String(err)}`, books: [], traits: [] };
+  }
+}

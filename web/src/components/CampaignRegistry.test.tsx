@@ -29,6 +29,7 @@ vi.mock('../lib/api', () => ({
   renameCampaignEntity: vi.fn(),
   writeFileContent: vi.fn(),
   mendFileString: vi.fn(),
+  getTraitCatalogue: vi.fn().mockResolvedValue({ available: false, reason: 'no rules db in tests', books: [], traits: [] }),
   getStoryScope: vi.fn(async (node: string) => ({
     node,
     lineage: [node],

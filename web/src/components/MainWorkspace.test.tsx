@@ -12,7 +12,9 @@ vi.mock('../lib/api', () => ({
   getCampaignRegistry: vi.fn().mockResolvedValue([]),
   getCampaignSettings: vi.fn().mockResolvedValue({}),
   getSessions: vi.fn().mockResolvedValue([]),
-  checkUpdate: vi.fn().mockResolvedValue({ update_available: false, latest_version: '0.2.4' })
+  checkUpdate: vi.fn().mockResolvedValue({ update_available: false, latest_version: '0.2.4' }),
+  getTraitCatalogue: vi.fn().mockResolvedValue({ available: false, reason: 'no rules db in tests', books: [], traits: [] }),
+  getFileContent: vi.fn().mockResolvedValue({ path: '', content: '{}' })
 }));
 
 describe('MainWorkspace', () => {

@@ -70,7 +70,10 @@ export function MainWorkspace() {
       await Promise.all([
         loadWorkspaceData(),
         loadCampaignData(),
-        loadSessions()
+        loadSessions(),
+        // Books plus this campaign's homebrew. Absent rules database is fine;
+        // the index is simply smaller and the UI says so.
+        useCampaignStore.getState().loadTraitIndex()
       ]);
       if (!cancelled) {
         useWorkspaceStore.setState({ appInitializing: false });

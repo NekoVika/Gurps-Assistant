@@ -6,6 +6,7 @@ const api = vi.hoisted(() => ({
   initCampaign: vi.fn(), validateCampaign: vi.fn(), browseCampaignFolder: vi.fn(),
   deleteCampaignFile: vi.fn(), renameCampaignEntity: vi.fn(), writeFileContent: vi.fn(),
   mendFileString: vi.fn(),
+  getTraitCatalogue: vi.fn().mockResolvedValue({ available: false, reason: 'no rules db in tests', books: [], traits: [] }),
 }));
 vi.mock('../lib/api', () => api);
 

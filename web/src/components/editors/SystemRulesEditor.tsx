@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import MDEditor from '@uiw/react-md-editor';
 import type { SystemRulesJSON } from '../../lib/types';
 import { StringArrayEditor } from './StringArrayEditor';
+import { CustomTraitEditor } from './CustomTraitEditor';
 
 type Props = {
     value: string;
@@ -72,6 +73,12 @@ export function SystemRulesEditor({ value, onChange }: Props) {
                 </div>
             </div>
             
+            <h2 className="editor-section-title">Campaign Traits</h2>
+            <CustomTraitEditor
+                items={data.customTraits || []}
+                onChange={(val) => handleUpdate('customTraits', val)}
+            />
+
             <h2 className="editor-section-title">Core Books</h2>
             <div className="editor-field">
                 <StringArrayEditor title="Required Books" items={data.coreBooks || []} onChange={(val) => handleUpdate('coreBooks', val)} />

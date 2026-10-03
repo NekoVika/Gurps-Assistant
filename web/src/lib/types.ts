@@ -200,8 +200,21 @@ export interface CampaignOverviewJSON {
     images: string[];
 }
 
+/** A trait this campaign invented. GURPS allows it, so the app has to. */
+export interface CustomTraitJSON {
+    name: string;
+    /** advantage, disadvantage, skill, perk or quirk. */
+    kind: string;
+    /** As the GM writes it: "12", "-5", "2/level", "Variable". */
+    cost: string;
+    notes?: string;
+}
+
 export interface SystemRulesJSON {
     title: string;
+    /** Homebrew traits, priced by the GM. The catalogue is what the books say;
+     *  this is what this table says, and it travels with the campaign. */
+    customTraits?: CustomTraitJSON[];
     baseSystem: string;
     coreBooks: string[];
     houseRules: string;
