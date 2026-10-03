@@ -5,6 +5,7 @@ import { StringArrayEditor } from './StringArrayEditor';
 import { ImageArrayEditor } from './ImageArrayEditor';
 import { KindField, WhereField, StoryPlacementField } from './PlacementFields';
 import { CollapsibleSection, hasAnyValue } from './CollapsibleSection';
+import { PointBudgetBar } from './PointBudgetBar';
 import { AttributeEditorList, TraitEditorList, SkillEditorList, GearEditorList, HitLocationEditorList, EntityRelationEditorList } from './StructuredArrayEditors';
 
 type Props = {
@@ -40,6 +41,10 @@ export function CharacterEditor({ value, onChange, documentPath = "" }: Props) {
 
     return (
         <div className="editor-glass-panel" data-color-mode="dark">
+            {/* The budget while you spend it, recomputed from the editor's own
+                state so it moves as you type rather than after a save. */}
+            <PointBudgetBar data={data} />
+
             <h2 className="editor-section-title">Core Identity</h2>
             <div className="editor-grid-3">
                 <div className="editor-field">

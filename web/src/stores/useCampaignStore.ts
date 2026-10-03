@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { inferPlacement } from '../lib/placementContext';
 import { resolveEntity } from '../lib/entityResolution';
 import { buildIndex } from '../lib/traitAudit';
+import { statedTotal } from '../lib/pointBuild';
 import type { TraitIndex } from '../lib/traitResolver';
 import type { CustomTraitJSON, SystemRulesJSON } from '../lib/types';
 import {
@@ -39,6 +40,9 @@ interface CampaignState {
    *  why rather than reporting everything as unrecognised. */
   traitIndex: TraitIndex | null;
   traitCatalogueReason: string;
+  /** The campaign's own point budget, as System Rules states it. The
+   *  default target for a character that does not state one itself. */
+  campaignPointBudget: number | null;
   selectedPath: string;
   selectedFile: FileContent | null;
   fileContentError: string | null;
@@ -105,6 +109,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   entityRegistry: [],
   traitIndex: null,
   traitCatalogueReason: "",
+  campaignPointBudget: null,
   selectedPath: "",
   selectedFile: null,
   fileContentError: null,
@@ -140,16 +145,19 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     // invented. Kept together so no caller can forget to ask the second.
     const catalogue = await getTraitCatalogue();
     let custom: CustomTraitJSON[] = [];
+    let budget: number | null = null;
     try {
       const file = await getFileContent("Campaign/System_Rules.json");
       const parsed = JSON.parse(file.content) as SystemRulesJSON;
       if (Array.isArray(parsed.customTraits)) custom = parsed.customTraits;
+      budget = statedTotal(parsed.pointBudget);
     } catch {
       // No System Rules file, or it is not JSON. Books alone is a fine answer.
     }
     set({
       traitIndex: buildIndex(catalogue.traits as never[], custom as never[]),
       traitCatalogueReason: catalogue.available ? "" : catalogue.reason,
+      campaignPointBudget: budget,
     });
   },
 
