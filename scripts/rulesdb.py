@@ -23,6 +23,7 @@ from rulesdb_lib.qa_helpers import (
     qa_candidate_terms as _qa_candidate_terms,
 )
 from rulesdb_lib.commands.entities import EntityExtractCommandDeps, cmd_entity_extract as _cmd_entity_extract
+from rulesdb_lib.commands.traits import TraitListCommandDeps, cmd_trait_list as _cmd_trait_list
 from rulesdb_lib.commands.search import SearchCommandDeps, cmd_agent_search as _cmd_agent_search
 from rulesdb_lib.commands.search import cmd_chunk_show as _cmd_chunk_show
 from rulesdb_lib.commands.search import cmd_qa as _cmd_qa
@@ -266,6 +267,9 @@ class BookConfig:
     edition: str | None
     source_label: str
     sources: list[BookSourceConfig]
+    #: Which pages hold the book's own trait summary tables, by section. Every
+    #: book prints these differently, so it is the one thing config must carry.
+    trait_lists: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -337,6 +341,10 @@ def _load_config(config_path: Path) -> RulesDbConfig:
                 BookSourceConfig(source_label=sl, pdf_relpath=pr, pdf_page_1_logical_page=off)
             )
 
+        trait_lists = raw.get("trait_lists")
+        if trait_lists is not None and not isinstance(trait_lists, dict):
+            raise SystemExit(f"Config [books.{key}.trait_lists] must be a table: {config_path}")
+
         books.append(
             BookConfig(
                 key=str(key),
@@ -344,6 +352,7 @@ def _load_config(config_path: Path) -> RulesDbConfig:
                 edition=cast(str | None, edition),
                 source_label=source_label,
                 sources=sources,
+                trait_lists=trait_lists,
             )
         )
 
@@ -1589,6 +1598,18 @@ def cmd_qa(args: argparse.Namespace) -> int:
     return _cmd_qa(args, SEARCH_DEPS)
 
 
+def cmd_trait_list(args: argparse.Namespace) -> int:
+    return _cmd_trait_list(args, TraitListCommandDeps(
+        default_config_path=DEFAULT_CONFIG_PATH,
+        default_db_path=DEFAULT_DB_PATH,
+        rules_db_dir=RULES_DB_DIR,
+        connect=_connect,
+        load_config_or_none=_load_config_or_none,
+        pick_book_cfg=_pick_book_cfg,
+        pick_book_id=_pick_book_id,
+    ))
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="rulesdb", description="Local Rules DB utilities")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -1743,6 +1764,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_agent.add_argument("--config", default=None, help="Config path (default: rules_db/config.toml)")
     p_agent.add_argument("--db", default=None, help="Path to sqlite db (overrides config db_path)")
     p_agent.set_defaults(func=cmd_agent_search)
+
+    p_traits = sub.add_parser(
+        "trait-list",
+        help="Build the priced trait catalogue from the book's own summary tables")
+    p_traits.add_argument("--config")
+    p_traits.add_argument("--db")
+    p_traits.add_argument("--book", help="Book key from the config")
+    p_traits.add_argument("--advantages", help="Page range, e.g. 299-300")
+    p_traits.add_argument("--disadvantages", help="Page range, e.g. 301-302")
+    p_traits.add_argument("--modifiers", help="Page range, e.g. 303")
+    p_traits.add_argument("--skills", help="Page range, e.g. 304-306")
+    p_traits.add_argument("--replace", action="store_true",
+                          help="Clear this book's catalogue before writing")
+    p_traits.set_defaults(func=cmd_trait_list)
 
     p_qa = sub.add_parser("qa", help="Question-oriented retrieval for the assistant")
     p_qa.add_argument("query", help="Natural-language rules question")

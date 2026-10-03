@@ -117,3 +117,30 @@ CREATE TABLE IF NOT EXISTS embeddings (
   created_at TEXT NOT NULL,
   PRIMARY KEY (target_type, target_id, model_id)
 );
+
+-- The priced catalogue, built from a book's own trait summary tables rather
+-- than from prose headings. `entities` says what the text describes; this says
+-- what the book contains and what it charges. Homebrew is campaign data and
+-- never lands here, so a re-ingest can rebuild this table safely.
+CREATE TABLE IF NOT EXISTS traits (
+  id INTEGER PRIMARY KEY,
+  book_id INTEGER NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('advantage','disadvantage','skill','modifier')),
+  name TEXT NOT NULL,
+  category TEXT,
+  exotic INTEGER NOT NULL DEFAULT 0,
+  cost_text TEXT,                 -- as printed: "2/level", "-10 to -30", "Variable"
+  cost_kind TEXT,                 -- flat | per_level | choice | range | variable | percent | formula
+  cost_value INTEGER,             -- the figure, where there is exactly one
+  attr TEXT,                      -- skills only
+  difficulty TEXT,                -- skills only
+  defaults TEXT,                  -- skills only
+  page INTEGER,
+  needs_review INTEGER NOT NULL DEFAULT 0,
+  review_reason TEXT,
+  created_at TEXT NOT NULL,
+  UNIQUE (book_id, kind, name),
+  FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS traits_name_idx ON traits (name);
+CREATE INDEX IF NOT EXISTS traits_kind_idx ON traits (book_id, kind);

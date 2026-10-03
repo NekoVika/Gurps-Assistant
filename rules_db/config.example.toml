@@ -24,6 +24,14 @@ source_label = "Basic Set"
 # For split volumes, set the second file's `pdf_page_1_logical_page` to
 # the logical page number that corresponds to *its* first PDF page.
 
+# Where the book prints its own trait summary tables. Every book lays these
+# out differently, so the pages live here rather than in the parser.
+[books.basic_set.trait_lists]
+advantages = "299-300"
+disadvantages = "301-302"
+modifiers = "303"
+skills = "304-306"
+
 [[books.basic_set.sources]]
 source_label = "Characters"
 pdf_relpath = ".rule-books/GURPS Basic Set - Characters.pdf"
