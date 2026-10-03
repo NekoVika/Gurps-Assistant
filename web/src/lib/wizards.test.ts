@@ -44,3 +44,45 @@ describe('expandArmorCoverage', () => {
     expect(skull).toContain('Helmet');
   });
 });
+
+describe('create_npc fills everything it should in one pass', () => {
+  const npc = WIZARDS.find(w => w.id === 'create_npc')!;
+  const schema = npc.outputSchema as {
+    properties: Record<string, unknown>;
+    required: string[];
+  };
+
+  // A field in `properties` but not in `required` is one the model may silently
+  // omit, and the GM reads the blank as the feature failing. There are only two
+  // reasons a field may be optional.
+
+  /** Guessing one invents a link to something that does not exist. */
+  const GM_PLACEMENT = [
+    'location', 'storyAppearances',
+    'characterRelations', 'locationRelations', 'factionRelations',
+    'images',
+  ];
+  /** Writing one would put words in the GM's own voice. */
+  const GM_VOICE = ['gmSummary', 'variations'];
+
+  it('asks for every field that is not the GM to set', () => {
+    const optional = Object.keys(schema.properties).filter(k => !schema.required.includes(k));
+    expect(optional.sort()).toEqual([...GM_PLACEMENT, ...GM_VOICE].sort());
+  });
+
+  it('requires kind, which postProcess depends on', () => {
+    // postProcess tests `kind === "type"` to clear significance; if the model
+    // omits kind, a bestiary template keeps whatever significance it picked.
+    expect(schema.required).toContain('kind');
+    const cleared = npc.postProcess!({ kind: 'type', significance: 'core' });
+    expect(cleared.significance).toBe('');
+  });
+
+  it('tells the model not to invent a place or a person', () => {
+    const prompt = npc.aiPromptTemplate({ Name: 'Rick', EntityType: 'NPC' });
+    expect(prompt).toMatch(/Leave these EMPTY/);
+    for (const field of GM_PLACEMENT) {
+      expect(prompt).toContain(field);
+    }
+  });
+});

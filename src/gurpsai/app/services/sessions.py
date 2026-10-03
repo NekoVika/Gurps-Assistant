@@ -42,9 +42,31 @@ class SessionService:
         sessions.sort(key=lambda s: s.updated_at, reverse=True)
         return sessions
 
+    def _find_file(self, session_id: str) -> Path | None:
+        """The file holding this session, by name or by the id inside it.
+
+        list_sessions reads ids from file *contents* while the rest of the
+        service assumed the filename matched. Two of this campaign's sessions
+        have had leading digits stripped from their filenames -- id
+        "4cd5e235-…" living in "cd5e235-….json" -- so they listed fine and
+        404'd the moment the GM switched to one. Trusting the content keeps a
+        renamed or half-sanitised file reachable.
+        """
+        sessions_dir = self._get_sessions_dir()
+        direct = sessions_dir / f"{session_id}.json"
+        if direct.exists():
+            return direct
+        for fp in sessions_dir.glob("*.json"):
+            try:
+                if json.loads(fp.read_text(encoding="utf-8")).get("id") == session_id:
+                    return fp
+            except Exception:
+                continue
+        return None
+
     def get_session(self, session_id: str) -> ChatSession:
-        fp = self._get_sessions_dir() / f"{session_id}.json"
-        if not fp.exists():
+        fp = self._find_file(session_id)
+        if fp is None:
             raise FileNotFoundError(f"Session {session_id} not found")
         data = json.loads(fp.read_text(encoding="utf-8"))
         return ChatSession(**data)
@@ -53,13 +75,20 @@ class SessionService:
         session = ChatSession(title=title)
         return self.save_session(session)
 
-    def save_session(self, session: ChatSession) -> ChatSession:
-        session.updated_at = time.time()
-        fp = self._get_sessions_dir() / f"{session.id}.json"
-        fp.write_text(session.model_dump_json(indent=2), encoding="utf-8")
+    def save_session(self, session: ChatSession, touch: bool = True) -> ChatSession:
+        if touch:
+            session.updated_at = time.time()
+        # Write back to the file it came from when that name differs, then
+        # leave a canonically named copy so the mismatch heals rather than
+        # lingering for the next reader.
+        existing = self._find_file(session.id)
+        canonical = self._get_sessions_dir() / f"{session.id}.json"
+        canonical.write_text(session.model_dump_json(indent=2), encoding="utf-8")
+        if existing is not None and existing != canonical:
+            existing.unlink(missing_ok=True)
         return session
 
     def delete_session(self, session_id: str) -> None:
-        fp = self._get_sessions_dir() / f"{session_id}.json"
-        if fp.exists():
-            fp.unlink()
+        fp = self._find_file(session_id)
+        if fp is not None:
+            fp.unlink(missing_ok=True)

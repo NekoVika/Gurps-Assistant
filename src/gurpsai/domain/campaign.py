@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Literal
 
 class InternalStructure(BaseModel):
     title: str = Field(..., description="Name of the internal zone or floor")
@@ -10,10 +10,37 @@ class RelationItem(BaseModel):
     relation: str = Field(..., title="Relationship Description")
 
 
+class StoryPlacement(BaseModel):
+    """Where an entity belongs in the story, and in what sense.
+
+    `mode` distinguishes two relations that look alike and behave oppositely:
+
+    - "appearance" -- the entity turns up at this specific node. Rolls *upward*
+      only: appearing in an encounter means appearing in its chapter, but being
+      in the chapter never implies being in any particular encounter.
+    - "fixture" -- the entity is a standing presence *throughout* this node, so
+      it is available in every descendant. The deliberate downward exception.
+
+    Only one home is recorded. Further one-off appearances belong in
+    `storyAppearances`, and something that is a fixture of two siblings really
+    belongs to their common parent.
+    """
+
+    node: str = Field("", title="Story Node", description="Name of the episode, chapter or encounter. Empty means unplaced.")
+    mode: Literal["appearance", "fixture"] = Field("appearance", title="Placement Mode")
+
+
 class CharacterData(BaseModel):
     name: str = Field("Unknown Character", title="Name")
+    kind: Literal["individual", "type", "pc"] = Field("individual", title="Kind",
+        description="individual: one person. type: a template instantiated many times (a bestiary entry) "
+        "-- exempt from placement, because instances are placed and templates are not. pc: a player character. "
+        "This field is authoritative; folder placement is derived from it, never the other way round.")
     concept: str = Field("", title="Concept")
-    significance: str = Field("", title="Significance")
+    significance: Literal["", "core", "supporting", "featured", "background"] = Field(
+        "", title="Significance",
+        description="Narrative weight of this character. Empty is legitimate -- a type has no "
+        "narrative weight of its own, only its instances do.")
     role: str = Field("", title="Role")
     location: str = Field("", title="Location")
     locations: List[Any] = Field(default_factory=list, title="Locations")
@@ -33,6 +60,7 @@ class CharacterData(BaseModel):
     characterRelations: List[RelationItem] = Field(default_factory=list, title="Character Relations")
     locationRelations: List[RelationItem] = Field(default_factory=list, title="Location Relations")
     factionRelations: List[RelationItem] = Field(default_factory=list, title="Faction Relations")
+    storyPlacement: StoryPlacement = Field(default_factory=StoryPlacement, title="Story Placement")
     storyAppearances: List[str] = Field(default_factory=list, title="Story Appearances")
     
     tactics: str = Field("", title="Tactics & Combat Style")
@@ -45,7 +73,9 @@ class CharacterData(BaseModel):
 class LocationData(BaseModel):
     name: str = Field("Unknown Location", title="Name")
     type: str = Field("", title="Type")
-    region: str = Field("", title="Region")
+    storyPlacement: StoryPlacement = Field(default_factory=StoryPlacement, title="Story Placement")
+    parentLocation: str = Field("", title="Parent Location", description="Name of the Location that contains this one. Empty means top level. Containment rolls upward only: being in a room implies being in the building, never the reverse.")
+    region: str = Field("", title="Region", description="Human-readable label for where/when this sits. Not structural -- parentLocation carries containment.")
     techLevel: str = Field("", title="Tech Level")
     manaLevel: str = Field("", title="Mana Level")
     

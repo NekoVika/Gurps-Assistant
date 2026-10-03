@@ -9,17 +9,49 @@ from __future__ import annotations
 import re
 
 # Values that are never real entity references.
-PLACEHOLDER_VALUES = {"", "tbd", "none", "n/a", "?"}
+# "???" is the codebase's own unset marker -- CharacterData.pointTotal defaults
+# to it -- and "unknown" means undecided, which is a loose end rather than a place.
+PLACEHOLDER_VALUES = {"", "tbd", "tba", "none", "n/a", "?", "???", "unknown"}
 
 _EXT_RE = re.compile(r"\.(json|md)$", re.IGNORECASE)
 _ORDINAL_PREFIX_RE = re.compile(r"^\d+[.\s_-]+")
 _WHITESPACE_RE = re.compile(r"\s+")
 
 
+_TRAILING_PAREN = re.compile(r"\s*\([^)]*\)\s*$")
+_MARKDOWN_LINK = re.compile(r"\[([^\]]*)\]\(([^)]*)\)")
+
+
+def link_text(name: str) -> str:
+    """A reference with its markdown link syntax flattened to the label.
+
+    The MD2JSON migration left links in fields the UI renders as entity names,
+    and rarely as the whole value -- "[The Shoals](../Locations/The_Shoals.md)
+    (Surface)" is typical. Shown whole they leak a file path at the GM and
+    resolve to nothing, so every link is replaced by its label wherever it sits.
+
+    Prose is never passed through here: a link inside a paragraph is a link and
+    renders as one.
+    """
+    text = (name or "").strip()
+    if not text:
+        return text
+
+    def flatten(match: "re.Match[str]") -> str:
+        label = match.group(1).strip()
+        if label:
+            return label
+        # "[](path/to/The_Shoals.md)" -- fall back to the file it points at.
+        target = match.group(2).split("#")[0].rstrip("/")
+        return target.rsplit("/", 1)[-1].rsplit(".", 1)[0] if target else ""
+
+    return _MARKDOWN_LINK.sub(flatten, text).strip()
+
+
 def normalize(name: str) -> str:
     """Normalize an entity name for matching: case, underscores, extensions,
     leading ordinal prefixes ("2. Ambush" -> "ambush")."""
-    text = (name or "").strip()
+    text = link_text(name)
     text = _EXT_RE.sub("", text)
     text = text.replace("_", " ")
     text = _ORDINAL_PREFIX_RE.sub("", text)
@@ -46,7 +78,57 @@ def is_reference(name: object) -> bool:
         return False
     if len(name.strip()) > 100:
         return False
+    # Migrated prose sits in the same arrays as names: "None currently present."
+    # Entity names do not end in sentence punctuation, so this separates a
+    # sentence from a title without needing to understand either.
+    if name.strip().endswith((".", "!", "?")) and not name.strip().endswith("..."):
+        return False
     return True
+
+
+def resolve_name(query: object, names: list[str]) -> str | None:
+    """Match a name against candidates: exact, then normalised, then unique tail.
+
+    The tail rule is what lets state.json's "HQ" reach a location actually named
+    "Apex Infrastructure Group HQ". Every caller must use this, or two matching
+    rules drift apart and the same link resolves in one place and not another.
+    """
+    if not isinstance(query, str) or is_placeholder(query):
+        return None
+    raw = query.strip()
+    for candidate in names:
+        if candidate == raw:
+            return candidate
+    wanted = normalize(raw)
+    if not wanted:
+        return None
+    by_norm: dict[str, str] = {}
+    for candidate_name in names:
+        if not candidate_name:
+            continue
+        by_norm.setdefault(normalize(candidate_name), candidate_name)
+        # "Povo Witiko (225 pts)" must also answer to "Povo_Witiko": PC files
+        # carry their point total, story files reference the plain name.
+        bare = _TRAILING_PAREN.sub("", candidate_name).strip()
+        if bare and bare != candidate_name:
+            by_norm.setdefault(normalize(bare), candidate_name)
+    if wanted in by_norm:
+        return by_norm[wanted]
+    tails = [original for norm, original in by_norm.items() if norm.endswith(wanted)]
+    if len(tails) == 1:
+        return tails[0]
+
+    # The alias above runs one way only -- a candidate's parenthetical is
+    # stripped, a query's is not. So "Povo Witiko (225 pts)" could be found by
+    # "Povo Witiko", but a story node pointing at "Rain World (Decaying
+    # Megastructures)" found nothing, though the location is plainly "Rain
+    # World". Thirty-three of this campaign's fifty primaryLocation values
+    # failed this way. Last resort, after every exact rule, and still subject
+    # to the uniqueness requirement below.
+    bare_query = _TRAILING_PAREN.sub("", raw).strip()
+    if bare_query and bare_query != raw:
+        return resolve_name(bare_query, names)
+    return None
 
 
 class LinkResolver:
@@ -67,6 +149,15 @@ class LinkResolver:
                 norm = normalize(key)
                 if norm:
                     self._normalized.setdefault(norm, item)
+                # PC files carry their point total in the name -- "Jamie Hass
+                # (225 pts)" -- while story files reference plain "Jamie_Hass".
+                # Without this alias an existing PC reads as proposed, and
+                # accepting the offer creates a duplicate.
+                bare = _TRAILING_PAREN.sub("", key).strip()
+                if bare and bare != key:
+                    bare_norm = normalize(bare)
+                    if bare_norm:
+                        self._normalized.setdefault(bare_norm, item)
             # Story childLinks often reference the containing directory name
             # ("Chapter 01" -> Chapter_01/Chapter_Overview.json), so alias the
             # parent Episode_/Chapter_ directory of any file inside it. If the

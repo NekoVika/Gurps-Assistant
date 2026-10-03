@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { inferPlacement, describePlacement } from '../lib/placementContext';
 import { useWorkspaceStore } from "../stores/useWorkspaceStore";
 import { useCampaignStore } from "../stores/useCampaignStore";
 import { useChatStore } from "../stores/useChatStore";
@@ -15,7 +16,9 @@ import { ActivityPanel } from "./ActivityPanel";
 import { TrashbinPanel } from "./TrashbinPanel";
 import { ConfirmModal } from "./ConfirmModal";
 import { WizardModal } from "./WizardModal";
-import { type WizardDef } from "../lib/wizards";
+import { mergeGenerated, describeMerge, nothingLeftToFill } from "../lib/mergeGenerated";
+import { instantiateTemplate } from "../lib/instantiateTemplate";
+import { WIZARDS, type WizardDef } from "../lib/wizards";
 import { getFileContent, writeFileContent, runStructuredChat } from '../lib/api';
 import { updateParentChildLinks } from '../lib/parentLinks';
 import { useToast } from '../context/ToastContext';
@@ -36,12 +39,29 @@ export function MainWorkspace() {
     handleCampaignInit,
     setSelectedPath,
     stubPrompt,
+    stubNotice,
     setStubPrompt,
-    executeCreateStub
+    executeCreateStub,
+    selectedFile
   } = useCampaignStore();
   const { loadSessions } = useChatStore();
 
   const [activeWizard, setActiveWizard] = useState<WizardDef | null>(null);
+  const [deepenTarget, setDeepenTarget] = useState<{ path: string; answers: Record<string, string> } | null>(null);
+
+  // A passport can ask for a wizard to be re-opened against an existing entity;
+  // the modal lives here, so the request is answered here.
+  const deepenRequest = useCampaignStore(s => s.deepenRequest);
+  const setDeepenRequest = useCampaignStore(s => s.setDeepenRequest);
+  useEffect(() => {
+    if (!deepenRequest) return;
+    const wizard = WIZARDS.find(w => w.id === deepenRequest.wizardId);
+    if (wizard) {
+      setDeepenTarget({ path: deepenRequest.path, answers: deepenRequest.answers });
+      setActiveWizard(wizard);
+    }
+    setDeepenRequest(null);
+  }, [deepenRequest, setDeepenRequest]);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,7 +173,8 @@ export function MainWorkspace() {
       <WizardModal 
          wizard={activeWizard}
          dynamicOptions={dynamicWizardOptions}
-         onClose={() => setActiveWizard(null)}
+         deepen={deepenTarget}
+         onClose={() => { setActiveWizard(null); setDeepenTarget(null); }}
          onSubmitStructured={async (compiledPrompt, schema, targetPath, pydanticModel, answers) => {
             const tempWizard = activeWizard;
             // NOTE: do NOT call setActiveWizard(null) here.
@@ -201,6 +222,22 @@ export function MainWorkspace() {
             }
             messages.push({ role: "user", content: compiledPrompt });
 
+            // A second pass over a finished entity would generate a whole sheet
+            // and then discard it, after ten seconds of spinner that reads as
+            // work being done. Say so immediately instead, and spend nothing.
+            if (deepenTarget) {
+               try {
+                  const current = await getFileContent(deepenTarget.path);
+                  const existing = JSON.parse(current.content) as Record<string, unknown>;
+                  if (nothingLeftToFill(existing, (schema as { required?: string[] })?.required)) {
+                     setActiveWizard(null);
+                     setDeepenTarget(null);
+                     toast.success("Nothing to add — every field was already written.");
+                     return;
+                  }
+               } catch { /* unreadable: let the generation decide */ }
+            }
+
             try {
                const { result: rawResult } = await runStructuredChat(
                  wizProvider,
@@ -214,7 +251,21 @@ export function MainWorkspace() {
                );
                // Apply wizard-level post-processing (e.g. expand armorCoverage → hitLocations).
                const result = tempWizard?.postProcess ? tempWizard.postProcess(rawResult) : rawResult;
-               const jsonStr = JSON.stringify(result, null, 2);
+
+               // Creating writes the result; deepening folds it into what is
+               // already there, so a generated field can fill a blank but can
+               // never replace something the GM wrote.
+               let toWrite = result;
+               let mergeNote = "";
+               if (deepenTarget) {
+                  const current = await getFileContent(deepenTarget.path);
+                  const existing = JSON.parse(current.content) as Record<string, unknown>;
+                  const report = mergeGenerated(existing, result);
+                  toWrite = report.merged;
+                  mergeNote = describeMerge(report);
+               }
+
+               const jsonStr = JSON.stringify(toWrite, null, 2);
                const writeResponse = await writeFileContent(targetPath, jsonStr);
                if (writeResponse.success) {
                  try {
@@ -225,8 +276,10 @@ export function MainWorkspace() {
                  await useCampaignStore.getState().refreshCampaignArtifacts();
                  setSelectedPath(targetPath);
                  setActiveWizard(null);
+                 const wasDeepening = deepenTarget !== null;
+                 setDeepenTarget(null);
                  const fileName = targetPath.split("/").pop() ?? targetPath;
-                 toast.success(`${fileName} created successfully ✓`);
+                 toast.success(wasDeepening ? mergeNote : `${fileName} created successfully ✓`);
                } else {
                  const errMsg = (writeResponse as any).error ?? "File write failed";
                  toast.error(errMsg);
@@ -249,12 +302,14 @@ export function MainWorkspace() {
                   const tpl = await getFileContent(templatePath);
                   templateContent = tpl.content;
                } catch { /* template missing, start blank */ }
-               
-               for (const [key, val] of Object.entries(variables)) {
-                 templateContent = templateContent.replace(new RegExp(`\\[(${key}|${key} Name)\\]`, "gi"), val as string);
-               }
 
-               const writeResponse = await writeFileContent(targetPath, templateContent);
+               // The templates are examples: every field holds a description of
+               // itself. Written verbatim they produce an entity that looks
+               // complete, which made "Flesh out with AI" a permanent no-op --
+               // the merge fills blanks only, and nothing was blank.
+               const stubContent = instantiateTemplate(templateContent, variables);
+
+               const writeResponse = await writeFileContent(targetPath, stubContent);
                if (writeResponse.success) {
                   try {
                       await updateParentChildLinks(targetPath, variables);
@@ -283,10 +338,19 @@ export function MainWorkspace() {
       <ConfirmModal
         isOpen={stubPrompt !== null}
         title="Create proposed entity?"
-        message={`No file exists for "${stubPrompt?.name ?? ""}" yet. Create a ${stubPrompt?.type ?? "Character"} stub for it?`}
-        confirmText="Create Stub"
+        message={[
+          `No file exists for "${stubPrompt?.name ?? ""}" yet. Create a ${stubPrompt?.type ?? "Character"} stub for it?`,
+          // Placement is read from where the GM is standing; say so, so it can be
+          // corrected in the editor rather than discovered later.
+          stubPrompt ? describePlacement(inferPlacement(selectedFile?.content, stubPrompt.type)) : "",
+        ].filter(Boolean).join(" ")}
+        note={stubNotice}
+        confirmDisabled={stubNotice !== null}
+        confirmText="Create"
+        secondaryText="Create & open"
+        onSecondary={() => executeCreateStub(true)}
         cancelText="Cancel"
-        onConfirm={executeCreateStub}
+        onConfirm={() => executeCreateStub(false)}
         onCancel={() => setStubPrompt(null)}
       />
 

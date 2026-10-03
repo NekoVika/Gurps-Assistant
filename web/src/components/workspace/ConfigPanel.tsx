@@ -42,6 +42,14 @@ export function ConfigPanel() {
   const [stubsBusy, setStubsBusy] = useState(false);
 
   const dangling = menderValidation?.dangling ?? [];
+  const looseEnds = menderValidation?.loose_ends ?? [];
+  // Grouped by issue rather than by file: the GM fixes one kind of gap at a
+  // time ("place everyone"), not one file at a time.
+  const looseByIssue = looseEnds.reduce<Record<string, { label: string; items: typeof looseEnds }>>((acc, end) => {
+    if (!acc[end.issue]) acc[end.issue] = { label: end.label, items: [] };
+    acc[end.issue].items.push(end);
+    return acc;
+  }, {});
   const danglingBySource = dangling.reduce((acc, ref) => {
     (acc[ref.source_path] = acc[ref.source_path] || []).push(ref);
     return acc;
@@ -241,8 +249,8 @@ export function ConfigPanel() {
                 Scanned {menderValidation.scanned_files} structural files.
               </p>
               
-              {menderValidation.errors.length === 0 && dangling.length === 0 ? (
-                <p style={{ color: "#3fb950", margin: 0 }}>✓ All systems structurally sound. No faults detected.</p>
+              {menderValidation.errors.length === 0 && dangling.length === 0 && looseEnds.length === 0 ? (
+                <p style={{ color: "#3fb950", margin: 0 }}>✓ Structurally sound, and everything is in its place.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                   {menderValidation.errors.length > 0 && (
@@ -291,6 +299,32 @@ export function ConfigPanel() {
                                 >
                                   Create stub
                                 </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {looseEnds.length > 0 && (
+                    <div>
+                      <p style={{ color: "#79c0ff", fontWeight: "bold", margin: "0 0 4px 0" }}>
+                        ◈ {looseEnds.length} loose {looseEnds.length === 1 ? "end" : "ends"}
+                      </p>
+                      <p style={{ color: "#8b949e", fontSize: "0.8rem", margin: "0 0 10px 0" }}>
+                        Not faults — work the campaign hasn't had yet. This reaches zero when everything has a place.
+                      </p>
+                      {Object.entries(looseByIssue).map(([issue, group]) => (
+                        <div key={issue} style={{ marginBottom: "12px" }}>
+                          <p style={{ color: "#8ab4f8", fontSize: "0.8rem", margin: "0 0 4px 0" }}>
+                            {group.label} <span style={{ opacity: 0.6 }}>({group.items.length})</span>
+                          </p>
+                          <ul style={{ paddingLeft: "20px", margin: 0, fontSize: "0.85rem", display: "flex", flexDirection: "column", gap: "3px" }}>
+                            {group.items.map((end, i) => (
+                              <li key={`${end.name}-${i}`} style={{ color: "#c9dfff" }}>
+                                <em>{end.name}</em>
+                                <span style={{ opacity: 0.65 }}> — {end.detail}</span>
                               </li>
                             ))}
                           </ul>

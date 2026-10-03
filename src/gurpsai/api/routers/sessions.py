@@ -39,7 +39,10 @@ def update_session(session_id: str, req: SaveSessionRequest) -> ChatSession:
             session.title = req.title
         if req.messages is not None:
             session.messages = req.messages
-        return service.save_session(session)
+        # updated_at means "last activity", and the list is ordered by it.
+        # Bumping it on a rename sends the row to the top, which reads as the
+        # rename having gone somewhere else rather than having worked.
+        return service.save_session(session, touch=req.messages is not None)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found")
 

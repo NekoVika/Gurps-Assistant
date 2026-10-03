@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ScopePanel } from "./ScopePanel";
 import ReactMarkdown from "react-markdown";
 import { InternalLink } from "./InternalLink";
 import type { StoryJSON } from "../lib/types";
@@ -66,6 +67,7 @@ export function EncounterPassport({ data, documentPath, onNavigate }: Props) {
         </div>
       )}
 
+      <ScopePanel node={data.title || ""} onNavigate={onNavigate} />
       <div className="passport-grid" style={{ gridTemplateColumns: "1fr 300px", marginTop: "24px" }}>
         {/* LEFT COLUMN: Narrative Details */}
         <main className="passport-main" style={{ padding: 0 }}>

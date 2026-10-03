@@ -19,9 +19,34 @@ The system acts as a co-pilot for Game Masters. It offloads rules crunching, ent
 
 1. Copy `.env.example` to `.env` in the repository root.
 2. Add your provider API keys (e.g., `GEMINI_API_KEY`). This keeps your credentials secure and Git-ignored.
-3. Start the backend server: `gurpsai serve --reload` (or `python scripts/python/gurpsai.py serve`)
-4. Start the frontend server (in `web/`): `npm run dev`
-5. Open the app in your browser (usually `http://localhost:5173`).
+3. Run `.\dev.cmd` from the repository root — double-clicking it works too.
+
+That starts both servers, waits until each one answers, opens
+`http://localhost:5173`, and streams both logs into the one window prefixed
+`[api]` and `[web]`. Ctrl+C stops both. Useful flags:
+
+| | |
+|---|---|
+| `.\dev.cmd -Stop` | kill servers orphaned by an earlier run |
+| `.\dev.cmd -NoBrowser` | start both, open nothing |
+| `.\dev.cmd -NoReload` | backend without autoreload |
+| `.\dev.cmd -Install` | force `npm install` first |
+| `.\dev.cmd -ApiPort 8001 -WebPort 5174` | move the ports |
+
+Logs are also written to `.dev-logs/` (Git-ignored), which is where to look if a
+server dies before it prints anything.
+
+To run the halves separately instead — two terminals, from the repository root:
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m uvicorn gurpsai.api.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+```powershell
+cd web
+npm run dev
+```
 
 The frontend **Config** tab allows configuring default providers, models, timeouts, and generation endpoints directly from the UI.
 

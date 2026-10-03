@@ -269,7 +269,15 @@ export const WIZARDS: WizardDef[] = [
     id: "create_npc",
     title: "Create Entity",
     description: "Generates a fully statted GURPS 4e character sheet and narrative anchor for an NPC, PC, or Bestiary entity.",
-    stubTargetPath: (answers) => `Campaign/02_Characters/Main_Cast/${answers.Name ? answers.Name.replace(/ /g, "_") : "Untitled"}.json`,
+    // The folder follows the entity type, as it does in the stub endpoint:
+    // a bestiary template dropped into Main_Cast reads as an individual, and
+    // then the loose-ends report asks where that wolf is standing.
+    stubTargetPath: (answers) => {
+      const folder = answers.EntityType === "Bestiary" ? "Bestiary"
+                   : answers.EntityType === "PC" ? "PCs"
+                   : "Main_Cast";
+      return `Campaign/02_Characters/${folder}/${answers.Name ? answers.Name.replace(/ /g, "_") : "Untitled"}.json`;
+    },
     stubTemplatePath: ".planning/_templates/NPC_Template.json",
     workflowPath: ".agents/workflows/create_npc.md",
     aiPromptTemplate: (answers) => {
@@ -319,9 +327,28 @@ export const WIZARDS: WizardDef[] = [
         `- advantages: array of strings like "Combat Reflexes [15] - Reacts quickly (B43)"`,
         `- disadvantages: array of strings like "Curious [-5] - CR: 12 (B129)"`,
         `- skills: array of strings like "First Aid (IQ+0)-10 [1] - Field stabilization"`,
-        `- gear: array of strings like "Medkit (2 lbs, $100) - First Aid kit"`,
+        // The parenthetical is parsed as exactly (weight, cost). A model left to
+        // itself puts the tech level there and the weight in the notes, and the
+        // entry then cannot be decomposed by the editor at all.
+        `- gear: array of strings formatted EXACTLY as "Name [Qty] (Weight, Cost) - Notes".`,
+        `  The parentheses hold ONLY weight and cost, comma-separated. Everything else — tech level,`,
+        `  damage, RoF, Acc — goes after the dash. Correct: "Assault Rifle [1] (9 lbs, $2000) - TL8, 7d pi, Acc 6, RoF 9".`,
+        `  Wrong: "Assault Rifle (TL8) - 7d pi, Wt 9 lbs, $2000".`,
         `- pointTotal: a string like "150"`,
-        `- significance: the exact string provided above (e.g. "1 Extra")`,
+        `- concept: a short archetype phrase of 2-5 words — "Ex-military smuggling pilot", "Sewer-dwelling scavenger".`,
+        `  NOT a sentence and NOT a summary of their situation; the GM reads it as a label beside the name.`,
+        `- role: the exact value provided above, unchanged. Do not expand it into a sentence.`,
+        `- significance: exactly one of "core", "supporting", "featured", "background"${type === "Bestiary" ? " (ignored for a Bestiary template — it is cleared afterwards)" : ""}`,
+        `- kind: exactly "${type === "Bestiary" ? "type" : type === "PC" ? "pc" : "individual"}"`,
+        `- status: one of "Alive", "Dead", "Missing" — "Alive" unless the parameters say otherwise.`,
+        `- speech: one characteristic line in their own voice, in quotes.`,
+        `- pcHooks: one or two concrete ways the PCs could become entangled with them. Openings, not a summary.`,
+        // A guessed place or acquaintance becomes a link to something that does
+        // not exist, and the GM is then chasing a loose end the model invented.
+        // Where an entity sits and who it knows is the GM's to say.
+        `\nLeave these EMPTY — they are the GM's, not yours: location, storyAppearances,`,
+        `characterRelations, locationRelations, factionRelations, images. Do not invent a place`,
+        `or a person; a name you make up becomes a broken link in their campaign.`,
         `- armorCoverage: a SPARSE object — only include locations where DR > 0. Keys are camelCase location names: eye, skull, face, rightLeg, rightArm, torso, groin, leftArm, leftLeg, hand, foot, neck, vitals. Each value is { "dr": <number>, "source": "<armor name>" }. Omit locations with DR 0 entirely.`,
         `\nOutput only the JSON object — no explanation, no markdown fences.`,
       ].filter(Boolean).join("\n");
@@ -331,7 +358,10 @@ export const WIZARDS: WizardDef[] = [
       properties: {
         name:               { type: "string" },
         concept:            { type: "string" },
-        significance:       { type: "string" },
+        kind:               { type: "string", enum: ["individual", "type", "pc"] },
+        // No "" member: providers reject an empty enum value outright. A type
+        // carries no significance, so postProcess clears it after generation.
+        significance:       { type: "string", enum: ["core", "supporting", "featured", "background"] },
         role:               { type: "string" },
         location:           { type: "string" },
         status:             { type: "string" },
@@ -422,9 +452,21 @@ export const WIZARDS: WizardDef[] = [
         images:           { type: "array", items: { type: "string" } },
         variations:       { type: "array", items: { type: "string" } },
       },
+      // One pass should finish everything it has any business finishing. A
+      // field left off this list is one the model may silently omit, and the
+      // GM then reads the blank as the feature failing.
+      //
+      // `kind` is required because postProcess tests `rest.kind === "type"` to
+      // clear significance; omitted, a bestiary template keeps whatever
+      // significance the model picked.
+      //
+      // Deliberately absent, and the prompt says so too: location,
+      // storyAppearances, the three relation arrays, images, variations. Those
+      // are placement and acquaintance — the GM's to set — and a guessed name
+      // is a link to something that does not exist.
       required: [
-        "name", "concept", "significance", "role",
-        "appearance", "personality", "motivation",
+        "name", "concept", "kind", "significance", "role", "status",
+        "appearance", "personality", "motivation", "speech", "pcHooks",
         "pointTotal", "attributes", "advantages", "disadvantages",
         "skills", "gear", "armorCoverage", "tactics"
       ]
@@ -434,6 +476,9 @@ export const WIZARDS: WizardDef[] = [
       const { armorCoverage, ...rest } = result;
       return {
         ...rest,
+        // A template has no narrative weight of its own; only its instances do.
+        // The schema cannot express "" so the model always picks something.
+        significance: rest.kind === "type" ? "" : rest.significance,
         hitLocations: expandArmorCoverage(
           armorCoverage as Record<string, { dr: number; source?: string }> | undefined
         ),
@@ -478,9 +523,11 @@ export const WIZARDS: WizardDef[] = [
           },
           {
             id: "Significance",
-            label: "Significance (0=Bestiary... 5=Keystone)",
+            label: "Significance",
             type: "select",
-            options: ["1 Extra", "2 Supporting", "3 Featured", "4 Major", "5 Keystone", "0 Common Variant"]
+            // Bestiary entries are not on this scale at all -- `kind` says they
+            // are templates, and a template has no narrative weight of its own.
+            options: ["core", "supporting", "featured", "background"]
           }
         ]
       },
@@ -534,8 +581,11 @@ export const WIZARDS: WizardDef[] = [
             id: "Visuals",
             label: "Visual Anchor",
             type: "textarea",
-            placeholder: "Descriptive appearance to treat as absolute canon...",
-            required: true
+            placeholder: "Appearance to treat as canon — or leave blank and let the AI invent it",
+            // Not required. It is stored as the appearance and the merge never
+            // replaces it, so demanding it meant every manual stub had a look
+            // the model was then forbidden to improve on. Blank is a real
+            // answer here: "you decide".
           },
           {
             id: "Exceptions",

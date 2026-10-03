@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
+from typing import Literal
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 
@@ -181,10 +183,19 @@ class DanglingRef(BaseModel):
     name: str
     suggested_type: str
 
+class LooseEndItem(BaseModel):
+    name: str
+    source_path: str
+    issue: str
+    label: str
+    detail: str
+
 class CampaignValidateResponse(BaseModel):
     scanned_files: int
     errors: list[str]
     dangling: list[DanglingRef] = []
+    #: Linkage that is incomplete rather than broken. Meant to reach zero.
+    loose_ends: list[LooseEndItem] = []
 
 @router.get("/validate", response_model=CampaignValidateResponse)
 def validate_campaign() -> CampaignValidateResponse:
@@ -203,6 +214,12 @@ def validate_campaign() -> CampaignValidateResponse:
     errors = []
     dangling: list[DanglingRef] = []
     scanned = 0
+    # Gathered during the same pass so the loose-ends report costs no extra IO.
+    all_characters: dict[str, dict] = {}
+    all_locations: dict[str, dict] = {}
+    all_story_nodes: dict[str, dict] = {}
+    all_factions: dict[str, dict] = {}
+    entity_paths: dict[str, str] = {}
 
     from gurpsai.app.services.files import CampaignFileService
     from gurpsai.app.services.link_resolver import LinkResolver, is_reference
@@ -225,6 +242,27 @@ def validate_campaign() -> CampaignValidateResponse:
             except Exception:
                 pass
                 
+            # Characters and locations carry `name`; story nodes carry `title`.
+            # Requiring `name` meant no story node was ever collected, so every
+            # placement looked like it pointed outside the story.
+            if isinstance(data_dict, dict) and (data_dict.get("name") or data_dict.get("title")):
+                name = data_dict.get("name") or data_dict["title"]
+                if "internalStructure" in data_dict:
+                    all_locations[name] = data_dict
+                    entity_paths[name] = f"Campaign/{rel_path}"
+                elif "attributes" in data_dict and "pointTotal" in data_dict:
+                    all_characters[name] = data_dict
+                    entity_paths[name] = f"Campaign/{rel_path}"
+                # A faction has neither of those keys, so shape alone cannot
+                # find one -- which is why factions were invisible to every
+                # placement check. The folder says what it is.
+                elif "Factions" in rel_path:
+                    all_factions[name] = data_dict
+                    entity_paths[name] = f"Campaign/{rel_path}"
+                from gurpsai.app.services.story_scope import is_story_node as _is_node
+                if _is_node(data_dict):
+                    all_story_nodes[name] = data_dict
+
             if "02_Characters" in rel_path or "Bestiary" in rel_path:
                 scanned += 1
                 CharacterData.model_validate_json(content)
@@ -291,7 +329,171 @@ def validate_campaign() -> CampaignValidateResponse:
         except Exception as e:
             errors.append(f"[{rel_path}] Corrupt JSON: {str(e)}")
 
-    return CampaignValidateResponse(scanned_files=scanned, errors=errors, dangling=dangling)
+    party_location = ""
+    try:
+        state = json.loads((camp_path / "state.json").read_text(encoding="utf-8"))
+        party_location = str(state.get("currentLocation") or "")
+    except Exception:
+        pass  # No state file yet is normal for a fresh campaign.
+
+    from gurpsai.app.services.loose_ends import collect as collect_loose_ends
+    loose = [
+        LooseEndItem(
+            name=end.name, source_path=end.source_path,
+            issue=end.issue, label=end.label, detail=end.detail,
+        )
+        for end in collect_loose_ends(
+            all_characters, all_locations,
+            party_location=party_location, paths=entity_paths,
+            story_nodes=all_story_nodes,
+            factions=all_factions,
+        )
+    ]
+
+    return CampaignValidateResponse(
+        scanned_files=scanned, errors=errors, dangling=dangling, loose_ends=loose,
+    )
+
+
+class PlacementResponse(BaseModel):
+    name: str
+    status: str
+    location: str | None = None
+    chain: list[str] = []
+    ancestors: list[str] = []
+    unresolved_target: str | None = None
+    description: str = ""
+
+
+def _placement_index(camp_path: Path):
+    """Build a placement index from the campaign on disk.
+
+    Rescans each call. At local-campaign scale that is cheap, and it keeps the
+    answer correct after an edit without any cache to invalidate.
+    """
+    from gurpsai.app.services.placement import PlacementIndex
+
+    characters: dict[str, dict] = {}
+    locations: dict[str, dict] = {}
+    for file_path in camp_path.rglob("*.json"):
+        if file_path.name.startswith("."):
+            continue
+        try:
+            data = json.loads(file_path.read_text(encoding="utf-8", errors="replace"))
+        except Exception:
+            continue
+        if not isinstance(data, dict) or not data.get("name"):
+            continue
+        if "internalStructure" in data:
+            locations[data["name"]] = data
+        elif "attributes" in data and "pointTotal" in data:
+            characters[data["name"]] = data
+
+    party = ""
+    try:
+        state = json.loads((camp_path / "state.json").read_text(encoding="utf-8"))
+        party = str(state.get("currentLocation") or "")
+    except Exception:
+        pass
+
+    return PlacementIndex(locations=locations, characters=characters, party_location=party)
+
+
+@router.get("/placement", response_model=PlacementResponse)
+def resolve_placement(name: str) -> PlacementResponse:
+    """Where an entity actually is, following any 'travels with' links."""
+    config = load_app_config()
+    active_path = config.campaign.active_path.strip()
+    if not active_path:
+        raise HTTPException(status_code=400, detail="Active campaign path is empty.")
+    camp_path = Path(active_path)
+    if not camp_path.is_absolute():
+        camp_path = (ROOT / active_path).resolve()
+    if not camp_path.exists():
+        raise HTTPException(status_code=404, detail="Campaign directory does not exist.")
+
+    index = _placement_index(camp_path)
+    placement = index.resolve(name)
+    return PlacementResponse(
+        name=name,
+        status=placement.status,
+        location=placement.location,
+        chain=list(placement.chain),
+        ancestors=list(placement.ancestors),
+        unresolved_target=placement.unresolved_target,
+        description=index.describe(name),
+    )
+
+
+
+class ScopeMemberItem(BaseModel):
+    name: str
+    via: str
+    placed_at: str
+    path: str = ""
+
+
+class ScopeResponse(BaseModel):
+    node: str
+    lineage: list[str] = []
+    members: list[ScopeMemberItem] = []
+
+
+@router.get("/scope", response_model=ScopeResponse)
+def story_scope(node: str) -> ScopeResponse:
+    """Who and what belongs to one story node.
+
+    Pinned members are placed at the node itself; inherited ones are fixtures
+    declared further up, which is the only kind of placement that reaches down.
+    """
+    from gurpsai.app.services.story_scope import StoryScope, is_story_node
+
+    config = load_app_config()
+    active_path = config.campaign.active_path.strip()
+    if not active_path:
+        raise HTTPException(status_code=400, detail="Active campaign path is empty.")
+    camp_path = Path(active_path)
+    if not camp_path.is_absolute():
+        camp_path = (ROOT / active_path).resolve()
+    if not camp_path.exists():
+        raise HTTPException(status_code=404, detail="Campaign directory does not exist.")
+
+    nodes: dict[str, dict] = {}
+    node_paths: dict[str, str] = {}
+    entities: dict[str, dict] = {}
+    paths: dict[str, str] = {}
+    for file_path in camp_path.rglob("*.json"):
+        if file_path.name.startswith("."):
+            continue
+        try:
+            data = json.loads(file_path.read_text(encoding="utf-8", errors="replace"))
+        except Exception:
+            continue
+        if not isinstance(data, dict):
+            continue
+        name = data.get("name") or data.get("title")
+        if not name:
+            continue
+        rel = f"Campaign/{file_path.relative_to(camp_path).as_posix()}"
+        if is_story_node(data):
+            nodes[name] = data
+            node_paths[name] = rel
+        if "attributes" in data or "internalStructure" in data:
+            entities[name] = data
+            paths[name] = rel
+
+    scope = StoryScope(nodes=nodes, entities=entities, node_paths=node_paths)
+    return ScopeResponse(
+        node=node,
+        lineage=scope.lineage(node),
+        members=[
+            ScopeMemberItem(
+                name=m.name, via=m.via, placed_at=m.placed_at, path=paths.get(m.name, "")
+            )
+            for m in scope.members(node)
+        ],
+    )
+
 
 class RegistryItem(BaseModel):
     id: str
@@ -313,14 +515,27 @@ class StubRequest(BaseModel):
     name: str
     type: str
     parent_path: str | None = None
+    # Placement inferred from where the GM was standing when they clicked create.
+    # All optional: a stub with none of these is still a valid, unplaced entity.
+    location: str | None = None
+    parent_location: str | None = None
+    story_node: str | None = None
+    story_mode: Literal["appearance", "fixture"] = "appearance"
+    kind: Literal["individual", "type", "pc"] | None = None
 
 class BatchStubRequest(BaseModel):
     stubs: list[StubRequest]
+
+class RejectedStub(BaseModel):
+    name: str
+    reason: str
 
 class BatchStubResponse(BaseModel):
     created: int
     paths: list[str]
     skipped: list[str] = []
+    #: Names refused outright, with why. A batch never fails on one bad name.
+    rejected: list[RejectedStub] = []
 
 @router.post("/stubs/batch", response_model=BatchStubResponse)
 def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
@@ -335,7 +550,22 @@ def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
     created_paths = []
     skipped = []
 
+    from gurpsai.app.services.naming import generic_name_problem
+    from gurpsai.app.services.link_resolver import link_text
+    rejected: list[RejectedStub] = []
+
     for stub in request.stubs:
+        # A bare category word collides with every other entity given the same
+        # non-name; refusing it here costs a retype instead of a mis-parented
+        # chapter later.
+        problem = generic_name_problem(stub.name)
+        if problem:
+            rejected.append(RejectedStub(name=stub.name, reason=problem))
+            continue
+
+        # Migrated references arrive as "[Name](path)"; the entity is the name.
+        stub = stub.model_copy(update={"name": link_text(stub.name)})
+
         safe_name = "".join(c for c in stub.name if c.isalnum() or c in (" ", "-", "_")).strip()
         safe_name = re.sub(r'^[\d_]+', '', safe_name).strip()
         if not safe_name:
@@ -349,11 +579,23 @@ def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
 
         filename = safe_name.replace(" ", "_") + ".json"
         t_lower = stub.type.lower()
+        placement = {"node": stub.story_node or "", "mode": stub.story_mode}
         if "char" in t_lower or "npc" in t_lower:
-            data = CharacterData(name=stub.name).model_dump()
-            rel_path = f"Campaign/02_Characters/Main_Cast/{filename}"
+            data = CharacterData(
+                name=stub.name,
+                kind=stub.kind or "individual",
+                location=stub.location or "",
+                storyPlacement=placement,
+            ).model_dump()
+            # kind decides the folder, never the other way round.
+            folder = {"type": "Bestiary", "pc": "PCs"}.get(stub.kind or "individual", "Main_Cast")
+            rel_path = f"Campaign/02_Characters/{folder}/{filename}"
         elif "loc" in t_lower:
-            data = LocationData(name=stub.name).model_dump()
+            data = LocationData(
+                name=stub.name,
+                parentLocation=stub.parent_location or "",
+                storyPlacement=placement,
+            ).model_dump()
             rel_path = f"Campaign/01_World_Bible/Locations/{filename}"
         elif "fac" in t_lower:
             data = FactionData(name=stub.name).model_dump()
@@ -392,7 +634,7 @@ def create_batch_stubs(request: BatchStubRequest) -> BatchStubResponse:
             service.write_file(rel_path, json.dumps(data, indent=2))
             created_paths.append(rel_path)
 
-    return BatchStubResponse(created=len(created_paths), paths=created_paths, skipped=skipped)
+    return BatchStubResponse(created=len(created_paths), paths=created_paths, skipped=skipped, rejected=rejected)
 
 from gurpsai.app.services.chat import ChatService
 from gurpsai.providers.base import ChatMessage as ProviderChatMessage

@@ -215,3 +215,74 @@ def test_file_write_rejects_escape(campaign_env):
         "content": "{}",
     })
     assert res.status_code >= 400
+
+
+def _init(campaign_env):
+    assert client.post("/campaign/init").status_code == 200
+
+
+def test_stub_carries_the_placement_it_was_created_from(campaign_env):
+    _init(campaign_env)
+    res = client.post("/campaign/stubs/batch", json={"stubs": [{
+        "name": "Rick", "type": "Character",
+        "location": "The Lower Drains",
+        "story_node": "Flooded Passages Entry", "story_mode": "appearance",
+    }]})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["created"] == 1
+    data = read_json(campaign_env / "02_Characters" / "Main_Cast" / "Rick.json")
+    assert data["location"] == "The Lower Drains"
+    assert data["storyPlacement"] == {"node": "Flooded Passages Entry", "mode": "appearance"}
+    assert data["kind"] == "individual"
+
+
+def test_stub_kind_decides_the_folder(campaign_env):
+    _init(campaign_env)
+    res = client.post("/campaign/stubs/batch", json={"stubs": [
+        {"name": "Sewer Rat", "type": "Character", "kind": "type"},
+        {"name": "Mara", "type": "Character", "kind": "pc"},
+    ]})
+    assert res.json()["created"] == 2
+    assert (campaign_env / "02_Characters" / "Bestiary" / "Sewer_Rat.json").is_file()
+    assert (campaign_env / "02_Characters" / "PCs" / "Mara.json").is_file()
+
+
+def test_location_stub_nests_where_it_was_created(campaign_env):
+    _init(campaign_env)
+    client.post("/campaign/stubs/batch", json={"stubs": [
+        {"name": "Briefing Room", "type": "Location", "parent_location": "HQ"},
+    ]})
+    data = read_json(campaign_env / "01_World_Bible" / "Locations" / "Briefing_Room.json")
+    assert data["parentLocation"] == "HQ"
+
+
+def test_a_generic_name_is_refused_with_a_reason_and_the_rest_still_land(campaign_env):
+    _init(campaign_env)
+    res = client.post("/campaign/stubs/batch", json={"stubs": [
+        {"name": "Chapter 04", "type": "Chapter"},
+        {"name": "Rick", "type": "Character"},
+    ]})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["created"] == 1
+    assert [r["name"] for r in body["rejected"]] == ["Chapter 04"]
+    assert "category" in body["rejected"][0]["reason"]
+    assert not list((campaign_env / "03_Story").rglob("*Chapter_04*"))
+
+
+def test_a_titled_chapter_name_is_accepted(campaign_env):
+    _init(campaign_env)
+    res = client.post("/campaign/stubs/batch", json={"stubs": [
+        {"name": "Chapter 04: The Rat King's Lair", "type": "Chapter"},
+    ]})
+    body = res.json()
+    assert body["created"] == 1 and body["rejected"] == []
+
+
+def test_an_unknown_story_mode_is_a_request_error(campaign_env):
+    _init(campaign_env)
+    res = client.post("/campaign/stubs/batch", json={"stubs": [
+        {"name": "Rick", "type": "Character", "story_mode": "recurring"},
+    ]})
+    assert res.status_code == 422

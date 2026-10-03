@@ -68,3 +68,6 @@ MigrationEnvTool/
 
 # Local backup of the dev campaign (not canon)
 AnomalyHuntersCampaign.bak/
+
+# Dev server logs from scripts/dev.ps1
+.dev-logs/

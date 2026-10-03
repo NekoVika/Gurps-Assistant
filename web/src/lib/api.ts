@@ -74,10 +74,20 @@ export type DanglingRef = {
   suggested_type: string;
 };
 
+/** Linkage that is incomplete rather than broken. Meant to reach zero. */
+export type LooseEnd = {
+  name: string;
+  source_path: string;
+  issue: string;
+  label: string;
+  detail: string;
+};
+
 export type CampaignValidateResponse = {
   scanned_files: number;
   errors: string[];
   dangling: DanglingRef[];
+  loose_ends?: LooseEnd[];
 };
 
 export type FileTreeNode = {
@@ -624,6 +634,44 @@ export async function validateCampaign(): Promise<CampaignValidateResponse> {
   return res.json();
 }
 
+/** Where an entity actually is, after following any "travels with" links. */
+export type ResolvedPlacement = {
+  name: string;
+  status: "placed" | "unplaced" | "unresolved" | "cycle";
+  location: string | null;
+  chain: string[];
+  ancestors: string[];
+  unresolved_target: string | null;
+  description: string;
+};
+
+export async function resolvePlacement(name: string): Promise<ResolvedPlacement> {
+  const res = await fetch(`${apiBaseUrl()}/campaign/placement?name=${encodeURIComponent(name)}`);
+  if (!res.ok) throw new Error(`Failed to resolve placement. Status: ${res.status}`);
+  return res.json();
+}
+
+/** One entity that belongs to a story node. */
+export type ScopeMember = {
+  name: string;
+  /** "pinned" = placed at this node; "inherited" = a fixture declared above it. */
+  via: "pinned" | "inherited";
+  placed_at: string;
+  path: string;
+};
+
+export type StoryScopeResponse = {
+  node: string;
+  lineage: string[];
+  members: ScopeMember[];
+};
+
+export async function getStoryScope(node: string): Promise<StoryScopeResponse> {
+  const res = await fetch(`${apiBaseUrl()}/campaign/scope?node=${encodeURIComponent(node)}`);
+  if (!res.ok) throw new Error(`Failed to load story scope. Status: ${res.status}`);
+  return res.json();
+}
+
 export type RegistryItem = {
   id: string;
   title: string;
@@ -644,9 +692,25 @@ export type StubRequest = {
   name: string;
   type: string;
   parent_path?: string;
+  /** Placement inferred from where the GM was standing; all optional. */
+  location?: string;
+  parent_location?: string;
+  story_node?: string;
+  story_mode?: "appearance" | "fixture";
+  kind?: "individual" | "type" | "pc";
 };
 
-export async function createBatchStubs(stubs: StubRequest[]): Promise<{ created: number, paths: string[], skipped: string[] }> {
+export type RejectedStub = { name: string; reason: string };
+
+export type BatchStubResult = {
+  created: number;
+  paths: string[];
+  skipped: string[];
+  /** Names refused outright, with why. A batch never fails on one bad name. */
+  rejected?: RejectedStub[];
+};
+
+export async function createBatchStubs(stubs: StubRequest[]): Promise<BatchStubResult> {
   const response = await fetch(`${apiBaseUrl()}/campaign/stubs/batch`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

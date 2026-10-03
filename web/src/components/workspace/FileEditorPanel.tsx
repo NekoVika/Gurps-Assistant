@@ -25,6 +25,7 @@ import MDEditor from "@uiw/react-md-editor";
 import ReactMarkdown from "react-markdown";
 
 import { parseCharacter } from "../../lib/CharacterParser";
+import { deepenRequestFor } from "../../lib/deepenRequest";
 import { parseLocation } from "../../lib/LocationParser";
 import { parseStory } from "../../lib/StoryParser";
 import { parseFaction } from "../../lib/FactionParser";
@@ -109,6 +110,16 @@ export function FileEditorPanel() {
     } catch(e){}
   }
 
+  // Only characters can be deepened, so the offer only appears for them. Same
+  // guard the passport dispatch below uses, so the button and the sheet agree.
+  let deepenTarget: ReturnType<typeof deepenRequestFor> | null = null;
+  if (selectedFile.path.includes("02_Characters")) {
+    const parsed = parseCharacter(selectedFile.content);
+    if (parsed && parsed.name && parsed.name !== "Unknown Character") {
+      deepenTarget = deepenRequestFor(parsed, selectedFile.path);
+    }
+  }
+
   const showDeepMend = selectedFile.path.includes("02_Characters") || selectedFile.path.includes("Locations") || selectedFile.path.includes("03_Story") || selectedFile.path.includes("Episode") || selectedFile.path.includes("sessions");
   const mendTargetType = selectedFile.path.includes("02_Characters") ? "Character" : (selectedFile.path.includes("Locations") ? "Location" : "Story");
   const mendProvider = providerSettings?.default_mending_provider || "gemini";
@@ -123,7 +134,7 @@ export function FileEditorPanel() {
               <div>
                 <h1 style={{ fontSize: "2rem", color: "#f3f4f6", margin: 0, fontWeight: 700, letterSpacing: "0.5px" }}>{displayTitle}</h1>
               </div>
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                 {selectedFile.truncated ? <span className="status-pill pending">Preview truncated</span> : null}
                 
                 {showDeepMend && (selectedFile.path.endsWith('.json') || selectedFile.path.endsWith('.md')) && (
@@ -138,6 +149,17 @@ export function FileEditorPanel() {
                   </button>
                 )}
                 
+                {deepenTarget && (
+                  <button
+                    type="button"
+                    className="chip-button"
+                    title="Ask the assistant to fill in blank fields. Nothing you have written is changed."
+                    onClick={() => useCampaignStore.getState().setDeepenRequest(deepenTarget)}
+                  >
+                    ✨ Flesh out with AI
+                  </button>
+                )}
+
                 <button type="button" className="chip-button" onClick={() => setIsEditing(true)}>📝 Edit</button>
                 <button type="button" className="chip-button" style={{ borderColor: "rgba(255, 60, 60, 0.4)", color: "#ff7b72" }} onClick={() => useCampaignStore.setState({ isDeleteModalOpen: true })}>🗑️ Delete</button>
               </div>

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   normalizeEntityName,
+  linkText,
   isPlaceholderName,
   isReferenceName,
   entityExists,
@@ -96,5 +97,49 @@ describe('findMissingEntities', () => {
       'The Watch', 'Ghost Chapter', 'Ghost Chapter', 'TBD', '', 42, 'the_watch',
     ]);
     expect(missing).toEqual(['Ghost Chapter']);
+  });
+});
+
+describe("placeholder parity with the backend", () => {
+  // link_resolver.PLACEHOLDER_VALUES must match this list exactly; if they
+  // drift, the UI and the validator disagree about what counts as dangling.
+  it.each(["", "tbd", "tba", "none", "n/a", "?", "???", "unknown"])(
+    "treats %p as a placeholder, not an entity name",
+    (value) => {
+      expect(isReferenceName(value)).toBe(false);
+    }
+  );
+
+  it("still accepts real names that merely contain a placeholder word", () => {
+    expect(isReferenceName("Unknown Soldier")).toBe(true);
+    expect(isReferenceName("The None Society")).toBe(true);
+  });
+});
+
+describe("migrated markdown links", () => {
+  // Mirrors tests/test_markdown_links.py — the two must not drift.
+  it.each([
+    ["[The Shoals](../../01_World_Bible/Locations/The_Shoals.md)", "The Shoals"],
+    ["[Briefing Room](../../Locations/HQ.md#briefing-room)", "Briefing Room"],
+  ])("shows the name, never the path: %p", (raw, expected) => {
+    expect(linkText(raw)).toBe(expected);
+  });
+
+  it("falls back to the file when the label is empty", () => {
+    expect(linkText("[](../../Locations/Broken_Bridge.md)")).toBe("Broken_Bridge");
+  });
+
+  it.each(["Rachel", "Rain World (Decaying Megastructures)", "Hinamizawa, Japan (1983)"])(
+    "leaves an ordinary name alone: %p",
+    (raw) => { expect(linkText(raw)).toBe(raw); }
+  );
+
+  it("resolves a wrapped reference to the entity it names", () => {
+    const registry = [{ id: "s", title: "The Shoals", path: "Campaign/01_World_Bible/Locations/The_Shoals.json", type: "" }];
+    expect(entityExists(registry as any, "[The Shoals](../../x.md)")).toBe(true);
+  });
+
+  it("folds a link onto the plain name", () => {
+    expect(normalizeEntityName("[The Shoals](../x.md)")).toBe(normalizeEntityName("the_shoals"));
   });
 });
