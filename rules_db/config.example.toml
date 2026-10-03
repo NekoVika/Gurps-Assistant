@@ -30,7 +30,7 @@ source_label = "Basic Set"
 advantages = "299-300"
 disadvantages = "301-302"
 modifiers = "303"
-skills = "304-306"
+skills = "303-306"
 
 [[books.basic_set.sources]]
 source_label = "Characters"
