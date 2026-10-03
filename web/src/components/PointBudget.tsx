@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useCampaignStore } from "../stores/useCampaignStore";
 import { auditTraits } from "../lib/traitAudit";
+import { checkMechanics } from "../lib/mechanicsCheck";
 import { pointBuild, type PointBuild } from "../lib/pointBuild";
 import type { CharacterJSON } from "../lib/types";
 
@@ -38,6 +39,11 @@ export function PointBudget({ data }: { data: CharacterJSON }) {
   const traitIndex = useCampaignStore(s => s.traitIndex);
   const audit = useMemo(
     () => (traitIndex ? auditTraits(data as unknown as Record<string, unknown>, traitIndex) : null),
+    [data, traitIndex]);
+  // Tier two needs no catalogue for attributes, so this runs with or without a
+  // rules database -- it simply checks fewer skills without one.
+  const mechanics = useMemo(
+    () => checkMechanics(data as unknown as Record<string, unknown>, traitIndex),
     [data, traitIndex]);
 
   // A template carries a nominal figure, not a budget. Show the arithmetic,
@@ -86,6 +92,11 @@ export function PointBudget({ data }: { data: CharacterJSON }) {
     >
       <span className="eyebrow">Points</span>
       <span className="value">{value || "???"}</span>
+      {mechanics.findings.length > 0 && (
+        <span style={{ fontSize: "0.58rem", color: "#e3a952", marginTop: 1, whiteSpace: "nowrap" }}>
+          {mechanics.findings.length} cost{mechanics.findings.length === 1 ? "" : "s"} disputed
+        </span>
+      )}
       {provenance && (
         <span style={{ fontSize: "0.58rem", color: "#6b7280", marginTop: 1, whiteSpace: "nowrap" }}>
           {audit!.unrecognised.length
