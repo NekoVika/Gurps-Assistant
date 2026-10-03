@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { CharacterJSON } from "../lib/types";
+import { PointBudget } from "./PointBudget";
 import { getMediaUrl, mendString, resolvePlacement, type ResolvedPlacement } from "../lib/api";
 import { InternalLink } from "./InternalLink";
 import { parseAttribute, parseTrait, parseSkill, parseGear, parseHitLocation } from "../lib/TraitFormatters";
@@ -126,10 +127,7 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
               {placement ? placement.description : "…"}
             </span>
           </div>
-          <div className="meta-badge">
-            <span className="eyebrow">Points</span>
-            <span className="value">{data.pointTotal || "???"}</span>
-          </div>
+          <PointBudget data={data} />
         </div>
       </header>
 
