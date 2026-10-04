@@ -307,3 +307,35 @@ describe("typing in a note", () => {
       .toBe("Danger Sense");
   });
 });
+
+describe("what it preserves when it writes a line back", () => {
+  it("keeps the emphasis the campaign wrote around a name", () => {
+    // Most of this campaign's trait names are written "**Danger Sense**", and
+    // the sheet renders the emphasis. Dropping it on save edits the GM's text
+    // without being asked.
+    const onChange = vi.fn();
+    render(<TraitCostEditor title="Advantages" kind="advantage"
+      items={["**Danger Sense** [15]", "Combat Reflexes [15]"]} onChange={onChange} />);
+    fireEvent.click(screen.getAllByRole("button", { name: "▼" })[0]);
+    expect(onChange).toHaveBeenLastCalledWith(
+      ["Combat Reflexes [15]", "**Danger Sense** [15]"]);
+  });
+
+  it("keeps emphasis inside a note", () => {
+    const onChange = vi.fn();
+    const note = "Tokens [0] - **5** awareness, now a **Focused** version";
+    render(<TraitCostEditor title="Advantages" kind="advantage"
+      items={[note, "Combat Reflexes [15]"]} onChange={onChange} />);
+    fireEvent.click(screen.getAllByRole("button", { name: "▼" })[0]);
+    expect(onChange).toHaveBeenLastCalledWith(["Combat Reflexes [15]", note]);
+  });
+
+  it("leaves a line alone that is only reordered", () => {
+    const onChange = vi.fn();
+    render(<TraitCostEditor title="Advantages" kind="advantage"
+      items={["**Ambidexterity** [5]", "Combat Reflexes [15]"]} onChange={onChange} />);
+    fireEvent.click(screen.getAllByRole("button", { name: "▼" })[0]);
+    expect(onChange).toHaveBeenLastCalledWith(
+      ["Combat Reflexes [15]", "**Ambidexterity** [5]"]);
+  });
+});

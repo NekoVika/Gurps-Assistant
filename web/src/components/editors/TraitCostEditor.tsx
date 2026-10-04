@@ -49,9 +49,27 @@ type Row = {
   selfControl: string;
   points: string;
   notes: string;
+  /** Whether the campaign wrote this trait's name in bold, as most of them are. */
+  emphasised: boolean;
 };
 
 const CONTROL_NUMBERS = Object.keys(SELF_CONTROL).map(Number).sort((a, b) => a - b);
+
+/**
+ * The note exactly as it was written, markup and all.
+ *
+ * pointBuild strips markdown before it reads a line, which is right for
+ * deciding what a trait costs and wrong for editing: a note saying a token
+ * count is `**5**` means the emphasis, and the sheet renders it. Taking the
+ * tail off the raw string keeps it, along with any spacing in it.
+ */
+function rawNote(raw: string): string {
+  const costs = [...(raw || "").matchAll(/\[+\s*(-?\d+)\s*\]+/g)];
+  if (!costs.length) return "";
+  const last = costs[costs.length - 1];
+  const tail = (raw || "").slice((last.index ?? 0) + last[0].length);
+  return tail.replace(/^\s*[-–—]\s?/, "");
+}
 
 /** The stored string, read into the fields a GM edits. */
 function toRow(raw: string, kind: Props["kind"]): Row {
@@ -65,7 +83,10 @@ function toRow(raw: string, kind: Props["kind"]): Row {
     selfControl: entry.specialty && /^\d{1,2}$/.test(entry.specialty.trim())
       ? entry.specialty.trim() : "",
     points: entry.points === null ? "" : String(entry.points),
-    notes: entry.notes,
+    notes: rawNote(raw),
+    // The name is edited without its asterisks, which are noise in a box that
+    // holds nothing but names, and they go back on when the line is written.
+    emphasised: /^\s*\*\*/.test(raw || ""),
   };
 }
 
@@ -89,7 +110,11 @@ function toStored(row: Row): string {
     : row.specialty ? ` (${row.specialty})` : "";
   const points = row.points === "" ? "0" : row.points;
   const notes = row.notes ? ` - ${row.notes}` : "";
-  return `${row.name.replace(/\s+\d+\s*$/, "")}${level}${qualifier} [${points}]${notes}`;
+  const bare = row.name.replace(/\s+\d+\s*$/, "").replace(/\*\*/g, "");
+  // Reordering a row used to rewrite every line in the list without its
+  // emphasis, which is an edit to the GM's own text that nobody asked for.
+  const name = row.emphasised && bare ? `**${bare}**` : bare;
+  return `${name}${level}${qualifier} [${points}]${notes}`;
 }
 
 export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
@@ -144,7 +169,7 @@ export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
   };
 
   const add = () => write([...rows,
-    { name: "", specialty: "", levels: "", selfControl: "", points: "", notes: "" }]);
+    { name: "", specialty: "", levels: "", selfControl: "", points: "", notes: "", emphasised: false }]);
   const remove = (index: number) => write(rows.filter((_, i) => i !== index));
 
   /**
