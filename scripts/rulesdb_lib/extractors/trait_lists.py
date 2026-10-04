@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 
 __all__ = [
-    "RESET", "mend", "clean", "split_defaults", "classify_cost",
+    "RESET", "mend", "clean", "split_defaults", "classify_cost", "is_cost_cell",
     "parse_traits", "parse_modifiers", "parse_skills", "suspect", "strip_specialisation",
 ]
 
@@ -35,11 +35,41 @@ EXOTIC = {"X", "Sup", "X/Sup"} | DASH
 ATTRIBUTE = {"DX", "IQ", "HT", "ST", "Will", "Per", "DX Varies", "IQ Varies", "Varies"}
 DIFFICULTY = {"E", "A", "H", "VH", "Special"}
 
-COST = re.compile(
-    r"^(?:-?\d+(?:\.\d+)?(?:/level)?"      # 15, -15, 2/level
-    r"|-?\d+ or -?\d+(?:/level)?"          # 5 or 10/level
-    r"|-?\d+ to -?\d+"                     # -10 to -30
-    r"|\*?Variable\*?)\*?$", re.I)
+#: The cost column holds figures, the words that join them, and sometimes the
+#: unit a per-unit price is quoted in. The Basic Set alone prices things per
+#: level, attack, head, life, mouth, copy, gizmo, sense and culture, and the
+#: next book will invent a tenth -- so the gate below asks where a cell sits,
+#: never what it says. Deciding what the figure *means* is classify_cost's job,
+#: and it is allowed to answer "unknown".
+#: Two bounds keep it a gate: a cost is short, and it is figures joined by at
+#: most a couple of words. The longest the book prints is "-50, -75, or -100".
+COST_CELL_CHARS = 24
+COST_CELL_WORDS = 3
+COST_WORD = re.compile(r"[a-z]+")
+COST_SHAPE = re.compile(r"[-+0-9,.\s/]+(?:[a-z]+[-+0-9,.\s/]*)*")
+
+
+def is_cost_cell(text: str) -> bool:
+    """Whether a cell belongs to the cost column, whatever it costs.
+
+    This used to be a pattern of the five shapes we had seen, and because it
+    gated whether four lines counted as a row at all, an unfamiliar shape made
+    the whole trait invisible rather than merely unpriced. Twenty-four rows
+    went missing from pp.299-302 that way, Magery and Code of Honor among them.
+    """
+    cell = (text or "").strip().rstrip("*")
+    if not cell or len(cell) > COST_CELL_CHARS:
+        return False
+    if cell.lower() == "variable":
+        return True
+    # A cost opens with a figure. Prose in the gap between two tables does not.
+    if not re.match(r"[-+]?\d", cell):
+        return False
+    if len(COST_WORD.findall(cell)) > COST_CELL_WORDS:
+        return False
+    return bool(COST_SHAPE.fullmatch(cell))
+
+
 MODIFIER_VALUE = re.compile(r"^[+-]\d+%(?:/level)?$|^Variable$", re.I)
 PAGE = re.compile(r"^\d{1,3}(?:\s*,\s*\d{1,3})*$")
 
@@ -121,26 +151,44 @@ def strip_specialisation(name: str) -> tuple[str, bool]:
     return name, False
 
 
+#: `25/attack`, `15/head`, `5/gizmo`. A price per *something* is still linear,
+#: whatever the book names the something, so it is read as a per-level cost.
+PER_UNIT = re.compile(r"(-?\d+)\s*/\s*[a-z]+", re.I)
+#: `5 + 10/level`: an entry fee and then a price per level. Magery, Terror,
+#: Tunneling and Vampiric Bite. Two figures, so neither is "the" cost.
+BASE_PLUS = re.compile(r"-?\d+\s*\+\s*-?\d+\s*/\s*[a-z]+", re.I)
+#: `5-8`, and the open-ended `10+` that Blessed is priced at.
+HYPHEN_RANGE = re.compile(r"\d+\s*-\s*\d+")
+OPEN_RANGE = re.compile(r"-?\d+\s*\+$")
+
+
 def classify_cost(text: str) -> tuple[str, int | None]:
     """The shape of a printed cost, and its single value where it has one.
 
-    Five shapes cover the Basic Set: a flat figure, a figure per level, a
-    choice between figures, a range, and Variable. Variable is a value in its
-    own right, not a parse failure -- an advisory checker has to be able to say
-    "this one depends" instead of guessing.
+    Variable is a value in its own right, not a parse failure -- an advisory
+    checker has to be able to say "this one depends" instead of guessing. So is
+    "unknown": a shape from a book nobody has read yet is recorded and left
+    unpriced, which is the honest answer and keeps the row.
+
+    The order matters. A choice is tested before a range because the book
+    prices four disadvantages at "-1 or -5 to -15", which is a choice between
+    a figure and a range, and before a per-unit price because Arm ST costs
+    "3, 5, or 8/level".
     """
     raw = (text or "").strip().rstrip("*")
     if not raw:
         return "unknown", None
     if raw.lower() == "variable":
         return "variable", None
-    if " to " in raw:
-        return "range", None
-    if " or " in raw:
+    if " or " in raw or "," in raw:
         return "choice", None
-    if "/level" in raw:
-        head = raw.split("/level")[0].strip()
-        return "per_level", int(head) if re.fullmatch(r"-?\d+", head) else None
+    if BASE_PLUS.fullmatch(raw):
+        return "base_plus_per_level", None
+    if " to " in raw or HYPHEN_RANGE.fullmatch(raw) or OPEN_RANGE.fullmatch(raw):
+        return "range", None
+    match = PER_UNIT.fullmatch(raw)
+    if match:
+        return "per_level", int(match.group(1))
     if re.fullmatch(r"-?\d+", raw):
         return "flat", int(raw)
     return "unknown", None
@@ -157,7 +205,7 @@ def parse_traits(lines: list[str], kind: str) -> list[dict]:
             line in CATEGORY
             and i + 3 < len(lines)
             and lines[i + 1] in EXOTIC
-            and COST.match(lines[i + 2])
+            and is_cost_cell(lines[i + 2])
             and PAGE.match(lines[i + 3])
             and pending
         )

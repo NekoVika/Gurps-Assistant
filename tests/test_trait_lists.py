@@ -312,3 +312,125 @@ P
 
     def test_no_marker_survives_into_a_name(self):
         assert all("\u2020" not in r["name"] for r in parse_skills(lines(SPECIALISED)))
+
+
+class TestRowCoverage:
+    """Every row the book prints has to come out, whatever it costs.
+
+    The parser's job is to carry the book's own tables across intact. A cost
+    shape nobody anticipated is a reason to record the row with an honest
+    "we cannot price this", never a reason to lose the row -- but the cost
+    pattern used to sit in the gate that decides whether four lines *are* a
+    row, so an unfamiliar cost made the whole trait invisible. Twenty-four
+    rows went missing from pp.299-302 that way, including Magery, Extra
+    Attack, Code of Honor, Vow, Teeth and Striker.
+
+    Each case below is a real row from the Basic Set, quoted as the columns
+    come out of extraction.
+    """
+
+    #: name, category, exotic, printed cost, page, expected shape
+    PRINTED_ROWS = [
+        # The shapes that always worked.
+        ("Combat Reflexes", "M", "�", "15", "43", "flat"),
+        ("Acute Hearing", "P", "�", "2/level", "35", "per_level"),
+        ("Allies", "Soc", "�", "Variable", "36", "variable"),
+        ("Alternate Identity", "Soc", "�", "5 or 15", "39", "choice"),
+        ("Lame", "P", "�", "-10 to -30", "143", "range"),
+        # Priced per something that is not a level. B53, B54, B23, B55.
+        ("Extra Attack", "P", "�", "25/attack", "53", "per_level"),
+        ("Extra Head", "P", "X", "15/head", "54", "per_level"),
+        ("Extra Life", "P", "X", "25/life", "55", "per_level"),
+        ("Extra Mouth", "P", "X", "5/mouth", "55", "per_level"),
+        ("Duplication", "P", "X", "35/copy", "35", "per_level"),
+        ("Gizmos", "P", "�", "5/gizmo", "57", "per_level"),
+        ("Protected Sense", "P", "X", "5/sense", "78", "per_level"),
+        # A flat entry fee plus a price per level. B66, B93, B94, B96.
+        ("Magery", "M", "Sup", "5 + 10/level", "66", "base_plus_per_level"),
+        ("Terror", "M", "Sup", "30 + 10/level", "93", "base_plus_per_level"),
+        ("Tunneling", "P", "X", "30 + 5/level", "94", "base_plus_per_level"),
+        ("Vampiric Bite", "P", "X", "30 + 5/level", "96", "base_plus_per_level"),
+        # A choice written with commas rather than "or". B91, B22, B154, B156.
+        ("Teeth", "P", "X", "0, 1, or 2", "91", "choice"),
+        ("Odious Personal Habits", "Soc", "�", "-5, -10, or -15", "22", "choice"),
+        ("Shyness", "M", "�", "-5, -10, or -20", "154", "choice"),
+        ("Terminally Ill", "P", "�", "-50, -75, or -100", "158", "choice"),
+        # A range written with a hyphen, and an open-ended minimum. B88, B40.
+        ("Striker", "P", "X", "5-8", "88", "range"),
+        ("Blessed", "M", "Sup", "10+", "40", "range"),
+        # A choice between a figure and a range. B127, B130, B162, B159.
+        ("Code of Honor", "M", "�", "-1 or -5 to -15", "127", "choice"),
+        ("Delusions", "M", "�", "-1 or -5 to -15", "130", "choice"),
+        ("Trademark", "M", "�", "-1 or -5 to -15", "159", "choice"),
+        ("Vow", "M", "�", "-1 or -5 to -15", "162", "choice"),
+        # Per level, where the level's price itself is a choice. B40.
+        ("Arm ST", "P", "X", "3, 5, or 8/level", "40", "choice"),
+        ("Cultural Familiarity", "Soc", "�", "1 or 2/culture", "23", "choice"),
+        # A self-control cost that is also a choice must keep both facts. B146.
+        ("Obsession", "M", "�", "-1, -5, or -10*", "146", "choice"),
+    ]
+
+    @staticmethod
+    def _table(rows):
+        body = "\n".join(
+            "\n".join([name, category, exotic, cost, page])
+            for name, category, exotic, cost, page, _ in rows)
+        return lines("Advantage\nM/P/Soc X/Sup\nCost\nPage\n" + body)
+
+    def test_no_printed_row_is_lost(self):
+        parsed = parse_traits(self._table(self.PRINTED_ROWS), "advantage")
+        missing = ({r[0] for r in self.PRINTED_ROWS}
+                   - {r["name"] for r in parsed})
+        assert not missing, f"the book prints these and the parser dropped them: {sorted(missing)}"
+        assert len(parsed) == len(self.PRINTED_ROWS)
+
+    @pytest.mark.parametrize(
+        "name, category, exotic, cost, page, shape", PRINTED_ROWS,
+        ids=[f"{r[0]} = {r[3]}" for r in PRINTED_ROWS])
+    def test_a_printed_row_keeps_its_name_cost_and_page(
+            self, name, category, exotic, cost, page, shape):
+        row = parse_traits(
+            self._table([(name, category, exotic, cost, page, shape)]), "advantage")
+        assert len(row) == 1, f"{cost!r} cost {name!r} its row"
+        assert row[0]["name"] == name
+        assert row[0]["cost_text"] == cost
+        assert row[0]["cost_kind"] == shape
+        assert row[0]["page"] == int(page)
+
+    def test_an_unclassifiable_cost_is_recorded_rather_than_dropped(self):
+        # The invariant the gate used to break. A shape from a book we have not
+        # read yet must still produce a trait the GM can see and price by hand.
+        rows = parse_traits(self._table(
+            [("Someday Advantage", "M", "�", "7 per fortnight", "999", "unknown")]),
+            "advantage")
+        assert len(rows) == 1
+        assert rows[0]["name"] == "Someday Advantage"
+        assert rows[0]["cost_kind"] == "unknown"
+        assert rows[0]["cost_value"] is None
+
+    def test_a_cost_cell_that_is_not_a_cost_does_not_invent_a_row(self):
+        # The gate still has to be a gate: loosening the cost column must not
+        # turn stray prose between two tables into traits.
+        rows = parse_traits(lines("""
+Advantage
+M/P/Soc X/Sup
+Cost
+Page
+Luck
+M
+�
+15
+66
+See the rules for
+M
+all of these on
+299
+"""), "advantage")
+        assert [r["name"] for r in rows] == ["Luck"]
+
+    def test_a_self_control_marker_survives_a_choice_of_costs(self):
+        rows = parse_traits(self._table(
+            [("Obsession", "M", "�", "-1, -5, or -10*", "146", "choice")]),
+            "advantage")
+        assert rows[0]["self_control"] is True
+        assert rows[0]["cost_kind"] == "choice"

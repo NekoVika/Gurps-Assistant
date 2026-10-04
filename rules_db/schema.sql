@@ -130,7 +130,8 @@ CREATE TABLE IF NOT EXISTS traits (
   category TEXT,
   exotic INTEGER NOT NULL DEFAULT 0,
   cost_text TEXT,                 -- as printed: "2/level", "-10 to -30", "Variable"
-  cost_kind TEXT,                 -- flat | per_level | choice | range | variable | percent | formula
+  cost_kind TEXT,                 -- flat | per_level | base_plus_per_level | choice
+                                  -- | range | variable | percent | formula | unknown
   cost_value INTEGER,             -- the figure, where there is exactly one
   attr TEXT,                      -- skills only
   difficulty TEXT,                -- skills only
