@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { parseEntry } from "../../lib/pointBuild";
 import { render, wasPriced, type BuildEntry } from "../../lib/characterBuild";
 import { catalogueNames, qualifiedName, resolveTrait } from "../../lib/traitResolver";
@@ -97,9 +97,35 @@ export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
   const names = useMemo(() => catalogueNames(traitIndex, kind), [traitIndex, kind]);
   const listId = `catalogue-${kind}`;
 
-  const rows = items.map(item => toRow(item, kind));
+  /**
+   * The rows being edited, held here rather than re-read from the stored
+   * strings on every keystroke.
+   *
+   * Deriving them each render meant every character typed was serialised onto
+   * a line and parsed straight back off it, and the parser trims — so a space,
+   * which is trailing at the instant it is typed, never survived to the next
+   * letter. "Reacts first in a fight" arrived as "Reactsfirstinafight".
+   *
+   * The list is still the character sheet's to own: anything that changes it
+   * from outside, including the sheet being saved or another one opened,
+   * replaces what is here.
+   */
+  const [rows, setRows] = useState<Row[]>(() => items.map(item => toRow(item, kind)));
+  const written = useRef<string[] | null>(null);
 
-  const write = (next: Row[]) => onChange(next.map(toStored));
+  useEffect(() => {
+    const ours = written.current;
+    if (ours && ours.length === items.length && ours.every((line, i) => line === items[i])) return;
+    setRows(items.map(item => toRow(item, kind)));
+    written.current = null;
+  }, [items, kind]);
+
+  const write = (next: Row[]) => {
+    setRows(next);
+    const stored = next.map(toStored);
+    written.current = stored;
+    onChange(stored);
+  };
 
   const update = (index: number, field: keyof Row, value: string) => {
     const next = [...rows];

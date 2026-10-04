@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { TraitCostEditor } from "./TraitCostEditor";
@@ -251,5 +252,58 @@ describe("a trait that needed more than one line", () => {
     render(<TraitCostEditor title="Advantages" kind="advantage"
       items={["Combat Reflexes [15]", "Free Culture [0]"]} onChange={vi.fn()} />);
     expect(screen.queryByRole("button", { name: /fold into/ })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A parent that actually holds the list, which is what the character editor
+ * is. Without one the bug is invisible: onChange carries the right string and
+ * nothing ever feeds the re-parsed, trimmed version back into the field.
+ */
+function Harness({ initial, kind = "advantage" as const }: { initial: string[]; kind?: "advantage" | "disadvantage" }) {
+  const [items, setItems] = useState(initial);
+  return <TraitCostEditor title="Advantages" kind={kind} items={items} onChange={setItems} />;
+}
+
+describe("typing in a note", () => {
+  it("lets a space be typed", () => {
+    // Every keystroke serialises the row and parses it back, and the parser
+    // trims -- so a space, which is always trailing at the moment it is
+    // typed, was eaten before the next letter arrived.
+    render(<Harness initial={["Combat Reflexes [15] - Reacts"]} />);
+    const note = screen.getByPlaceholderText(/^Notes/) as HTMLTextAreaElement;
+    fireEvent.change(note, { target: { value: "Reacts ", selectionStart: 7 } });
+    expect((screen.getByPlaceholderText(/^Notes/) as HTMLTextAreaElement).value).toBe("Reacts ");
+  });
+
+  it("lets a whole phrase be typed, one keystroke at a time", () => {
+    render(<Harness initial={["Combat Reflexes [15]"]} />);
+    // Each keystroke is appended to what the field is actually showing, which
+    // is the only way the loss of a character shows up at all.
+    for (const letter of "Reacts first in a fight") {
+      const note = screen.getByPlaceholderText(/^Notes/) as HTMLTextAreaElement;
+      const next = note.value + letter;
+      fireEvent.change(note, { target: { value: next, selectionStart: next.length } });
+    }
+    expect((screen.getByPlaceholderText(/^Notes/) as HTMLTextAreaElement).value)
+      .toBe("Reacts first in a fight");
+  });
+
+  it("lets a space be typed in a trait's name", () => {
+    render(<Harness initial={["Combat [15]"]} />);
+    const name = screen.getByPlaceholderText("Trait name") as HTMLInputElement;
+    fireEvent.change(name, { target: { value: "Combat " } });
+    expect((screen.getByPlaceholderText("Trait name") as HTMLInputElement).value).toBe("Combat ");
+  });
+
+  it("still takes a list changed from outside", () => {
+    const { rerender } = render(
+      <TraitCostEditor title="Advantages" kind="advantage"
+        items={["Combat Reflexes [15]"]} onChange={vi.fn()} />);
+    rerender(
+      <TraitCostEditor title="Advantages" kind="advantage"
+        items={["Danger Sense [15]"]} onChange={vi.fn()} />);
+    expect((screen.getByPlaceholderText("Trait name") as HTMLInputElement).value)
+      .toBe("Danger Sense");
   });
 });

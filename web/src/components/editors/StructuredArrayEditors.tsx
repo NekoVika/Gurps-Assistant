@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { WorkspaceSelect } from './WorkspaceSelect';
 import { parseAttribute, serializeAttribute, parseTrait, serializeTrait, parseSkill, serializeSkill, parseGear, serializeGear, parseHitLocation, serializeHitLocation } from '../../lib/TraitFormatters';
 
@@ -8,9 +9,52 @@ function Field({ label, children, flex, hideLabel }: { label: string, children: 
     return <div className="editor-field" style={{ flex: flex || 1, opacity: hideLabel ? 0.6 : 1 }}><label className="editor-label" style={{ display: hideLabel ? "none" : "block" }}>{label}</label>{children}</div>;
 }
 
+
+/**
+ * The rows a list editor is working on, held rather than re-read each render.
+ *
+ * Deriving them from the stored strings on every keystroke meant each
+ * character typed was serialised onto a line and parsed straight back off it,
+ * and every parser here trims. A space is trailing at the instant it is typed,
+ * so it never survived to the next letter: "moves in shadow" arrived as
+ * "movesinshadow", and no multi-word value could be typed into any of these
+ * fields at all.
+ *
+ * The list still belongs to the document. Anything that changes it from
+ * outside -- a save, a different sheet opened, an AI pass -- replaces what is
+ * being held here.
+ */
+function useEditableRows<T>(
+    items: string[],
+    parse: (item: string) => T,
+    serialize: (row: T) => string,
+    onChange: (items: string[]) => void,
+) {
+    const [rows, setRows] = useState<T[]>(() => items.map(parse));
+    const written = useRef<string[] | null>(null);
+
+    useEffect(() => {
+        const ours = written.current;
+        if (ours && ours.length === items.length && ours.every((line, i) => line === items[i])) return;
+        setRows(items.map(parse));
+        written.current = null;
+        // `parse` is a module function; only the incoming list can change.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [items]);
+
+    const write = (next: T[]) => {
+        setRows(next);
+        const stored = next.map(serialize);
+        written.current = stored;
+        onChange(stored);
+    };
+
+    return [rows, write] as const;
+}
+
 export function AttributeEditorList({ title, items = [], onChange }: ListProps) {
     const coreAttributes = ["ST", "DX", "IQ", "HT", "HP", "Will", "Per", "FP", "Basic Speed", "Basic Move"];
-    let parsed = items.map(parseAttribute);
+    const [parsed, writeRows] = useEditableRows(items, parseAttribute, serializeAttribute, onChange);
     
     const coreData = coreAttributes.map(ca => {
         const found = parsed.find(p => typeof p !== 'string' && p.name.toUpperCase() === ca.toUpperCase());
@@ -31,11 +75,7 @@ export function AttributeEditorList({ title, items = [], onChange }: ListProps) 
             const isChangedFromDefault = ca.level !== "10" || (ca.points !== 0 && ca.points !== "0");
             return wasPresent || isChangedFromDefault;
         });
-        const newItems = [
-            ...activeCore.map(serializeAttribute),
-            ...newExtras.map(serializeAttribute)
-        ];
-        onChange(newItems);
+        writeRows([...activeCore, ...newExtras]);
     };
 
     const updateCore = (idx: number, field: string, val: any) => {
@@ -84,25 +124,25 @@ export function AttributeEditorList({ title, items = [], onChange }: ListProps) 
 }
 
 export function TraitEditorList({ title, items = [], onChange }: ListProps) {
-    let parsed = items.map(parseTrait);
+    const [parsed, write] = useEditableRows(items, parseTrait, serializeTrait, onChange);
 
     const updateItem = (idx: number, field: string, val: any) => {
         const newParsed = [...parsed];
         if (typeof newParsed[idx] === 'string') return;
         newParsed[idx] = { ...(newParsed[idx] as any), [field]: val };
-        onChange(newParsed.map(serializeTrait));
+        write(newParsed);
     };
 
     const updateRaw = (idx: number, val: string) => {
         const newParsed = [...parsed];
         newParsed[idx] = val;
-        onChange(newParsed.map(serializeTrait));
+        write(newParsed);
     };
 
     const deleteItem = (idx: number) => {
         const newParsed = [...parsed];
         newParsed.splice(idx, 1);
-        onChange(newParsed.map(serializeTrait));
+        write(newParsed);
     };
 
     const moveItem = (idx: number, direction: -1 | 1) => {
@@ -111,11 +151,11 @@ export function TraitEditorList({ title, items = [], onChange }: ListProps) {
         const temp = newParsed[idx];
         newParsed[idx] = newParsed[idx + direction];
         newParsed[idx + direction] = temp;
-        onChange(newParsed.map(serializeTrait));
+        write(newParsed);
     };
 
     const addItem = () => {
-        onChange([...parsed.map(serializeTrait), " [0]"]);
+        write([...parsed, " [0]"]);
     };
 
     return (
@@ -164,25 +204,25 @@ export function TraitEditorList({ title, items = [], onChange }: ListProps) {
 }
 
 export function SkillEditorList({ title, items = [], onChange }: ListProps) {
-    let parsed = items.map(parseSkill);
+    const [parsed, write] = useEditableRows(items, parseSkill, serializeSkill, onChange);
 
     const updateItem = (idx: number, field: string, val: any) => {
         const newParsed = [...parsed];
         if (typeof newParsed[idx] === 'string') return;
         newParsed[idx] = { ...(newParsed[idx] as any), [field]: val };
-        onChange(newParsed.map(serializeSkill));
+        write(newParsed);
     };
 
     const updateRaw = (idx: number, val: string) => {
         const newParsed = [...parsed];
         newParsed[idx] = val;
-        onChange(newParsed.map(serializeSkill));
+        write(newParsed);
     };
 
     const deleteItem = (idx: number) => {
         const newParsed = [...parsed];
         newParsed.splice(idx, 1);
-        onChange(newParsed.map(serializeSkill));
+        write(newParsed);
     };
 
     const moveItem = (idx: number, direction: -1 | 1) => {
@@ -191,11 +231,11 @@ export function SkillEditorList({ title, items = [], onChange }: ListProps) {
         const temp = newParsed[idx];
         newParsed[idx] = newParsed[idx + direction];
         newParsed[idx + direction] = temp;
-        onChange(newParsed.map(serializeSkill));
+        write(newParsed);
     };
 
     const addItem = () => {
-        onChange([...parsed.map(serializeSkill), " ()-0 [0]"]);
+        write([...parsed, " ()-0 [0]"]);
     };
 
     return (
@@ -245,25 +285,25 @@ export function SkillEditorList({ title, items = [], onChange }: ListProps) {
 }
 
 export function GearEditorList({ title, items = [], onChange }: ListProps) {
-    let parsed = items.map(parseGear);
+    const [parsed, write] = useEditableRows(items, parseGear, serializeGear, onChange);
 
     const updateItem = (idx: number, field: string, val: any) => {
         const newParsed = [...parsed];
         if (typeof newParsed[idx] === 'string') return;
         newParsed[idx] = { ...(newParsed[idx] as any), [field]: val };
-        onChange(newParsed.map(serializeGear));
+        write(newParsed);
     };
 
     const updateRaw = (idx: number, val: string) => {
         const newParsed = [...parsed];
         newParsed[idx] = val;
-        onChange(newParsed.map(serializeGear));
+        write(newParsed);
     };
 
     const deleteItem = (idx: number) => {
         const newParsed = [...parsed];
         newParsed.splice(idx, 1);
-        onChange(newParsed.map(serializeGear));
+        write(newParsed);
     };
 
     const moveItem = (idx: number, direction: -1 | 1) => {
@@ -272,11 +312,11 @@ export function GearEditorList({ title, items = [], onChange }: ListProps) {
         const temp = newParsed[idx];
         newParsed[idx] = newParsed[idx + direction];
         newParsed[idx + direction] = temp;
-        onChange(newParsed.map(serializeGear));
+        write(newParsed);
     };
 
     const addItem = () => {
-        onChange([...parsed.map(serializeGear), " (0, 0)"]);
+        write([...parsed, " (0, 0)"]);
     };
 
     return (
@@ -326,25 +366,25 @@ export function GearEditorList({ title, items = [], onChange }: ListProps) {
 }
 
 export function HitLocationEditorList({ title, items = [], onChange }: ListProps) {
-    let parsed = items.map(parseHitLocation);
+    const [parsed, write] = useEditableRows(items, parseHitLocation, serializeHitLocation, onChange);
 
     const updateItem = (idx: number, field: string, val: any) => {
         const newParsed = [...parsed];
         if (typeof newParsed[idx] === 'string') return;
         newParsed[idx] = { ...(newParsed[idx] as any), [field]: val };
-        onChange(newParsed.map(serializeHitLocation));
+        write(newParsed);
     };
 
     const updateRaw = (idx: number, val: string) => {
         const newParsed = [...parsed];
         newParsed[idx] = val;
-        onChange(newParsed.map(serializeHitLocation));
+        write(newParsed);
     };
 
     const deleteItem = (idx: number) => {
         const newParsed = [...parsed];
         newParsed.splice(idx, 1);
-        onChange(newParsed.map(serializeHitLocation));
+        write(newParsed);
     };
 
     const moveItem = (idx: number, direction: -1 | 1) => {
@@ -353,11 +393,11 @@ export function HitLocationEditorList({ title, items = [], onChange }: ListProps
         const temp = newParsed[idx];
         newParsed[idx] = newParsed[idx + direction];
         newParsed[idx + direction] = temp;
-        onChange(newParsed.map(serializeHitLocation));
+        write(newParsed);
     };
 
     const addItem = () => {
-        onChange([...parsed.map(serializeHitLocation), " (): DR 0"]);
+        write([...parsed, " (): DR 0"]);
     };
 
     return (
@@ -405,7 +445,6 @@ export function HitLocationEditorList({ title, items = [], onChange }: ListProps
     );
 }
 
-import { useState } from 'react';
 import { createBatchStubs } from '../../lib/api';
 import { entityExists } from '../../lib/entityResolution';
 import { useCampaignStore } from '../../stores/useCampaignStore';
