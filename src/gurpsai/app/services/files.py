@@ -258,9 +258,15 @@ class CampaignFileService:
             return registry
             
         for path in self._campaign_root.rglob("*.json"):
-            if path.name.startswith("."):
+            relative = path.relative_to(self._campaign_root)
+            # Skipping only dotted *file names* let every dotted *directory*
+            # through, so the registry listed thirteen entities out of .trash
+            # and three chat sessions out of .planning. A deleted Helen then
+            # still answered to entityExists, which is what the create-stub
+            # prompt and every link check ask.
+            if any(part.startswith(".") for part in relative.parts):
                 continue
-            rel_path = path.relative_to(self._campaign_root).as_posix()
+            rel_path = relative.as_posix()
             try:
                 content = json.loads(path.read_text(encoding="utf-8", errors="replace"))
                 if isinstance(content, dict):

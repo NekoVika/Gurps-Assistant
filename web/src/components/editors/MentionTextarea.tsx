@@ -44,7 +44,14 @@ export function MentionTextarea({
   const matches = useMemo(() => {
     if (query === null) return [] as RegistryItem[];
     const wanted = normalizeEntityName(query);
-    const named = (registry || []).filter(item => item.title || item.id);
+    // A registry entry whose title is still a file name has nothing to offer a
+    // GM reaching for something by name.
+    const named = (registry || [])
+      .filter(item => (item.title || item.id) && !/\.(json|md)$/i.test(item.title || ""))
+      .sort((a, b) => (a.title || a.id).localeCompare(b.title || b.id));
+    // On a bare @ the order was whatever the file tree happened to give, which
+    // put "dummy" and "state" at the top of the list. Alphabetical at least
+    // means the same keystroke always offers the same thing.
     if (!wanted) return named.slice(0, SHOWN);
     // Entities whose name begins with what has been typed come first: typing
     // "gif" is reaching for Gift and Release, not for something that merely
@@ -59,10 +66,18 @@ export function MentionTextarea({
     return [...starts, ...contains].slice(0, SHOWN);
   }, [query, registry]);
 
-  /** The `@word` being typed immediately before the cursor, if there is one. */
+  /**
+   * The `@word` being typed immediately before the cursor, if there is one.
+   *
+   * What matters is that the @ is not stuck to the end of a word, which is
+   * what an email address looks like. Requiring whitespace in front of it was
+   * too strict by far: a note almost always ends in a full stop, so typing @
+   * where you would actually type it -- at the end of what you have written --
+   * opened nothing at all, and the menu appeared only on an empty note.
+   */
   const queryAtCursor = (text: string, cursor: number): string | null => {
     const before = text.slice(0, cursor);
-    const match = /(?:^|\s)@([^\s@]*)$/.exec(before);
+    const match = /(?:^|[^\w@])@([^\s@]*)$/.exec(before);
     return match ? match[1] : null;
   };
 

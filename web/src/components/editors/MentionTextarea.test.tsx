@@ -98,6 +98,40 @@ describe("reaching for an entity with @", () => {
     type(box, "mail jamie@example");
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
+
+  it.each([
+    ["at the end of a finished sentence", "Cooldown: 24 Hours.@"],
+    ["after a comma", "Cooldown,@"],
+    ["after an opening bracket", "(@"],
+    ["after a space", "Cooldown. @"],
+    ["on a new line", "Cooldown.\n@"],
+  ])("opens %s", (_label, text) => {
+    // Requiring a space in front of the @ meant it opened only on an empty
+    // note, since a note almost always ends in a full stop.
+    const { box } = field();
+    type(box, text);
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+  });
+
+  it("offers the same thing every time on a bare @", () => {
+    // File-tree order put "dummy" and "state" at the top. Alphabetical is at
+    // least predictable.
+    const { box } = field();
+    type(box, "@");
+    const shown = screen.getAllByRole("option").map(o => o.textContent || "");
+    const names = shown.map(s => s.replace(/(Encounter|Location|Character)$/, ""));
+    expect([...names].sort((a, b) => a.localeCompare(b))).toEqual(names);
+  });
+
+  it("leaves out a registry entry that is still named after its file", () => {
+    useCampaignStore.setState({ entityRegistry: [
+      ...registry,
+      { id: "Karin", title: "Karin.json", type: "Unknown", path: "Campaign/.trash/x.meta.json" },
+    ] as never[] });
+    const { box } = field();
+    type(box, "@");
+    expect(screen.queryByText(/Karin\.json/)).not.toBeInTheDocument();
+  });
 });
 
 describe("what picking writes", () => {
@@ -125,9 +159,13 @@ describe("what picking writes", () => {
   it("moves the highlight with the arrow keys", () => {
     const { box, onChange } = field();
     type(box, "@");
+    // Whatever the menu puts second is what the second one down inserts; the
+    // order itself is the alphabetical sort's business, not this test's.
+    const second = screen.getAllByRole("option")[1];
+    const name = second.firstElementChild?.textContent;
     fireEvent.keyDown(box, { key: "ArrowDown" });
     fireEvent.keyDown(box, { key: "Enter" });
-    expect(onChange).toHaveBeenLastCalledWith(`[[${registry[1].title}]]`);
+    expect(onChange).toHaveBeenLastCalledWith(`[[${name}]]`);
   });
 
   it("closes without writing anything on Escape", () => {
