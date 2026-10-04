@@ -119,6 +119,61 @@ export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
   const add = () => write([...rows,
     { name: "", specialty: "", levels: "", selfControl: "", points: "", notes: "" }]);
   const remove = (index: number) => write(rows.filter((_, i) => i !== index));
+
+  /**
+   * Move a line into the trait above it as part of its description.
+   *
+   * A trait needing more than one line has nowhere to put the rest, so the
+   * details become sibling entries priced at zero: Jamie's Bernkastel Blessing
+   * is followed by Cooldown, Ability, Tokens and two more, and Povo's dagger by
+   * five of its own. Seventeen such lines sit across the campaign.
+   *
+   * No rule tells those apart from a trait that genuinely costs nothing -- a
+   * native language and a native culture are free (B23-24), and Doesn't Breathe
+   * (Gills) is a nought-point feature (B51). Markdown bold happens to separate
+   * them in both files and still does not generalise, since Chronic Pain is
+   * written plain and is real. So nothing is folded automatically. The offer
+   * appears wherever the rules could not price a line, and the GM is the one
+   * who knows.
+   */
+  const fold = (index: number) => {
+    const target = parentOf(index);
+    if (target === null) return;
+    const child = rows[index];
+    const parent = rows[target];
+    const detail = [child.name.trim(), child.notes.trim()].filter(Boolean).join(": ");
+    const next = rows.filter((_, i) => i !== index);
+    next[target] = {
+      ...parent,
+      notes: [parent.notes.trim(), detail].filter(Boolean).join(" "),
+    };
+    write(next);
+  };
+
+  /**
+   * Whether a row reads as a trait's description rather than a trait.
+   *
+   * Costing nothing is not enough on its own: a native language and a native
+   * culture are free (B23-24) and so is Doesn't Breathe (Gills) (B51). Nor is
+   * being unpriceable, which is equally true of homebrew nobody has declared.
+   * Together with carrying a description they are a fair guess — Jamie's
+   * Cooldown, Ability, Tokens, Current Status and Stage Edit all match, and
+   * his Bernkastel Blessing at 20 and Missing Digit at 2 do not.
+   *
+   * It stays a guess, which is why it only decides where to put an offer.
+   */
+  const looksLikeDetail = (row: Row): boolean =>
+    Number(row.points) === 0 && row.points !== ""
+    && Boolean(row.notes.trim())
+    && !wasPriced(render(toBuildEntry(row, kind), {}, traitIndex));
+
+  /** The nearest trait above, skipping that trait's other description lines. */
+  const parentOf = (index: number): number | null => {
+    for (let i = index - 1; i >= 0; i--) {
+      if (!looksLikeDetail(rows[i]) && rows[i].name.trim()) return i;
+    }
+    return null;
+  };
   const move = (index: number, by: -1 | 1) => {
     if (index + by < 0 || index + by >= rows.length) return;
     const next = [...rows];
@@ -235,6 +290,14 @@ export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
                   )}
                   {computed === null && !wasPriced(priced) && (
                     <span>{priced.problem}</span>
+                  )}
+                  {looksLikeDetail(row) && parentOf(index) !== null && (
+                    <button
+                      type="button" className="editor-action-btn"
+                      style={{ fontSize: "0.7rem", padding: "1px 8px" }}
+                      title="Move this line into that trait as part of its description"
+                      onClick={() => fold(index)}
+                    >fold into {rows[parentOf(index)!].name.replace(/\s+\d+\s*$/, "").trim()}</button>
                   )}
                   {modifiers.length > 0 && (
                     <span title={modifiers.map(m => `${m.name} ${m.percent >= 0 ? "+" : ""}${m.percent}%`).join("\n")}>

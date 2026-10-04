@@ -180,3 +180,76 @@ describe("the list itself", () => {
     expect(onChange).toHaveBeenCalledWith(["Allies [20]", "Combat Reflexes [15]"]);
   });
 });
+
+describe("a trait that needed more than one line", () => {
+  // Jamie's own shape: a homebrew advantage followed by its details, each
+  // priced at zero because the array holds one line per entry.
+  const blessing = [
+    "Bernkastel Blessing [20]",
+    "Cooldown [0] - 24 Hours.",
+    "Ability [0] - Turns a critical success into a critical failure.",
+  ];
+
+  it("offers to fold a line the rules could not price into the one above", () => {
+    editor(blessing);
+    // Each row folds into the row directly above it, so a chain is cleared
+    // from the top: fold Cooldown in, and Ability then sits under the Blessing.
+    const offers = screen.getAllByRole("button", { name: /fold into/ })
+      .map(b => b.textContent);
+    expect(offers).toEqual(["fold into Bernkastel Blessing", "fold into Bernkastel Blessing"]);
+  });
+
+  it("clears a chain of details one line at a time", () => {
+    const onChange = editor(blessing);
+    fireEvent.click(screen.getAllByRole("button", { name: /fold into/ })[0]);
+    expect(onChange).toHaveBeenLastCalledWith([
+      "Bernkastel Blessing [20] - Cooldown: 24 Hours.",
+      "Ability [0] - Turns a critical success into a critical failure.",
+    ]);
+  });
+
+  it("folds the line in with its label kept", () => {
+    const onChange = editor(blessing);
+    fireEvent.click(screen.getAllByRole("button", { name: /fold into/ })[0]);
+    expect(onChange).toHaveBeenCalledWith([
+      "Bernkastel Blessing [20] - Cooldown: 24 Hours.",
+      "Ability [0] - Turns a critical success into a critical failure.",
+    ]);
+  });
+
+  it("appends rather than replacing what the trait already said", () => {
+    const onChange = editor([
+      "Bernkastel Blessing [20] - A gift from a witch.",
+      "Cooldown [0] - 24 Hours.",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: /fold into/ }));
+    expect(onChange).toHaveBeenCalledWith(
+      ["Bernkastel Blessing [20] - A gift from a witch. Cooldown: 24 Hours."]);
+  });
+
+  it("never offers it on the first line, which has nothing above it", () => {
+    editor(["Cooldown [0] - 24 Hours."]);
+    expect(screen.queryByRole("button", { name: /fold into/ })).not.toBeInTheDocument();
+  });
+
+  it("does not offer it for a trait the rules priced", () => {
+    // Combat Reflexes is a trait in its own right, not a note on anything.
+    editor(["Bernkastel Blessing [20]", "Combat Reflexes [15]"]);
+    expect(screen.queryByRole("button", { name: /fold into/ })).not.toBeInTheDocument();
+  });
+
+  it("leaves a legitimate nought-point trait alone", () => {
+    // A native culture is free (B23), and the catalogue prices it, so it is
+    // never mistaken for a note on the trait above.
+    const withCulture = buildIndex([
+      { book_id: 1, kind: "advantage", name: "Combat Reflexes", cost_text: "15",
+        cost_kind: "flat", cost_value: 15, page: 43 },
+      { book_id: 1, kind: "advantage", name: "Free Culture", cost_text: "0",
+        cost_kind: "flat", cost_value: 0, page: 23 },
+    ]);
+    useCampaignStore.setState({ traitIndex: withCulture });
+    render(<TraitCostEditor title="Advantages" kind="advantage"
+      items={["Combat Reflexes [15]", "Free Culture [0]"]} onChange={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /fold into/ })).not.toBeInTheDocument();
+  });
+});
