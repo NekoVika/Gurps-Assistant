@@ -63,23 +63,50 @@ const AUDITED_KINDS: Record<string, string> = {
  * and "the Basic Set says 12" are different claims and the UI should be able
  * to tell the GM which it used.
  */
+/**
+ * The shape of a cost a GM typed into the custom-trait box.
+ *
+ * The editor promises that the cost you give is the cost the app uses, and it
+ * was not keeping that promise: a declared trait was stamped `declared`, which
+ * reaches no priced branch, so homebrew was quietly left out of every total.
+ * A GM who writes "12" has said what it costs, and the app should hold the
+ * sheet to it exactly as it does for a printed trait.
+ *
+ * This is not the extractor's `classify_cost` in another language. That one
+ * reads a cell from the book's own tables and has to cope with eight printed
+ * shapes. This reads one short form field, and only has to recognise the two
+ * ways a single figure can be written. Anything else is a trait the campaign
+ * named but did not price with a number, which the app records and leaves
+ * alone -- the same answer the book's own Variable traits get.
+ */
+function declaredCost(text: string | undefined): { kind: string; value: number | null } {
+  const raw = (text ?? "").trim();
+  if (/^-?\d+$/.test(raw)) return { kind: "flat", value: Number(raw) };
+  const perLevel = /^(-?\d+)\s*\/\s*level$/i.exec(raw);
+  if (perLevel) return { kind: "per_level", value: Number(perLevel[1]) };
+  return { kind: "declared", value: null };
+}
+
 export function buildIndex(
   catalogue: CatalogueEntry[],
   custom: CustomTrait[] = [],
 ): TraitIndex {
   const declared: CatalogueEntry[] = custom
     .filter(t => t && typeof t.name === "string" && t.name.trim())
-    .map(t => ({
-      book_id: 0,
-      kind: (t.kind || "advantage").trim(),
-      name: t.name.trim(),
-      cost_text: t.cost ?? "",
-      cost_kind: "declared",
-      cost_value: /^-?\d+$/.test((t.cost ?? "").trim()) ? Number(t.cost) : null,
-      page: null,
-      campaign: true,
-      notes: t.notes ?? "",
-    }));
+    .map(t => {
+      const { kind: costKind, value } = declaredCost(t.cost);
+      return {
+        book_id: 0,
+        kind: (t.kind || "advantage").trim(),
+        name: t.name.trim(),
+        cost_text: t.cost ?? "",
+        cost_kind: costKind,
+        cost_value: value,
+        page: null,
+        campaign: true,
+        notes: t.notes ?? "",
+      };
+    });
   // The campaign is listed first, so a GM who redefines a printed trait gets
   // their own price. It is their table.
   return buildTraitIndex([...declared, ...catalogue]);

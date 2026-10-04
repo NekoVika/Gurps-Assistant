@@ -28,6 +28,7 @@ import {
 } from "./gurpsRules";
 import { baseCost, modifiedCost, type Modifier } from "./modifiers";
 import { qualifiedName, resolveTrait, type TraitIndex } from "./traitResolver";
+import { isCustom } from "./traitAudit";
 
 /** A level written against the attribute it is based on: `DX+2`, `IQ-1`. */
 const RELATIVE_LEVEL = /^([A-Za-z]+)\s*([+-]\d+)?$/;
@@ -215,8 +216,15 @@ function renderTrait(entry: BuildEntry, kind: string, index: TraitIndex | null):
   const listed = baseCost(found, entry.levels ?? null);
   if (listed === null) {
     const printed = found.cost_text ? `"${found.cost_text}"` : "no single figure";
-    return found.cost_kind === "per_level"
-      ? decline(entry.name, "the book charges this per level, and no level was given")
+    if (found.cost_kind === "per_level") {
+      return decline(entry.name, "the book charges this per level, and no level was given");
+    }
+    // A trait the campaign invented is the GM's to price, so the answer is to
+    // go and set a cost on it rather than to consult the book.
+    return isCustom(found)
+      ? decline(entry.name,
+          `your campaign declares this trait but gives its cost as ${printed}, `
+          + "so set a figure on it in Custom Traits")
       : decline(entry.name, `the book prices this ${printed}, so a person has to choose`);
   }
 

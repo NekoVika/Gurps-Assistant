@@ -344,3 +344,37 @@ describe("lines the sheet got right and the checker did not", () => {
     expect(out.notes).toEqual([]);
   });
 });
+
+describe("holding a sheet to the campaign's own prices", () => {
+  const index = buildIndex(
+    [{ book_id: 1, kind: "advantage", name: "Combat Reflexes", cost_text: "15",
+       cost_kind: "flat", cost_value: 15 }],
+    [
+      { name: "Sharp Teeth", kind: "advantage", cost: "1" },
+      { name: "Wild Animal", kind: "disadvantage", cost: "-30" },
+      { name: "Bernkastel Blessing", kind: "advantage", cost: "Variable" },
+    ]);
+  const sheet = (over: Record<string, unknown>) => ({
+    name: "Subject", attributes: ["ST 10 [0]", "DX 10 [0]", "IQ 10 [0]", "HT 10 [0]"],
+    advantages: [], disadvantages: [], skills: [], ...over,
+  });
+
+  it("says nothing when a line matches the declared price", () => {
+    const out = checkMechanics(sheet({
+      advantages: ["Sharp Teeth [1]"], disadvantages: ["Wild Animal [-30]"] }), index);
+    expect(out.findings).toEqual([]);
+  });
+
+  it("reports a line that disagrees with the campaign's own price", () => {
+    // Declaring a trait is the point at which the app can start checking it.
+    const out = checkMechanics(sheet({ advantages: ["Sharp Teeth [5]"] }), index);
+    expect(out.findings).toHaveLength(1);
+    expect(out.findings[0].expected).toBe(1);
+  });
+
+  it("stays quiet about homebrew the campaign named but did not price", () => {
+    const out = checkMechanics(sheet({ advantages: ["Bernkastel Blessing [20]"] }), index);
+    expect(out.findings).toEqual([]);
+    expect(out.notes).toEqual([]);
+  });
+});

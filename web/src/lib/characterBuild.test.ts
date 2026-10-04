@@ -229,3 +229,62 @@ describe("a whole sheet, priced by the app", () => {
     expect(sheet.pointTotal).toBe(25);
   });
 });
+
+describe("a trait the campaign invented", () => {
+  // The custom-trait editor says "the cost you give is the cost the app uses".
+  // These are the tests that make that true.
+  const withHomebrew = buildIndex(
+    [{ book_id: 1, kind: "advantage", name: "Combat Reflexes", cost_text: "15",
+       cost_kind: "flat", cost_value: 15 }],
+    [
+      { name: "Sharp Teeth", kind: "advantage", cost: "1", notes: "Bite does cutting." },
+      { name: "Rot-Sense", kind: "advantage", cost: "2/level" },
+      { name: "Wild Animal", kind: "disadvantage", cost: "-30" },
+      { name: "Bernkastel Blessing", kind: "advantage", cost: "Variable" },
+    ]);
+
+  it("prices homebrew at the figure the GM declared", () => {
+    const out = render({ kind: "advantage", name: "Sharp Teeth" }, scores, withHomebrew);
+    expect(wasPriced(out)).toBe(true);
+    if (wasPriced(out)) expect(out.line).toBe("Sharp Teeth [1]");
+  });
+
+  it("prices homebrew the GM declared per level", () => {
+    const out = render({ kind: "advantage", name: "Rot-Sense", levels: 3 }, scores, withHomebrew);
+    if (!wasPriced(out)) throw new Error(out.problem);
+    expect(out.line).toBe("Rot-Sense 3 [6]");
+  });
+
+  it("gives points back for a homebrew disadvantage", () => {
+    const out = render({ kind: "disadvantage", name: "Wild Animal" }, scores, withHomebrew);
+    if (!wasPriced(out)) throw new Error(out.problem);
+    expect(out.points).toBe(-30);
+  });
+
+  it("sends the GM to their own table when they named it without a figure", () => {
+    const out = render({ kind: "advantage", name: "Bernkastel Blessing" }, scores, withHomebrew);
+    expect(wasPriced(out)).toBe(false);
+    if (!wasPriced(out)) expect(out.problem).toContain("Custom Traits");
+  });
+
+  it("holds a sheet to the campaign's own price, not the book's", () => {
+    // A GM who redefines a printed trait gets their price: it is their table.
+    const redefined = buildIndex(
+      [{ book_id: 1, kind: "advantage", name: "Combat Reflexes", cost_text: "15",
+         cost_kind: "flat", cost_value: 15 }],
+      [{ name: "Combat Reflexes", kind: "advantage", cost: "20" }]);
+    const out = render({ kind: "advantage", name: "Combat Reflexes" }, scores, redefined);
+    if (!wasPriced(out)) throw new Error(out.problem);
+    expect(out.points).toBe(20);
+  });
+
+  it("counts homebrew in the total like anything else", () => {
+    const sheet = buildSheet([
+      { kind: "attribute", name: "ST", score: 11 },
+      { kind: "advantage", name: "Sharp Teeth" },
+      { kind: "disadvantage", name: "Wild Animal" },
+    ], withHomebrew);
+    expect(sheet.pointTotal).toBe(10 + 1 - 30);
+    expect(sheet.declined).toEqual([]);
+  });
+});
