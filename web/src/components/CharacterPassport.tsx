@@ -5,6 +5,8 @@ import { PointBudget } from "./PointBudget";
 import { getMediaUrl, mendString, resolvePlacement, type ResolvedPlacement } from "../lib/api";
 import { InternalLink } from "./InternalLink";
 import { parseAttribute, parseTrait, parseSkill, parseGear, parseHitLocation } from "../lib/TraitFormatters";
+import { TraitNote } from './TraitNote';
+import { plainName } from '../lib/noteMarkup';
 
 
 function MendableString({ 
@@ -308,10 +310,10 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
                        return (
                          <li key={idx}>
                            <div style={{ display: "flex", justifyContent: "space-between" }}>
-                             <span>{adv.name}</span>
+                             <span>{plainName(adv.name)}</span>
                              <span style={{ opacity: 0.6 }}>[{adv.points}]</span>
                            </div>
-                           {adv.notes && <div style={{ fontSize: "0.85em", opacity: 0.7 }}>{adv.notes}</div>}
+                           {adv.notes && <div style={{ fontSize: "0.85em", opacity: 0.7 }}><TraitNote note={adv.notes} /></div>}
                          </li>
                        );
                     })}
@@ -328,10 +330,10 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
                        return (
                          <li key={idx}>
                            <div style={{ display: "flex", justifyContent: "space-between" }}>
-                             <span>{dis.name}</span>
+                             <span>{plainName(dis.name)}</span>
                              <span style={{ opacity: 0.6 }}>[{dis.points}]</span>
                            </div>
-                           {dis.notes && <div style={{ fontSize: "0.85em", opacity: 0.7 }}>{dis.notes}</div>}
+                           {dis.notes && <div style={{ fontSize: "0.85em", opacity: 0.7 }}><TraitNote note={dis.notes} /></div>}
                          </li>
                        );
                     })}

@@ -261,8 +261,17 @@ export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
                   className="editor-action-btn danger">✕</button>
               </div>
 
-              <input
+              {/*
+                A note is one line until it is not. Folding a trait's own
+                description onto its line gave Jamie's Bernkastel Blessing an
+                eight-hundred-character note, and a single-line input is no way
+                to read or repair one — including the stale path in it, which
+                has to be typed to be fixed. It grows to what it holds.
+              */}
+              <textarea
                 className="editor-input" placeholder="Notes" value={row.notes}
+                rows={Math.min(8, Math.max(1, Math.ceil(row.notes.length / 90)))}
+                style={{ resize: "vertical", lineHeight: 1.5, fontFamily: "inherit" }}
                 onChange={e => update(index, "notes", e.target.value)}
               />
 
