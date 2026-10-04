@@ -1,5 +1,87 @@
 # Changelog
 
+## 0.5.0 — Full Rules Ahead (unreleased)
+
+The release that moves the rules into the app. GURPS prices a character by
+arithmetic that is tedious by hand and unreliable from a model, so the app now
+does it: it reads the Basic Set's own trait tables, prices what the book
+prices, and says plainly when it cannot. Nothing is corrected automatically and
+nothing is blocked. Where the rules are silent, so is the app.
+
+### The book is in the app
+
+Built from your own PDFs, so nothing is shipped that you did not buy.
+
+- The Basic Set's Trait Lists (pp.299-306) are read into a catalogue of **809
+  entries** — advantages, disadvantages, skills and modifiers — with each
+  entry's printed cost, page and difficulty.
+- A sheet's trait is matched to the book's entry even when the two are written
+  differently: `Guns/TL8 (Pistol)` finds `Guns/TL`, `Research` finds
+  `Research/TL`, `Damage Resistance 50` finds `Damage Resistance`.
+- **Twenty-four traits had been going missing** and are now there, including
+  Magery, Extra Attack, Code of Honor, Vow, Teeth and Striker. Their costs are
+  printed in shapes the reader had never been taught — `25/attack`,
+  `5 + 10/level`, `0, 1, or 2` — and an unfamiliar shape used to make the whole
+  trait invisible rather than merely unpriced.
+
+### The points add up
+
+- The **points badge** on a character shows what the sheet's own brackets
+  actually sum to, not the figure typed at the top. Where the two disagree it
+  says so.
+- A **running total** sits above the editor while you spend, counting against
+  the character's own target first and the campaign's budget otherwise.
+- Attributes, secondary characteristics, skills, advantages and disadvantages
+  are all priced from the book: the attribute steps (B16-17), the skill cost
+  table (B172), enhancements and limitations (B103), and self-control numbers
+  (B123), so `Bad Temper (9)` is read as the book writes it.
+- A template carries a nominal figure rather than a budget, so bestiary entries
+  are not reported as overspending.
+
+### Building an advantage
+
+- The cost of an advantage is **worked out rather than typed**. Name the trait
+  and the app prices it, asking for a level only where the book charges per
+  level and a self-control number only where the printed cost carries an
+  asterisk.
+- The name box offers the whole catalogue, your campaign's own traits first.
+- A cost already on the sheet is never rewritten. Where it disagrees with the
+  book, the book's figure appears beside it with a button, and the choice stays
+  yours.
+
+### Traits you invented
+
+- Declare a trait in **Custom Traits** and the app stops calling it
+  unrecognised, counts its cost, and holds the sheet to it.
+- Redefine a printed trait and **your price wins**. It is your table.
+- Everything nothing prices is collected into one list — the gap in the
+  catalogue and the candidates for declaring, in one place.
+
+### What it will not claim
+
+The checker reports, and stops there. These are the cases where saying nothing
+is the correct answer, and it now says why rather than falling silent.
+
+- A trait whose modifiers are named without values is not totalled.
+  `Flight (Winged)` is correctly 30 and nothing here can prove it, so the app
+  says so instead of charging you the unmodified 40.
+- Percentages written in a note rather than in brackets are not read. Prose is
+  prose, and a wrong cost is worse than no cost.
+- A second specialty bought up from a default (B171, B175) is recognised as
+  what it is rather than reported as underpaid.
+- Where the points are right and the line describes itself wrongly — a level
+  labelled `DX+1` that reaches `DX+0`, a skill called Hard that the book prices
+  Average — that is reported as a wording problem, not as overspending.
+
+### The assistant stops doing arithmetic
+
+- The GM personas no longer compute point costs. A model chooses traits and
+  levels; the app prices them. Measured across this campaign, sheets built the
+  old way miss their own stated total by a third on average.
+- Where the book does not price something with a single figure, the assistant
+  is asked to name it for you rather than invent a number.
+
+
 ## 0.4.0 — Everything In Its Place
 
 The release for GMs who do not want to ask an AI to build their campaign. Every
