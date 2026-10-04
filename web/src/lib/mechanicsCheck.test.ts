@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { checkMechanics, primaryAttributes, readSkillLevel } from "./mechanicsCheck";
 import { buildTraitIndex, type CatalogueEntry } from "./traitResolver";
+import { buildIndex } from "./traitAudit";
 
 const skill = (name: string, difficulty: string): CatalogueEntry =>
   ({ book_id: 1, kind: "skill", name, difficulty, attr: "DX", cost_kind: "formula" });
@@ -13,11 +14,15 @@ const INDEX = buildTraitIndex([
 
 describe("reading a skill's level notation", () => {
   it("reads the form that spells the difficulty out", () => {
-    expect(readSkillLevel("(DX/A)-14")).toEqual({ attribute: "DX", difficulty: "A", relative: null });
+    expect(readSkillLevel("(DX/A)-14")).toEqual(
+      { attribute: "DX", difficulty: "A", relative: null, absolute: 14 });
   });
 
   it("reads the form that gives a relative level", () => {
-    expect(readSkillLevel("(DX+1)-13")).toEqual({ attribute: "DX", difficulty: null, relative: 1 });
+    // Both numbers are kept: the label is a claim about the level, and when the
+    // two disagree the level is the one that gets rolled against.
+    expect(readSkillLevel("(DX+1)-13")).toEqual(
+      { attribute: "DX", difficulty: null, relative: 1, absolute: 13 });
   });
 
   it("reads a negative relative level", () => {
@@ -193,5 +198,149 @@ describe("advantage and disadvantage costs", () => {
   it("checks nothing in these sections without a catalogue", () => {
     const check = checkMechanics({ advantages: ["Combat Reflexes [20]"] });
     expect(check.findings).toEqual([]);
+  });
+});
+
+/**
+ * The five classes the GM's own triage found.
+ *
+ * Every case here is a line from Anomaly Hunters that the checker reported and
+ * should not have, or reported for the wrong reason. They are kept verbatim,
+ * because the point of each is that the sheet was already right.
+ */
+describe("lines the sheet got right and the checker did not", () => {
+  const index = buildIndex([
+    { book_id: 1, kind: "disadvantage", name: "Bad Temper", cost_text: "-10*",
+      cost_kind: "flat", cost_value: -10, self_control: true },
+    { book_id: 1, kind: "disadvantage", name: "Berserk", cost_text: "-10*",
+      cost_kind: "flat", cost_value: -10, self_control: true },
+    { book_id: 1, kind: "advantage", name: "Flight", cost_text: "40",
+      cost_kind: "flat", cost_value: 40 },
+    { book_id: 1, kind: "advantage", name: "Warp", cost_text: "100",
+      cost_kind: "flat", cost_value: 100 },
+    { book_id: 1, kind: "advantage", name: "Eidetic Memory", cost_text: "5",
+      cost_kind: "flat", cost_value: 5 },
+    { book_id: 1, kind: "advantage", name: "Photographic Memory", cost_text: "10",
+      cost_kind: "flat", cost_value: 10 },
+    { book_id: 1, kind: "skill", name: "Axe/Mace", attr: "DX", difficulty: "A" },
+    { book_id: 1, kind: "skill", name: "Guns/TL", attr: "DX", difficulty: "E", specialised: true },
+    { book_id: 1, kind: "skill", name: "Explosives/TL", attr: "IQ", difficulty: "A", specialised: true },
+  ]);
+
+  const sheet = (over: Record<string, unknown>) => ({
+    name: "Subject", attributes: ["ST 10 [0]", "DX 11 [20]", "IQ 11 [20]", "HT 10 [0]"],
+    advantages: [], disadvantages: [], skills: [], ...over,
+  });
+
+  it("applies a self-control number to the printed cost (B123)", () => {
+    // -10 x 1.5 = -15, and the book writes the number this way itself (B461).
+    const out = checkMechanics(sheet({ disadvantages: ["Bad Temper (9) [-15]"] }), index);
+    expect(out.findings).toEqual([]);
+  });
+
+  it("doubles a cost at a self-control number of 6", () => {
+    const out = checkMechanics(sheet({
+      disadvantages: ["Berserk (6) (Modified) [-20] - very easy to trigger"] }), index);
+    expect(out.findings).toEqual([]);
+  });
+
+  it("still reports a self-control trait priced at neither multiple", () => {
+    const out = checkMechanics(sheet({ disadvantages: ["Bad Temper (9) [-40]"] }), index);
+    expect(out.findings).toHaveLength(1);
+    expect(out.findings[0].because).toContain("self-control number of 9");
+  });
+
+  it("declines to price a qualifier it cannot value, instead of charging the base", () => {
+    // Winged is -25% (B58), printed inside Flight's own entry rather than in
+    // the modifier table, so 40 x 0.75 = 30 is right and unprovable here.
+    const out = checkMechanics(sheet({ advantages: ["Flight (Winged) [30] - Air Move 12."] }), index);
+    expect(out.findings).toEqual([]);
+    expect(out.notes).toHaveLength(1);
+    expect(out.notes[0].because).toContain("may be right");
+  });
+
+  it("declines when the modifiers are priced in the note rather than the brackets", () => {
+    const out = checkMechanics(sheet({
+      advantages: ["Warp [350] - Cosmic, No Die Roll Required, +100%, Exospatial, +50%"] }), index);
+    expect(out.findings).toEqual([]);
+    expect(out.notes[0].because).toContain("written in the note");
+  });
+
+  it("declines when a list names modifiers and values none of them", () => {
+    // Lambdadelta's line. Three modifiers, no percentages, so the 100 base
+    // says nothing about whether 160 is right -- which leaves the question
+    // open for the GM rather than answering it wrongly.
+    const out = checkMechanics(sheet({
+      advantages: ["Warp (Range: Interstellar; Reliable +10; No Anchor) [160]"] }), index);
+    expect(out.findings).toEqual([]);
+    expect(out.notes).toHaveLength(1);
+    expect(out.notes[0].because).toContain("may be right");
+  });
+
+  it("declines when a list prices only some of its modifiers", () => {
+    const out = checkMechanics(sheet({
+      advantages: ["Warp (Switchable, +10%; No Anchor by default) [160]"] }), index);
+    expect(out.findings).toEqual([]);
+    expect(out.notes[0].because).toContain("cannot be adjusted");
+  });
+
+  it("matches the variety the book prices separately", () => {
+    // B51 prices Eidetic Memory at 5 and Photographic Memory at 10.
+    const out = checkMechanics(sheet({
+      advantages: ["Eidetic Memory (Photographic) [10] - perfect recall."] }), index);
+    expect(out.findings).toEqual([]);
+  });
+
+  it("believes the level the skill reaches over the label on the line", () => {
+    // DX 11, so the level 11 is DX+0, which is what 2 points buy. The label
+    // is what is wrong, and saying so is a different job to fix.
+    const out = checkMechanics(sheet({ skills: ["Axe/Mace (DX+1)-11 [2]"] }), index);
+    expect(out.findings).toHaveLength(1);
+    expect(out.findings[0].kind).toBe("label");
+    expect(out.findings[0].because).toContain("the points are right");
+  });
+
+  it("believes the catalogue's difficulty over the one the line claims", () => {
+    // Explosives is IQ/Average (B194). At Average, IQ+3 costs 12.
+    const out = checkMechanics(sheet({
+      skills: ["Explosives/TL8 (EOD) (IQ/H)-14 [12]"] }), index);
+    expect(out.findings).toHaveLength(1);
+    expect(out.findings[0].kind).toBe("label");
+    expect(out.findings[0].because).toContain("the points are right");
+  });
+
+  it("reads a second specialty as bought up from a default (B171, B175)", () => {
+    // Jamie Hass's own lines. At DX 12, Pistol-15 is DX+3 for 8 points and
+    // correct; Rifle defaults to Pistol-2, so reaching 14 costs only the
+    // difference between the two levels, and 2 is right.
+    const out = checkMechanics(sheet({
+      attributes: ["ST 10 [0]", "DX 12 [40]", "IQ 11 [20]", "HT 10 [0]"],
+      skills: ["Guns/TL8 (Pistol) (DX/E)-15 [8]", "Guns/TL8 (Rifle) (DX/E)-14 [2]"] }), index);
+    expect(out.findings).toEqual([]);
+    expect(out.notes).toHaveLength(1);
+    expect(out.notes[0].because).toContain("default");
+  });
+
+  it("does not excuse an underpaid skill with no better specialty on the sheet", () => {
+    const out = checkMechanics(sheet({
+      attributes: ["ST 10 [0]", "DX 12 [40]", "IQ 11 [20]", "HT 10 [0]"],
+      skills: ["Guns/TL8 (Rifle) (DX/E)-14 [2]"] }), index);
+    expect(out.findings).toHaveLength(1);
+    expect(out.findings[0].kind).toBe("cost");
+    expect(out.notes).toEqual([]);
+  });
+
+  it("still reports a skill that overpays for the level it reaches", () => {
+    // 4 points buy Average at DX+1 = 12; this reaches 11 and claims 4.
+    const out = checkMechanics(sheet({ skills: ["Axe/Mace (DX/A)-11 [4]"] }), index);
+    expect(out.findings).toHaveLength(1);
+    expect(out.findings[0].kind).toBe("cost");
+  });
+
+  it("says nothing at all about a line where everything agrees", () => {
+    const out = checkMechanics(sheet({
+      skills: ["Axe/Mace (DX/A)-11 [2]"], disadvantages: ["Bad Temper (12) [-10]"] }), index);
+    expect(out.findings).toEqual([]);
+    expect(out.notes).toEqual([]);
   });
 });

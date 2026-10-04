@@ -46,6 +46,12 @@ export function PointBudget({ data }: { data: CharacterJSON }) {
     () => checkMechanics(data as unknown as Record<string, unknown>, traitIndex),
     [data, traitIndex]);
 
+  // A disputed cost and a mislabelled line are different jobs: one changes the
+  // points, the other changes the words. Reporting them together made a sheet
+  // that balances look like it overspends.
+  const disputed = mechanics.findings.filter(f => f.kind !== "label");
+  const mislabelled = mechanics.findings.filter(f => f.kind === "label");
+
   // A template carries a nominal figure, not a budget. Show the arithmetic,
   // claim no disagreement.
   const nominal = data.kind === "type";
@@ -92,9 +98,17 @@ export function PointBudget({ data }: { data: CharacterJSON }) {
     >
       <span className="eyebrow">Points</span>
       <span className="value">{value || "???"}</span>
-      {mechanics.findings.length > 0 && (
+      {disputed.length > 0 && (
         <span style={{ fontSize: "0.58rem", color: "#e3a952", marginTop: 1, whiteSpace: "nowrap" }}>
-          {mechanics.findings.length} cost{mechanics.findings.length === 1 ? "" : "s"} disputed
+          {disputed.length} cost{disputed.length === 1 ? "" : "s"} disputed
+        </span>
+      )}
+      {mislabelled.length > 0 && (
+        <span
+          style={{ fontSize: "0.58rem", color: "#6b7280", marginTop: 1, whiteSpace: "nowrap" }}
+          title={mislabelled.map(f => `${f.name}: ${f.because}`).join("\n")}
+        >
+          {mislabelled.length} line{mislabelled.length === 1 ? "" : "s"} mislabelled
         </span>
       )}
       {provenance && (

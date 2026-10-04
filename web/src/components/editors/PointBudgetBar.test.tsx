@@ -96,3 +96,26 @@ describe("what it warns about while building", () => {
     expect(screen.queryByText(/floor/)).not.toBeInTheDocument();
   });
 });
+
+describe("the three things it can say about a line", () => {
+  const index = buildIndex([
+    { book_id: 1, kind: "skill", name: "Axe/Mace", attr: "DX", difficulty: "A" },
+    { book_id: 1, kind: "advantage", name: "Flight", cost_text: "40",
+      cost_kind: "flat", cost_value: 40 },
+  ]);
+
+  it("separates a mislabelled line from a disputed cost", () => {
+    useCampaignStore.setState({ traitIndex: index });
+    // DX 13 on the fixture, so level 13 is DX+0, which is what 2 points buy.
+    render(<PointBudgetBar data={sheet({ skills: ["Axe/Mace (DX+1)-13 [2]"] })} />);
+    expect(screen.getByText(/1 line described wrongly/)).toBeInTheDocument();
+    expect(screen.queryByText(/price differently/)).not.toBeInTheDocument();
+  });
+
+  it("counts a line the rules decline to price", () => {
+    useCampaignStore.setState({ traitIndex: index });
+    render(<PointBudgetBar data={sheet({ advantages: ["Flight (Winged) [30]"] })} />);
+    expect(screen.getByText(/1 the rules decline to price/)).toBeInTheDocument();
+    expect(screen.queryByText(/price differently/)).not.toBeInTheDocument();
+  });
+});

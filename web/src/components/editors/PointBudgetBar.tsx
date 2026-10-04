@@ -29,6 +29,11 @@ export function PointBudgetBar({ data }: Props) {
   const audit = useMemo(
     () => (traitIndex ? auditTraits(record, traitIndex) : null), [record, traitIndex]);
 
+  // The points and the words are different jobs, and a line the rules decline
+  // to price is neither: it is a question the sheet leaves open.
+  const disputed = mechanics.findings.filter(f => f.kind !== "label");
+  const mislabelled = mechanics.findings.filter(f => f.kind === "label");
+
   // What this character is aiming at: their own stated total first, because it
   // is the more specific intent, and the campaign's budget only as a default.
   const target = build.stated ?? campaignBudget;
@@ -84,11 +89,22 @@ export function PointBudgetBar({ data }: Props) {
         ))}
       </div>
 
-      {(mechanics.findings.length > 0 || !build.complete || (audit?.unrecognised.length ?? 0) > 0) && (
+      {(mechanics.findings.length > 0 || mechanics.notes.length > 0 || !build.complete
+        || (audit?.unrecognised.length ?? 0) > 0) && (
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: "0.72rem", paddingTop: 6, borderTop: "1px solid rgba(89,137,219,0.15)" }}>
-          {mechanics.findings.length > 0 && (
-            <span style={{ color: "#e3a952" }} title={mechanics.findings.map(f => `${f.name}: ${f.because}`).join("\n")}>
-              {mechanics.findings.length} cost{mechanics.findings.length === 1 ? "" : "s"} the rules price differently
+          {disputed.length > 0 && (
+            <span style={{ color: "#e3a952" }} title={disputed.map(f => `${f.name}: ${f.because}`).join("\n")}>
+              {disputed.length} cost{disputed.length === 1 ? "" : "s"} the rules price differently
+            </span>
+          )}
+          {mislabelled.length > 0 && (
+            <span style={{ color: "#9ca3af" }} title={mislabelled.map(f => `${f.name}: ${f.because}`).join("\n")}>
+              {mislabelled.length} line{mislabelled.length === 1 ? "" : "s"} described wrongly
+            </span>
+          )}
+          {mechanics.notes.length > 0 && (
+            <span style={{ color: "#9ca3af" }} title={mechanics.notes.map(n => `${n.name}: ${n.because}`).join("\n")}>
+              {mechanics.notes.length} the rules decline to price
             </span>
           )}
           {!build.complete && (

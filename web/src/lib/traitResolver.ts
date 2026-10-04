@@ -48,11 +48,30 @@ export function normaliseTrait(name: string): string {
  * Each step removes one thing a sheet adds and a book does not:
  * a parenthesised specialty, a tech level on a `/TL` skill, and the plural the
  * book uses for headings that cover a family ("Phobias", "Patrons").
+ *
+ * Order is the whole point, because the first alias that matches wins. A
+ * parenthetical sometimes names a variety the book prices separately rather
+ * than a specialty of one trait: the Basic Set prices Eidetic Memory at 5 and
+ * Photographic Memory at 10 (B51), so a sheet writing "Eidetic Memory
+ * (Photographic) [10]" means the second and is correctly priced. Stripping
+ * the parenthetical first would match the cheaper entry and report a gap that
+ * is not there, so the variety is tried before the bare name.
  */
 export function traitAliases(name: string): string[] {
   const base = normaliseTrait(name);
   if (!base) return [];
   const forms = [base];
+
+  const qualified = /^(.*?)\s*\(([^)]*)\)\s*$/.exec(base);
+  if (qualified) {
+    const [, stem, qualifier] = qualified;
+    const words = stem.trim().split(/\s+/);
+    const last = words[words.length - 1];
+    // "eidetic memory (photographic)" -> "photographic memory", and the
+    // longer "photographic eidetic memory" in case a book spells it out.
+    if (qualifier && last && words.length > 1) forms.push(`${qualifier} ${last}`.trim());
+    if (qualifier && stem) forms.push(`${qualifier} ${stem}`.trim());
+  }
 
   const withoutSpecialty = base.replace(/\s*\([^)]*\)\s*$/, "").trim();
   if (withoutSpecialty && withoutSpecialty !== base) forms.push(withoutSpecialty);
@@ -61,6 +80,9 @@ export function traitAliases(name: string): string[] {
     // "guns/tl8" is the book's "guns/tl"; the level belongs to the character.
     const generic = form.replace(/\/tl\s*\d+/g, "/tl");
     if (generic !== form) forms.push(generic);
+    // And the other way: a sheet writes "Research" where the book, which has
+    // to cover every tech level, prints "Research/TL".
+    if (!/\/tl/.test(form)) forms.push(`${form}/tl`);
   }
   for (const form of [...forms]) {
     // A levelled trait is priced per level, so the book lists "Damage
@@ -76,6 +98,19 @@ export function traitAliases(name: string): string[] {
     else forms.push(form.replace(/s$/, ""));
   }
   return [...new Set(forms)].filter(Boolean);
+}
+
+/**
+ * A stored line's name with its parenthetical put back.
+ *
+ * `pointBuild` splits `Eidetic Memory (Photographic)` into a name and a
+ * specialty, which is right for reading the line but wrong for looking it up:
+ * the parenthetical is sometimes the half that identifies which entry the book
+ * means. Callers that want the most specific match hand both back.
+ */
+export function qualifiedName(name: string, specialty?: string | null): string {
+  const tail = (specialty || "").trim();
+  return tail ? `${(name || "").trim()} (${tail})` : (name || "").trim();
 }
 
 export type TraitIndex = {

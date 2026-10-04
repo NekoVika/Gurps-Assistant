@@ -46,6 +46,46 @@ export const SKILL_COST: Record<string, Record<number, number>> = {
 /** Above +5 the table stops and each further level costs 4 more. B172. */
 const EXTRA_LEVEL = 4;
 
+/**
+ * Self-control numbers, B123.
+ *
+ *   "You resist quite rarely (roll of 6 or less): 2 x listed cost.
+ *    You resist fairly often (roll of 9 or less): 1.5 x listed cost.
+ *    You resist quite often (roll of 12 or less): listed cost.
+ *    You resist almost all the time (roll of 15 or less): 0.5 x listed cost.
+ *    Drop all fractions (e.g., -22.5 points becomes -22 points)."
+ *
+ * The book writes the number in parentheses after the name -- "Berserk (9)" --
+ * and its own Tiger Shark on B461 is written that way, so a campaign using the
+ * notation is following the Basic Set rather than departing from it. 12 is the
+ * default, which is why a printed cost carries an asterisk instead of a table.
+ */
+export const SELF_CONTROL: Record<number, number> = {
+  6: 2, 9: 1.5, 12: 1, 15: 0.5,
+};
+
+/** The self-control number a line declares, as in `Bad Temper (9) [-15]`. */
+export function selfControlNumber(text: string): number | null {
+  for (const match of (text || "").matchAll(/\((\d{1,2})\)/g)) {
+    const n = Number(match[1]);
+    if (n in SELF_CONTROL) return n;
+  }
+  return null;
+}
+
+/**
+ * What a self-control disadvantage costs at a given number.
+ *
+ * "Drop all fractions" means toward zero, which for a negative cost is the
+ * same direction the book rounds everything else: -22.5 becomes -22.
+ */
+export function selfControlCost(listed: number, number: number | null): number | null {
+  if (!Number.isFinite(listed)) return null;
+  const multiplier = number === null ? 1 : SELF_CONTROL[number];
+  if (multiplier === undefined) return null;
+  return Math.trunc(listed * multiplier);
+}
+
 export const DIFFICULTY_NAMES: Record<string, string> = {
   E: "Easy", A: "Average", H: "Hard", VH: "Very Hard",
 };

@@ -18,7 +18,8 @@
 
 import { pointBuild, type Entry } from "./pointBuild";
 import {
-  buildTraitIndex, resolveTrait, type CatalogueEntry, type TraitIndex,
+  buildTraitIndex, qualifiedName, resolveTrait,
+  type CatalogueEntry, type TraitIndex,
 } from "./traitResolver";
 
 export type CustomTrait = {
@@ -99,7 +100,7 @@ export function auditTraits(
     if (!kind) continue;
     for (const entry of section.entries) {
       if (!entry.name) continue;
-      const found = resolveTrait(entry.name, index, kind).entry;
+      const found = resolveTrait(qualifiedName(entry.name, entry.specialty), index, kind).entry;
       entries.push({
         entry,
         kind,
