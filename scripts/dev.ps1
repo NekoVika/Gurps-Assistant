@@ -76,13 +76,51 @@ function Get-PortOwner([int]$port) {
   return @()
 }
 
+function Stop-Orphan([int]$parentId) {
+  # `uvicorn --reload` runs the app in a multiprocessing child. If the parent
+  # goes without taking the child with it -- a closed window, a hard kill, a
+  # crash -- the child keeps serving on the socket it inherited, and Windows
+  # still names the dead parent as the port's owner. taskkill then reports
+  # "The process ... not found" while the port stays bound and /health keeps
+  # answering 200, which is a thoroughly confusing thing to be told.
+  #
+  # The child records where it came from in its own command line, so it can be
+  # found by that long after its parent is gone.
+  $orphans = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.Name -match '^python' -and
+      ($_.ParentProcessId -eq $parentId -or $_.CommandLine -like "*parent_pid=$parentId*")
+    })
+  foreach ($orphan in $orphans) {
+    Write-Step "stopping orphaned worker (pid $($orphan.ProcessId))"
+    Stop-Process -Id $orphan.ProcessId -Force -ErrorAction SilentlyContinue
+  }
+  return ($orphans.Count -gt 0)
+}
+
 function Stop-Port([int]$port, [string]$label) {
   $owners = Get-PortOwner $port
   if (-not $owners) { return $false }
   foreach ($procId in $owners) {
-    Write-Step "stopping $label on port $port (pid $procId)"
-    # /T because npm spawns node and killing only the parent orphans the child.
-    & taskkill /T /F /PID $procId | Out-Null
+    # Only call taskkill on a process that is actually there. Asking it about a
+    # pid that has gone writes "not found" to stderr, and with
+    # $ErrorActionPreference = 'Stop' PowerShell turns a native command's
+    # stderr into a terminating error -- which aborted this function before it
+    # could deal with the orphan, every time the orphan was the whole problem.
+    if (Get-Process -Id $procId -ErrorAction SilentlyContinue) {
+      Write-Step "stopping $label on port $port (pid $procId)"
+      # /T because npm spawns node and killing only the parent orphans the child.
+      & taskkill /T /F /PID $procId | Out-Null
+    } else {
+      Write-Step "port $port is held in the name of pid $procId, which has gone"
+    }
+    Stop-Orphan $procId | Out-Null
+  }
+  Start-Sleep -Milliseconds 600
+  if (Get-PortOwner $port) {
+    Write-Warn "port $port is still held by something this script did not start"
+  } else {
+    Write-Step "port $port is free"
   }
   return $true
 }
@@ -278,6 +316,9 @@ try {
   foreach ($proc in @($apiProc, $webProc)) {
     if ($proc -and -not $proc.HasExited) {
       & taskkill /T /F /PID $proc.Id 2>$null | Out-Null
+      # /T takes the reload worker while its parent is still there to be walked
+      # from. This is for the case where it was not.
+      Stop-Orphan $proc.Id | Out-Null
     }
   }
   # npm/vite sometimes survives its parent; make sure the ports are actually free.
