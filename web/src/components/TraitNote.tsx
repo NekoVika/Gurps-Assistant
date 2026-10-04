@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { parseNote, pathLabel } from "../lib/noteMarkup";
 import { useCampaignStore } from "../stores/useCampaignStore";
+import { resolveEntity } from "../lib/entityResolution";
 import type { FileTreeNode } from "../lib/api";
 
 /**
@@ -34,6 +35,7 @@ function flatten(nodes: FileTreeNode[], into: Set<string>): Set<string> {
 export function TraitNote({ note, style }: Props) {
   const fileTree = useCampaignStore(s => s.fileTree);
   const setSelectedPath = useCampaignStore(s => s.setSelectedPath);
+  const registry = useCampaignStore(s => s.entityRegistry);
 
   const known = useMemo(() => flatten(fileTree || [], new Set<string>()), [fileTree]);
   const pieces = useMemo(() => parseNote(note), [note]);
@@ -71,6 +73,33 @@ export function TraitNote({ note, style }: Props) {
           return <strong key={index} style={{ fontWeight: 600 }}>{piece.text}</strong>;
         }
         if (piece.kind === "text") return <span key={index}>{piece.text}</span>;
+
+        // A reference by name goes through the same resolver the structured
+        // fields use, rather than a second one that would drift from it.
+        if (piece.kind === "entity") {
+          const found = resolveEntity(registry || [], piece.name);
+          if (!found) {
+            return (
+              <span
+                key={index}
+                title={`No entity in this campaign is called "${piece.name}"`}
+                style={{
+                  color: "#ffb44d", borderBottom: "1px dashed rgba(255,180,77,0.5)",
+                  cursor: "help",
+                }}
+              >{piece.text}</span>
+            );
+          }
+          return (
+            <a
+              key={index}
+              href="#"
+              onClick={event => { event.preventDefault(); setSelectedPath(found.path); }}
+              title={found.path}
+              style={{ color: "#6da8ff", textDecoration: "none", borderBottom: "1px solid rgba(109,168,255,0.4)" }}
+            >{piece.text}</a>
+          );
+        }
 
         const target = resolve(piece.path);
         const label = piece.text || pathLabel(piece.path);

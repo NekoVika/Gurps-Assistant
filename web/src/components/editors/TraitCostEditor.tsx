@@ -6,6 +6,7 @@ import { isCustom } from "../../lib/traitAudit";
 import { parseModifiers } from "../../lib/modifiers";
 import { SELF_CONTROL } from "../../lib/gurpsRules";
 import { useCampaignStore } from "../../stores/useCampaignStore";
+import { MentionTextarea } from "./MentionTextarea";
 
 /**
  * Advantages, with the cost worked out rather than typed.
@@ -268,11 +269,12 @@ export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
                 to read or repair one — including the stale path in it, which
                 has to be typed to be fixed. It grows to what it holds.
               */}
-              <textarea
-                className="editor-input" placeholder="Notes" value={row.notes}
+              <MentionTextarea
+                className="editor-input" placeholder="Notes — press @ to link something"
+                value={row.notes}
                 rows={Math.min(8, Math.max(1, Math.ceil(row.notes.length / 90)))}
-                style={{ resize: "vertical", lineHeight: 1.5, fontFamily: "inherit" }}
-                onChange={e => update(index, "notes", e.target.value)}
+                style={{ resize: "vertical", lineHeight: 1.5, fontFamily: "inherit", width: "100%" }}
+                onChange={text => update(index, "notes", text)}
               />
 
               {named && (

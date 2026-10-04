@@ -108,3 +108,36 @@ describe("showing a trait's name", () => {
     expect(plainName("Luck*")).toBe("Luck*");
   });
 });
+
+describe("a reference written as a name", () => {
+  it("reads what the picker writes", () => {
+    const pieces = parseNote("Details: [[Gift and Release]].");
+    const entity = pieces.find(p => p.kind === "entity");
+    expect(entity && entity.kind === "entity" && entity.name).toBe("Gift and Release");
+  });
+
+  it("keeps the text around it", () => {
+    const pieces = parseNote("Details: [[Gift and Release]].");
+    expect(pieces.map(p => p.text).join("")).toBe("Details: Gift and Release.");
+  });
+
+  it("reads several in one note", () => {
+    const names = parseNote("[[Bernkastel]] watches [[Jamie Hass]].")
+      .filter(p => p.kind === "entity").map(p => p.text);
+    expect(names).toEqual(["Bernkastel", "Jamie Hass"]);
+  });
+
+  it("leaves the doubled cost the migration left as text", () => {
+    // Some trait lines carry "[[4]]" where the cost bracket was doubled. A
+    // cost is a number, so it can never be mistaken for a name.
+    const pieces = parseNote("Bite [[4]] cutting.");
+    expect(pieces.every(p => p.kind === "text")).toBe(true);
+    expect(pieces.map(p => p.text).join("")).toBe("Bite [[4]] cutting.");
+  });
+
+  it("does not let a markdown link swallow the inner brackets", () => {
+    const pieces = parseNote("See [[The Gate]] and [here](Campaign/a/b.json).");
+    expect(pieces.filter(p => p.kind === "entity").map(p => p.text)).toEqual(["The Gate"]);
+    expect(pieces.filter(p => p.kind === "link").map(p => p.text)).toEqual(["here"]);
+  });
+});

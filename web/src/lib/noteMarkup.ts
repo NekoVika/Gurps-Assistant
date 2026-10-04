@@ -16,7 +16,13 @@ export type NotePiece =
   | { kind: "text"; text: string }
   | { kind: "emphasis"; text: string }
   /** A reference to another campaign file, with the path as written. */
-  | { kind: "link"; text: string; path: string };
+  | { kind: "link"; text: string; path: string }
+  /**
+   * A reference by entity name, which is what the picker writes and what
+   * survives a file being renamed or migrated. Resolved by the caller against
+   * the registry, since only it knows what the campaign contains.
+   */
+  | { kind: "entity"; text: string; name: string };
 
 /** `[Chapter 08](Campaign/03_Story/.../Chapter_08)` — the migrated form. */
 const MARKDOWN_LINK = /\[([^\]]*)\]\(([^)]+)\)/;
@@ -24,6 +30,14 @@ const MARKDOWN_LINK = /\[([^\]]*)\]\(([^)]+)\)/;
 const BACKTICK_PATH = /`([^`]+)`/;
 /** `**like this**`, which the campaign uses for emphasis inside a note. */
 const EMPHASIS = /\*\*([^*]+)\*\*/;
+/**
+ * `[[Gift and Release]]` -- a reference by name.
+ *
+ * The only other doubled bracket in the campaign is the `[[4]]` cost the
+ * markdown migration left on some trait lines, and a cost is a number, so the
+ * two cannot be confused.
+ */
+const ENTITY = /\[\[([^\]]+)\]\]/;
 
 /**
  * A readable name for a campaign path.
@@ -67,6 +81,8 @@ export function parseNote(note: string): NotePiece[] {
 
   while (rest) {
     const candidates = [
+      // Before MARKDOWN_LINK, which would otherwise claim the inner brackets.
+      { re: ENTITY, kind: "entity" as const },
       { re: MARKDOWN_LINK, kind: "link" as const },
       { re: BACKTICK_PATH, kind: "path" as const },
       { re: EMPHASIS, kind: "emphasis" as const },
@@ -84,7 +100,15 @@ export function parseNote(note: string): NotePiece[] {
     const match = next.match!;
     push({ kind: "text", text: rest.slice(0, match.index) });
 
-    if (next.kind === "link") {
+    if (next.kind === "entity") {
+      const name = (match[1] || "").trim();
+      if (/^-?\d+$/.test(name)) {
+        // `[[4]]` is a cost the migration doubled, not a reference.
+        push({ kind: "text", text: match[0] });
+      } else {
+        push({ kind: "entity", text: name, name });
+      }
+    } else if (next.kind === "link") {
       const label = (match[1] || "").trim();
       const path = (match[2] || "").trim();
       push({ kind: "link", text: label || pathLabel(path), path });
