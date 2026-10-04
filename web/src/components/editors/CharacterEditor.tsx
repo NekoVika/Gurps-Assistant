@@ -7,6 +7,7 @@ import { KindField, WhereField, StoryPlacementField } from './PlacementFields';
 import { CollapsibleSection, hasAnyValue } from './CollapsibleSection';
 import { PointBudgetBar } from './PointBudgetBar';
 import { AttributeEditorList, TraitEditorList, SkillEditorList, GearEditorList, HitLocationEditorList, EntityRelationEditorList } from './StructuredArrayEditors';
+import { TraitCostEditor } from './TraitCostEditor';
 
 type Props = {
     value: string;
@@ -119,10 +120,11 @@ export function CharacterEditor({ value, onChange, documentPath = "" }: Props) {
                     onChange={(val) => handleUpdate('skills', val)} 
                 />
                 <div className="editor-grid-2">
-                    <TraitEditorList 
-                        title="Advantages & Perks" 
-                        items={(data.advantages || []).map(a => typeof a === 'string' ? a : JSON.stringify(a))} 
-                        onChange={(val) => handleUpdate('advantages', val)} 
+                    <TraitCostEditor
+                        title="Advantages & Perks"
+                        kind="advantage"
+                        items={(data.advantages || []).map(a => typeof a === 'string' ? a : JSON.stringify(a))}
+                        onChange={(val) => handleUpdate('advantages', val)}
                     />
                     <TraitEditorList 
                         title="Disadvantages & Quirks" 

@@ -166,3 +166,27 @@ export function resolveTrait(
   }
   return UNRESOLVED;
 }
+
+/**
+ * Every name the catalogue offers for one kind, in alphabetical order.
+ *
+ * The index is keyed by a normalised form, which is right for matching and
+ * useless for showing a GM a list, so the display names come off the entries
+ * themselves. A campaign's own traits come first for the same reason they do
+ * in the index: it is their table.
+ */
+export function catalogueNames(index: TraitIndex | null, kind: string): string[] {
+  if (!index) return [];
+  const mine: string[] = [];
+  const printed: string[] = [];
+  const seen = new Set<string>();
+  for (const entries of index.byName.values()) {
+    for (const entry of entries) {
+      if (entry.kind !== kind || seen.has(entry.name)) continue;
+      seen.add(entry.name);
+      ((entry as { campaign?: boolean }).campaign ? mine : printed).push(entry.name);
+    }
+  }
+  const byName = (a: string, b: string) => a.localeCompare(b);
+  return [...mine.sort(byName), ...printed.sort(byName)];
+}
