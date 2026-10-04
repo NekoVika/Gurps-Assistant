@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useCampaignStore } from "../../stores/useCampaignStore";
 import { normalizeEntityName } from "../../lib/entityResolution";
+import { entityContext, entityKind } from "../../lib/entityKind";
 import type { RegistryItem } from "../../lib/api";
 
 /**
@@ -40,6 +41,10 @@ export function MentionTextarea({
   const [query, setQuery] = useState<string | null>(null);
   const [highlighted, setHighlighted] = useState(0);
   const box = useRef<HTMLTextAreaElement>(null);
+
+  const byPath = useMemo(
+    () => new Map((registry || []).map(item => [item.path, item.title || item.id])),
+    [registry]);
 
   const matches = useMemo(() => {
     if (query === null) return [] as RegistryItem[];
@@ -124,7 +129,8 @@ export function MentionTextarea({
   };
 
   return (
-    <div style={{ position: "relative" }}>
+    <div className={`mention-field${query !== null && matches.length ? " mention-open" : ""}`}
+      style={{ position: "relative" }}>
       <textarea
         ref={box}
         className={className}
@@ -160,8 +166,15 @@ export function MentionTextarea({
                 background: index === highlighted ? "rgba(109,168,255,0.18)" : "transparent",
               }}
             >
-              <span>{item.title || item.id}</span>
-              <span style={{ opacity: 0.55, fontSize: "0.72rem" }}>{item.type}</span>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.title || item.id}
+              </span>
+              <span style={{ opacity: 0.6, fontSize: "0.72rem", whiteSpace: "nowrap", flexShrink: 0 }}>
+                {entityKind(item.path)}
+                {entityContext(item.path, byPath)
+                  ? <span style={{ opacity: 0.75 }}> · {entityContext(item.path, byPath)}</span>
+                  : null}
+              </span>
             </div>
           ))}
         </div>

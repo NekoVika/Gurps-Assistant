@@ -86,10 +86,34 @@ describe("reaching for an entity with @", () => {
     expect(shown[0]).toMatch(/Gift and Release|Gate|Giant Spider/);
   });
 
-  it("shows what kind of thing each one is", () => {
+  it("shows what kind of thing each one is, from where it lives", () => {
+    // Not the type the file gives itself, which across this campaign includes
+    // "Megastructure / Ruins", "Guild" and thirty-two "Unknown".
     const { box } = field();
     type(box, "@gift");
     expect(screen.getByRole("option").textContent).toContain("Encounter");
+  });
+
+  it("says which chapter an encounter belongs to", () => {
+    // "Recall Misfire" means little on its own.
+    useCampaignStore.setState({ entityRegistry: [
+      { id: "Recall_Misfire", title: "Recall Misfire", type: "Encounter",
+        path: "Campaign/03_Story/Ep3/Chapter_08/Encounters/Recall_Misfire.json" },
+      { id: "Chapter_Overview", title: "Epilogue - Back to the Stage", type: "Chapter",
+        path: "Campaign/03_Story/Ep3/Chapter_08/Chapter_Overview.json" },
+    ] as never[] });
+    const { box } = field();
+    type(box, "@recall");
+    expect(screen.getByRole("option").textContent)
+      .toContain("Epilogue - Back to the Stage");
+  });
+
+  it("says nothing extra for a character, which sits inside nothing", () => {
+    const { box } = field();
+    type(box, "@bern");
+    const shown = screen.getByRole("option").textContent || "";
+    expect(shown).toContain("Character");
+    expect(shown).not.toContain("·");
   });
 
   it("does not open on an @ in the middle of a word", () => {

@@ -1163,3 +1163,19 @@ button {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(149, 181, 255, 0.4);
 }
+
+/* --- ENTITY MENTION MENU --- */
+/*
+   A row lifts 4px on hover, and a transform makes a stacking context — so the
+   row beneath an open mention menu painted over it, and shifted under the
+   cursor, which read as flickering. While a menu is open in this list, the row
+   holding it wins and nothing else moves.
+*/
+.editor-array-item:has(.mention-open) {
+  position: relative;
+  z-index: 40;
+}
+
+.editor-array-container:has(.mention-open) .editor-array-item:hover {
+  transform: none;
+}
