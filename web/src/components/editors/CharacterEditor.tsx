@@ -6,7 +6,7 @@ import { ImageArrayEditor } from './ImageArrayEditor';
 import { KindField, WhereField, StoryPlacementField } from './PlacementFields';
 import { CollapsibleSection, hasAnyValue } from './CollapsibleSection';
 import { PointBudgetBar } from './PointBudgetBar';
-import { AttributeEditorList, TraitEditorList, SkillEditorList, GearEditorList, HitLocationEditorList, EntityRelationEditorList } from './StructuredArrayEditors';
+import { AttributeEditorList, SkillEditorList, GearEditorList, HitLocationEditorList, EntityRelationEditorList } from './StructuredArrayEditors';
 import { TraitCostEditor } from './TraitCostEditor';
 
 type Props = {
@@ -126,10 +126,11 @@ export function CharacterEditor({ value, onChange, documentPath = "" }: Props) {
                         items={(data.advantages || []).map(a => typeof a === 'string' ? a : JSON.stringify(a))}
                         onChange={(val) => handleUpdate('advantages', val)}
                     />
-                    <TraitEditorList 
-                        title="Disadvantages & Quirks" 
-                        items={(data.disadvantages || []).map(d => typeof d === 'string' ? d : JSON.stringify(d))} 
-                        onChange={(val) => handleUpdate('disadvantages', val)} 
+                    <TraitCostEditor
+                        title="Disadvantages & Quirks"
+                        kind="disadvantage"
+                        items={(data.disadvantages || []).map(d => typeof d === 'string' ? d : JSON.stringify(d))}
+                        onChange={(val) => handleUpdate('disadvantages', val)}
                     />
                 </div>
                 <GearEditorList 

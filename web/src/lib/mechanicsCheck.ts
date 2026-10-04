@@ -24,6 +24,7 @@ import {
   DIFFICULTY_NAMES, selfControlCost, selfControlNumber,
 } from "./gurpsRules";
 import { qualifiedName, resolveTrait, type TraitIndex } from "./traitResolver";
+import { isCustom } from "./traitAudit";
 import {
   baseCost, modifiedCost, modifiersArePriced, netModifier, parseModifiers, traitLevel,
 } from "./modifiers";
@@ -314,6 +315,22 @@ function traitCostFindings(
       ? selfControlCost(listed, control)
       : listed;
     if (base === null) { unchecked++; continue; }
+
+    // A price the campaign declared is the answer, not a base to reason from.
+    // Jamie's Combat Paralysis is a flat -5 because the GM wrote it down as
+    // one, and the note explaining the decision mentions the -40% it replaces
+    // -- which the rules below would otherwise take for an unread modifier and
+    // decline over. There is nothing to decline: the figure is already final.
+    if (isCustom(found)) {
+      checked++;
+      if (base !== entry.points) {
+        findings.push({
+          raw: entry.raw, name: entry.name, stated: entry.points, expected: base, kind: "cost",
+          because: `your campaign prices this at ${base}`,
+        });
+      }
+      continue;
+    }
 
     // A line that names a modifier without pricing it cannot be totalled, and
     // totalling the rest would report a gap the sheet does not have. Saying so

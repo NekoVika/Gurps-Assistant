@@ -378,3 +378,31 @@ describe("holding a sheet to the campaign's own prices", () => {
     expect(out.notes).toEqual([]);
   });
 });
+
+describe("a price the campaign declared is the answer", () => {
+  const index = buildIndex(
+    [{ book_id: 1, kind: "disadvantage", name: "Combat Paralysis", cost_text: "-15",
+       cost_kind: "flat", cost_value: -15, page: 127 }],
+    [{ name: "Combat Paralysis", kind: "disadvantage", cost: "-5",
+       notes: "House price; Accessibility would be -40% off -15." }]);
+  const sheet = (over: Record<string, unknown>) => ({
+    name: "Subject", attributes: ["ST 10 [0]", "DX 10 [0]", "IQ 10 [0]", "HT 10 [0]"],
+    advantages: [], disadvantages: [], skills: [], ...over,
+  });
+
+  it("does not decline over a percentage in the note explaining the decision", () => {
+    // Jamie's line. The -40% is the reasoning behind the house price, not an
+    // unread modifier -- and the figure it produced is already on the sheet.
+    const out = checkMechanics(sheet({ disadvantages: [
+      "**Combat Paralysis** [-5] - Limitation: Only activates when working with "
+      + "explosives. (Accessibility: -40% from base -15, simplified here to a fixed -5)."] }), index);
+    expect(out.findings).toEqual([]);
+    expect(out.notes).toEqual([]);
+  });
+
+  it("still holds the sheet to the campaign's figure", () => {
+    const out = checkMechanics(sheet({ disadvantages: ["Combat Paralysis [-15]"] }), index);
+    expect(out.findings).toHaveLength(1);
+    expect(out.findings[0].because).toContain("your campaign prices this at -5");
+  });
+});
