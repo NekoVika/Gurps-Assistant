@@ -1,3 +1,6 @@
+import { sheetFromBuild, leftToGMBlock } from "./generatedSheet";
+import type { TraitIndex } from "./traitResolver";
+
 export type WizardField = {
   id: string;
   label: string;
@@ -34,8 +37,26 @@ export type WizardDef = {
   /** Optional post-processing hook: transform the raw AI result dict before it is
    *  written to disk. Use this to expand compact AI representations into the full
    *  format expected by the backend Pydantic model (e.g. armorCoverage → hitLocations). */
-  postProcess?: (result: Record<string, any>) => Record<string, any>;
+  postProcess?: (result: Record<string, any>, context?: PostProcessContext) => Record<string, any>;
+  /** The stored fields one pass is contracted to fill, where postProcess makes
+   *  them differ from the schema's own `required` list. A deepen pass that
+   *  finds all of these written has nothing to do. */
+  fills?: string[];
 };
+
+export type PostProcessContext = {
+  /** The catalogue the app prices traits from, or null when none is loaded. */
+  traitIndex: TraitIndex | null;
+  /** The file being deepened, or null when creating. */
+  existing: Record<string, unknown> | null;
+};
+
+/**
+ * A key postProcess may return whose lines are appended to the GM Summary
+ * rather than merged into it. A merge never replaces what the GM wrote, so
+ * anything the app needs them to read has to be added, not offered.
+ */
+export const APPEND_TO_GM_SUMMARY = "appendToGmSummary";
 
 // ---------------------------------------------------------------------------
 // GURPS 4e standard hit location table — names and roll ranges are immutable.
@@ -68,6 +89,64 @@ export function expandArmorCoverage(
     return `${label} (${roll}): DR ${dr}${source}`;
   });
 }
+
+/**
+ * `gurpsai.domain.character_build.CharacterBuild`, inlined for the provider.
+ *
+ * Gemini's response schema takes neither `$ref` nor an integer `enum`, so the
+ * Pydantic schema cannot be sent as it is; the backend validates the answer
+ * against the Pydantic model afterwards. The field names are pinned on both
+ * sides — `wizards.test.ts` and `tests/test_character_build.py` — so neither
+ * can drift alone. Like the model, it has nowhere to put a cost.
+ */
+export const CHARACTER_BUILD_SCHEMA = {
+  type: "object",
+  description: "The character's mechanics as choices. The app prices them.",
+  properties: {
+    entries: {
+      type: "array",
+      description: "Every mechanical line of the sheet. Primary attributes first.",
+      items: {
+        type: "object",
+        properties: {
+          kind: { type: "string", enum: ["attribute", "advantage", "disadvantage", "skill"] },
+          name: { type: "string",
+            description: "As the Basic Set names it, with no level, specialty or cost: 'Guns/TL', "
+              + "'Combat Reflexes', 'DX', 'Basic Speed'." },
+          score: { type: "number", description: "Attributes only: the final score. Basic Speed may carry a quarter." },
+          level: { type: "string",
+            description: "Skills only: level relative to its attribute, e.g. 'DX+2', 'IQ-1', 'Per'. Never the final number." },
+          levels: { type: "integer", description: "Traits priced per level: how many levels." },
+          specialty: { type: "string", description: "The parenthesised qualifier or variety: 'Rifle', 'Arctic'." },
+          tl: { type: "integer", description: "For a '/TL' skill: the tech level it is learned at." },
+          self_control: { type: "integer",
+            description: "Disadvantages with a self-control roll only: 6, 9, 12 or 15. 12 leaves the printed cost." },
+          modifiers: {
+            type: "array",
+            description: "Enhancements and limitations, each with the book's percentage. All of them or none.",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                percent: { type: "integer", description: "+100 for +100%, -50 for -50%." },
+              },
+              required: ["name", "percent"],
+            },
+          },
+          notes: { type: "string", description: "One short line on what it does at the table. Never a point cost." },
+        },
+        required: ["kind", "name"],
+      },
+    },
+    unpriceable: {
+      type: "array",
+      items: { type: "string" },
+      description: "What the book does not price with one figure — a Patron, Ally, Secret, anything "
+        + "'Variable' or a range — in plain words, rather than guessing a cost.",
+    },
+  },
+  required: ["entries", "unpriceable"],
+};
 
 export const WIZARDS: WizardDef[] = [
   {
@@ -322,11 +401,22 @@ export const WIZARDS: WizardDef[] = [
         `Generate a fully statted GURPS 4e ${type} with all required fields.\n`,
         `Parameters:\n${params}`,
         entityNote,
-        `\nReturn a COMPLETE JSON object. Use these EXACT string formats for mechanical fields:`,
-        `- attributes: array of strings like "ST 10 [0]", "DX 12 [40]", "Basic Speed 5.50 [0]"`,
-        `- advantages: array of strings like "Combat Reflexes [15] - Reacts quickly (B43)"`,
-        `- disadvantages: array of strings like "Curious [-5] - CR: 12 (B129)"`,
-        `- skills: array of strings like "First Aid (IQ+0)-10 [1] - Field stabilization"`,
+        `\nReturn a COMPLETE JSON object.`,
+        // The model chooses and the app prices. Asked for "[15]"-style strings,
+        // not one sheet in the campaign added up to its own brackets.
+        `- build: the character's mechanics as CHOICES. You choose; the app prices every line and`,
+        `  states the total. Give no point costs anywhere — not in names, not in notes.`,
+        `  Each entry names a trait exactly as the GURPS Basic Set names it, with no level or cost`,
+        `  attached: "Guns/TL" with specialty "Rifle" and tl 8, never "Guns/TL8 (Rifle)-14 [8]".`,
+        `  Attributes: give the final score. Leave out any attribute at its default.`,
+        `  Skills: give level relative to the attribute ("DX+2", "IQ-1", "Per"), never the final number.`,
+        `  Disadvantages with a self-control roll: self_control is 6, 9, 12 or 15.`,
+        `  Levelled traits: levels (e.g. 3 for Damage Resistance 3).`,
+        answers.Points && answers.Points.trim()
+          ? `  Choose traits that come to roughly ${answers.Points.trim()} points; the app will add them up.`
+          : null,
+        `  build.unpriceable: anything the book does not price with one figure — a Patron, Ally,`,
+        `  Contact, Secret, anything "Variable" or a range — in plain words, rather than a guessed entry.`,
         // The parenthetical is parsed as exactly (weight, cost). A model left to
         // itself puts the tech level there and the weight in the notes, and the
         // entry then cannot be decomposed by the editor at all.
@@ -334,7 +424,6 @@ export const WIZARDS: WizardDef[] = [
         `  The parentheses hold ONLY weight and cost, comma-separated. Everything else — tech level,`,
         `  damage, RoF, Acc — goes after the dash. Correct: "Assault Rifle [1] (9 lbs, $2000) - TL8, 7d pi, Acc 6, RoF 9".`,
         `  Wrong: "Assault Rifle (TL8) - 7d pi, Wt 9 lbs, $2000".`,
-        `- pointTotal: a string like "150"`,
         `- concept: a short archetype phrase of 2-5 words — "Ex-military smuggling pilot", "Sewer-dwelling scavenger".`,
         `  NOT a sentence and NOT a summary of their situation; the GM reads it as a label beside the name.`,
         `- role: the exact value provided above, unchanged. Do not expand it into a sentence.`,
@@ -369,28 +458,9 @@ export const WIZARDS: WizardDef[] = [
         personality:        { type: "string" },
         motivation:         { type: "string" },
         speech:             { type: "string" },
-        pointTotal:         { type: "string" },
-        // GURPS mechanical fields — all string arrays with strict formatting
-        attributes: {
-          type: "array",
-          items: { type: "string" },
-          description: "e.g. ['ST 10 [0]', 'DX 12 [40]', 'IQ 10 [0]', 'HT 10 [0]', 'HP 10 [0]', 'Will 10 [0]', 'Per 10 [0]', 'FP 10 [0]', 'Basic Speed 5.50 [0]', 'Basic Move 5 [0]']"
-        },
-        advantages: {
-          type: "array",
-          items: { type: "string" },
-          description: "e.g. ['Combat Reflexes [15] - Reacts quickly (B43)']"
-        },
-        disadvantages: {
-          type: "array",
-          items: { type: "string" },
-          description: "e.g. ['Curious [-5] - CR: 12 (B129)']"
-        },
-        skills: {
-          type: "array",
-          items: { type: "string" },
-          description: "e.g. ['First Aid (IQ+0)-10 [1] - Field stabilization', 'Guns/TL9 (Pistol) (DX+1)-13 [2]']"
-        },
+        // Attributes, traits, skills and the total are not asked for: postProcess
+        // writes them from this, priced by the app.
+        build: CHARACTER_BUILD_SCHEMA,
         gear: {
           type: "array",
           items: { type: "string" },
@@ -467,21 +537,34 @@ export const WIZARDS: WizardDef[] = [
       required: [
         "name", "concept", "kind", "significance", "role", "status",
         "appearance", "personality", "motivation", "speech", "pcHooks",
-        "pointTotal", "attributes", "advantages", "disadvantages",
-        "skills", "gear", "armorCoverage", "tactics"
+        "build", "gear", "armorCoverage", "tactics"
       ]
     },
     pydanticModel: "CharacterData",
-    postProcess: (result) => {
-      const { armorCoverage, ...rest } = result;
+    fills: [
+      "name", "concept", "kind", "significance", "role", "status",
+      "appearance", "personality", "motivation", "speech", "pcHooks",
+      "pointTotal", "attributes", "advantages", "disadvantages", "skills",
+      "gear", "hitLocations", "tactics",
+    ],
+    postProcess: (result, context) => {
+      const { armorCoverage, build, ...rest } = result;
+      const sheet = sheetFromBuild(build, context?.traitIndex ?? null, context?.existing ?? null);
+      const leftToGM = leftToGMBlock(sheet.leftToGM);
       return {
         ...rest,
         // A template has no narrative weight of its own; only its instances do.
         // The schema cannot express "" so the model always picks something.
         significance: rest.kind === "type" ? "" : rest.significance,
+        attributes: sheet.attributes,
+        advantages: sheet.advantages,
+        disadvantages: sheet.disadvantages,
+        skills: sheet.skills,
+        pointTotal: sheet.pointTotal,
         hitLocations: expandArmorCoverage(
           armorCoverage as Record<string, { dr: number; source?: string }> | undefined
         ),
+        ...(leftToGM ? { [APPEND_TO_GM_SUMMARY]: leftToGM } : {}),
       };
     },
     steps: [

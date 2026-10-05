@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { WIZARDS, expandArmorCoverage } from './wizards';
+import { WIZARDS, expandArmorCoverage, CHARACTER_BUILD_SCHEMA, APPEND_TO_GM_SUMMARY } from './wizards';
 
 const storyWizard = WIZARDS.find(w => w.id === 'story_wizard')!;
 
@@ -76,6 +76,59 @@ describe('create_npc fills everything it should in one pass', () => {
     expect(schema.required).toContain('kind');
     const cleared = npc.postProcess!({ kind: 'type', significance: 'core' });
     expect(cleared.significance).toBe('');
+  });
+
+  it('asks for choices, and has nowhere to put a cost', () => {
+    // The model chooses and the app prices. None of the stored mechanical
+    // fields may be asked for directly, or the model writes brackets again.
+    for (const stored of ['attributes', 'advantages', 'disadvantages', 'skills', 'pointTotal']) {
+      expect(schema.properties).not.toHaveProperty(stored);
+    }
+    expect(schema.required).toContain('build');
+    expect(JSON.stringify(CHARACTER_BUILD_SCHEMA)).not.toMatch(/\[\d+\]/);
+  });
+
+  it('asks for the same fields as the Python contract', () => {
+    // Pinned in tests/test_character_build.py too; change both together.
+    const entry = CHARACTER_BUILD_SCHEMA.properties.entries.items;
+    expect(Object.keys(entry.properties).sort()).toEqual(
+      ['kind', 'name', 'score', 'level', 'levels', 'specialty', 'tl',
+       'self_control', 'modifiers', 'notes'].sort());
+    expect(Object.keys(entry.properties.modifiers.items.properties).sort())
+      .toEqual(['name', 'percent']);
+  });
+
+  it('sends nothing a Gemini response schema refuses', () => {
+    const text = JSON.stringify(npc.outputSchema);
+    expect(text).not.toContain('$ref');
+    expect(text).not.toContain('$defs');
+    expect(text).not.toMatch(/"enum":\[\d/);
+  });
+
+  it('writes the stored fields from the build, priced by the app', () => {
+    const out = npc.postProcess!({
+      kind: 'individual', significance: 'core',
+      build: { entries: [{ kind: 'attribute', name: 'DX', score: 12, level: null }], unpriceable: [] },
+    });
+    expect(out).not.toHaveProperty('build');
+    expect(out.attributes).toContain('DX 12 [40]');
+    expect(out.pointTotal).toBe('40');
+    expect(out).not.toHaveProperty(APPEND_TO_GM_SUMMARY);
+  });
+
+  it('hands what it could not price to the GM Summary, to be appended', () => {
+    const out = npc.postProcess!({
+      kind: 'individual', significance: 'core',
+      build: { entries: [], unpriceable: ['An Ally: his dog'] },
+    });
+    expect(out[APPEND_TO_GM_SUMMARY]).toBe('Left to the GM:\n- An Ally: his dog');
+  });
+
+  it('counts a deepen pass as done only when the stored fields are written', () => {
+    // `build` is never stored, so the schema's own required list would make
+    // every character look unfinished forever.
+    expect(npc.fills).not.toContain('build');
+    expect(npc.fills).toEqual(expect.arrayContaining(['attributes', 'skills', 'pointTotal', 'hitLocations']));
   });
 
   it('tells the model not to invent a place or a person', () => {

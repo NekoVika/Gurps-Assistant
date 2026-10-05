@@ -249,6 +249,83 @@ class ChatStreamEndpointTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# POST /chat/structured: a character's build survives validation
+# ---------------------------------------------------------------------------
+
+class StructuredCharacterBuildTests(unittest.TestCase):
+    """The wizard asks for choices under `build`, which CharacterData has no
+    field for. Validating against CharacterData alone dropped it silently, so
+    every generated sheet would have come back with no mechanics at all."""
+
+    def _post(self, mock_svc_cls, result):
+        mock_svc = MagicMock()
+        mock_svc.structured_chat.return_value = result
+        mock_svc._provider_service.get_status.return_value = MagicMock(models=[])
+        mock_svc_cls.return_value = mock_svc
+        response = client.post("/chat/structured", json={
+            "provider": "mock",
+            "model": "m",
+            "messages": [{"role": "user", "content": "Build Rick"}],
+            "output_schema": {"type": "object"},
+            "pydantic_model": "CharacterData",
+        })
+        self.assertEqual(response.status_code, 200)
+        return response.json()["result"]
+
+    @patch("gurpsai.api.routers.chat.ChatService")
+    def test_the_build_is_kept_and_validated(self, mock_svc_cls):
+        result = self._post(mock_svc_cls, {
+            "name": "Rick",
+            "build": {
+                "entries": [
+                    {"kind": "attribute", "name": "DX", "score": 12},
+                    {"kind": "disadvantage", "name": "Bad Temper", "self_control": 9},
+                ],
+                "unpriceable": ["An Ally: his dog"],
+            },
+        })
+        build = result["build"]
+        self.assertEqual(build["name"], "Rick")
+        self.assertEqual(build["entries"][1]["self_control"], 9)
+        self.assertEqual(build["unpriceable"], ["An Ally: his dog"])
+        # Validated against CharacterData too: its defaults are filled in.
+        self.assertEqual(result["pointTotal"], "???")
+
+    @patch("gurpsai.api.routers.chat.ChatService")
+    def test_a_cost_offered_anyway_does_not_survive(self, mock_svc_cls):
+        result = self._post(mock_svc_cls, {
+            "name": "Rick",
+            "build": {"entries": [{"kind": "advantage", "name": "Combat Reflexes", "points": 15}]},
+        })
+        self.assertNotIn("points", result["build"]["entries"][0])
+
+    @patch("gurpsai.api.routers.chat.ChatService")
+    def test_an_invalid_build_is_passed_through_rather_than_lost(self, mock_svc_cls):
+        # 10 is not a self-control number (B123). The app writes that line
+        # unpriced with the reason; the other choices still reach the sheet.
+        sent = {"entries": [
+            {"kind": "attribute", "name": "DX", "score": 12},
+            {"kind": "disadvantage", "name": "Bad Temper", "self_control": 10},
+        ]}
+        result = self._post(mock_svc_cls, {"name": "Rick", "build": sent})
+        self.assertEqual(result["build"], sent)
+
+    @patch("gurpsai.api.routers.chat.ChatService")
+    def test_other_models_are_untouched(self, mock_svc_cls):
+        mock_svc = MagicMock()
+        mock_svc.structured_chat.return_value = {"name": "Dockside", "build": {"entries": []}}
+        mock_svc._provider_service.get_status.return_value = MagicMock(models=[])
+        mock_svc_cls.return_value = mock_svc
+        response = client.post("/chat/structured", json={
+            "provider": "mock", "model": "m",
+            "messages": [{"role": "user", "content": "x"}],
+            "output_schema": {"type": "object"},
+            "pydantic_model": "LocationData",
+        })
+        self.assertNotIn("build", response.json()["result"])
+
+
+# ---------------------------------------------------------------------------
 # Schema validation tests
 # ---------------------------------------------------------------------------
 

@@ -80,6 +80,22 @@ is the correct answer, and it now says why rather than falling silent.
   old way miss their own stated total by a third on average.
 - Where the book does not price something with a single figure, the assistant
   is asked to name it for you rather than invent a number.
+- **Create Entity builds sheets this way.** The model sends its choices, not
+  costs; the app prices every line, writes it in the format your sheets
+  already use, and states the total it added up. Attributes the model left at
+  their default are written at [0], so a skill bought against Per is priced
+  even when Per was never mentioned.
+- A choice the app cannot price stays on the sheet with no cost and the reason
+  beside it, and the total is shown as a floor. What the model said the book
+  does not price — a Patron, a Secret — is added to the GM Summary under
+  **Left to the GM**.
+- Deepening an existing character prices its new skills against the scores
+  already on the sheet, not the ones the model imagined.
+- Skills based on Per or Will are priced; they had been read as `PER` and
+  `WILL` and declined.
+- A skill is written against the attribute the book bases it on, and keeps
+  its tech level when the model leaves `/TL` off the name: Scuba asked for at
+  HT+1 is written `Scuba/TL8 (IQ/A)-12`, as B219 has it.
 
 
 ## 0.4.0 — Everything In Its Place

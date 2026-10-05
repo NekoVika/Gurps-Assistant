@@ -15,6 +15,8 @@ from gurpsai.api.schemas.chat import (
 from gurpsai.app.services.chat import ChatService
 from gurpsai.providers.base import ChatMessage
 import gurpsai.domain.campaign as campaign_models
+from gurpsai.domain.character_build import CharacterBuild
+from pydantic import ValidationError
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -31,6 +33,23 @@ def _to_domain_messages(req_messages: list[ChatMessageRequest]) -> list[ChatMess
                 tcs.append(ToolCall(id=tc["id"], name=tc["name"], arguments=tc.get("arguments", {}), raw=tc.get("raw")))
         result.append(ChatMessage(role=msg.role, content=msg.content, tool_calls=tcs, tool_call_id=msg.tool_call_id))
     return result
+
+
+def _validated_build(build: object, name: str) -> object:
+    """A generated `CharacterBuild`, normalised where it validates.
+
+    Where it does not -- a self-control number of 10, say -- it is returned as
+    the model sent it. The app prices what it can and writes the rest onto the
+    sheet unpriced with the reason, which is more use to the GM than losing
+    every choice in the build to one bad field.
+    """
+    if not isinstance(build, dict):
+        return build
+    try:
+        return CharacterBuild.model_validate({"name": name, **build}).model_dump()
+    except ValidationError as e:
+        logging.warning("Generated build did not validate; passing it through as sent: %s", e)
+        return build
 
 
 def _resolve_scope_hint(request: ChatRequest) -> str | None:
@@ -127,11 +146,17 @@ def chat_structured(request: StructuredChatRequest) -> StructuredChatResponse:
         if request.pydantic_model:
             model_cls = getattr(campaign_models, request.pydantic_model, None)
             if model_cls:
+                # A character arrives as choices under `build`, which the stored
+                # model has no field for and would drop. Set it aside, and put it
+                # back once it has been checked against its own contract.
+                build = result_dict.get("build") if model_cls is campaign_models.CharacterData else None
                 try:
                     validated = model_cls.model_validate(result_dict)
                     result_dict = validated.model_dump()
                 except Exception as e:
                     logging.warning("Pydantic validation failed for %s: %s", request.pydantic_model, e)
+                if build is not None:
+                    result_dict["build"] = _validated_build(build, result_dict.get("name", ""))
 
         # Resolve the model that was actually used — structured_chat() auto-selects
         # models[0] when model=None and multiple are available, so we mirror that here.

@@ -18,7 +18,8 @@ import { ConfirmModal } from "./ConfirmModal";
 import { WizardModal } from "./WizardModal";
 import { mergeGenerated, describeMerge, nothingLeftToFill } from "../lib/mergeGenerated";
 import { instantiateTemplate } from "../lib/instantiateTemplate";
-import { WIZARDS, type WizardDef } from "../lib/wizards";
+import { WIZARDS, APPEND_TO_GM_SUMMARY, type WizardDef } from "../lib/wizards";
+import { pointBuild } from "../lib/pointBuild";
 import { getFileContent, writeFileContent, runStructuredChat } from '../lib/api';
 import { updateParentChildLinks } from '../lib/parentLinks';
 import { useToast } from '../context/ToastContext';
@@ -232,7 +233,8 @@ export function MainWorkspace() {
                try {
                   const current = await getFileContent(deepenTarget.path);
                   const existing = JSON.parse(current.content) as Record<string, unknown>;
-                  if (nothingLeftToFill(existing, (schema as { required?: string[] })?.required)) {
+                  const contracted = tempWizard?.fills ?? (schema as { required?: string[] })?.required;
+                  if (nothingLeftToFill(existing, contracted)) {
                      setActiveWizard(null);
                      setDeepenTarget(null);
                      toast.success("Nothing to add — every field was already written.");
@@ -252,21 +254,47 @@ export function MainWorkspace() {
                  narrativeIntent,
                  placementContext
                );
-               // Apply wizard-level post-processing (e.g. expand armorCoverage → hitLocations).
-               const result = tempWizard?.postProcess ? tempWizard.postProcess(rawResult) : rawResult;
+               let existing: Record<string, unknown> | null = null;
+               if (deepenTarget) {
+                  const current = await getFileContent(deepenTarget.path);
+                  existing = JSON.parse(current.content) as Record<string, unknown>;
+               }
+
+               // Apply wizard-level post-processing (e.g. expand armorCoverage →
+               // hitLocations, or price a character's build). The catalogue is
+               // loaded at startup; if that has not finished, wait for it rather
+               // than write a sheet with every trait unpriced.
+               let traitIndex = useCampaignStore.getState().traitIndex;
+               if (tempWizard?.postProcess && !traitIndex) {
+                  try { await useCampaignStore.getState().loadTraitIndex(); } catch { /* priced as far as it can be */ }
+                  traitIndex = useCampaignStore.getState().traitIndex;
+               }
+               const processed = tempWizard?.postProcess
+                 ? tempWizard.postProcess(rawResult, { traitIndex, existing })
+                 : rawResult;
+               const { [APPEND_TO_GM_SUMMARY]: appendix, ...result } = processed;
 
                // Creating writes the result; deepening folds it into what is
                // already there, so a generated field can fill a blank but can
                // never replace something the GM wrote.
-               let toWrite = result;
+               let toWrite: Record<string, unknown> = result;
                let mergeNote = "";
-               if (deepenTarget) {
-                  const current = await getFileContent(deepenTarget.path);
-                  const existing = JSON.parse(current.content) as Record<string, unknown>;
+               if (existing) {
                   const report = mergeGenerated(existing, result);
                   toWrite = report.merged;
                   mergeNote = describeMerge(report);
                }
+               // Appended, never merged: the merge keeps the GM's summary as
+               // written, and this is something they need to read.
+               if (typeof appendix === "string" && appendix) {
+                  const summary = typeof toWrite.gmSummary === "string" ? toWrite.gmSummary.trim() : "";
+                  toWrite = { ...toWrite, gmSummary: summary ? `${summary}\n\n${appendix}` : appendix };
+               }
+               const unread = tempWizard?.pydanticModel === "CharacterData"
+                 ? pointBuild(toWrite).unreadable.length : 0;
+               const unreadNote = unread
+                 ? ` ${unread} line${unread === 1 ? "" : "s"} left for you to price.`
+                 : "";
 
                const jsonStr = JSON.stringify(toWrite, null, 2);
                const writeResponse = await writeFileContent(targetPath, jsonStr);
@@ -282,7 +310,7 @@ export function MainWorkspace() {
                  const wasDeepening = deepenTarget !== null;
                  setDeepenTarget(null);
                  const fileName = targetPath.split("/").pop() ?? targetPath;
-                 toast.success(wasDeepening ? mergeNote : `${fileName} created successfully ✓`);
+                 toast.success((wasDeepening ? mergeNote : `${fileName} created successfully ✓`) + unreadNote);
                } else {
                  const errMsg = (writeResponse as any).error ?? "File write failed";
                  toast.error(errMsg);

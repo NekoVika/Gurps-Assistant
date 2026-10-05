@@ -33,6 +33,11 @@ import { isCustom } from "./traitAudit";
 /** A level written against the attribute it is based on: `DX+2`, `IQ-1`. */
 const RELATIVE_LEVEL = /^([A-Za-z]+)\s*([+-]\d+)?$/;
 
+/** What a skill can be based on, as the sheet spells each one. */
+const CONTROLLING: Record<string, string> = {
+  ST: "ST", DX: "DX", IQ: "IQ", HT: "HT", PER: "Per", WILL: "Will",
+};
+
 export type BuildEntry = {
   kind: "attribute" | "advantage" | "disadvantage" | "skill";
   /** The trait as the book names it: `Guns/TL`, `Bad Temper`, `DX`. */
@@ -69,6 +74,8 @@ export type Declined = {
   name: string;
   /** Why nothing could be written, in the GM's language. */
   problem: string;
+  /** The choice itself, where a whole sheet was being built. */
+  entry?: BuildEntry;
 };
 
 export type Priced = Rendered | Declined;
@@ -164,13 +171,10 @@ function renderSkill(entry: BuildEntry, scores: Scores, index: TraitIndex | null
   if (!parsed) {
     return decline(entry.name, `a skill needs a level against its attribute, as in "DX+2"`);
   }
-  const attribute = parsed[1].toUpperCase();
+  // Skills are bought against Per and Will as well as the four primaries
+  // (B170), and those two are not written in capitals.
+  const asked = CONTROLLING[parsed[1].toUpperCase()] ?? parsed[1];
   const relative = parsed[2] ? Number(parsed[2]) : 0;
-
-  const score = scores[attribute];
-  if (score === undefined) {
-    return decline(entry.name, `measured against ${attribute}, which is not on the sheet`);
-  }
 
   const found = index
     ? resolveTrait(qualifiedName(entry.name, entry.specialty), index, "skill").entry
@@ -180,15 +184,32 @@ function renderSkill(entry: BuildEntry, scores: Scores, index: TraitIndex | null
     return decline(entry.name, "no catalogue entry, so the book's difficulty is unknown");
   }
 
+  // The book says what a skill is based on; a request can only say how far
+  // above it. Asked for Scuba at HT+1, a model has chosen "one level of
+  // skill" and misremembered the attribute — Scuba is IQ/A (B219) — so the
+  // level it meant is IQ+1, and that is the line the checker will accept.
+  const printed = typeof found?.attr === "string" ? CONTROLLING[found.attr.toUpperCase()] : undefined;
+  const attribute = printed ?? asked;
+
+  const score = scores[attribute];
+  if (score === undefined) {
+    return decline(entry.name, `measured against ${attribute}, which is not on the sheet`);
+  }
+
   const points = skillCost(difficulty, relative);
   if (points === null) {
     return decline(entry.name, `the book's table does not price ${attribute}${parsed[2] || "+0"}`);
   }
 
   // The sheet writes the tech level it was learned at; the book prints `/TL`.
-  const name = entry.tl !== undefined
-    ? entry.name.replace(/\/TL$/i, `/TL${entry.tl}`)
+  // A model often drops the `/TL` from the name, so the book's name decides
+  // whether there is one to write: "Guns" with tl 8 is Guns/TL8.
+  const base = entry.tl !== undefined
+    && typeof found?.name === "string" && /\/TL$/i.test(found.name)
+    && !/\/TL\d*$/i.test(entry.name)
+    ? `${entry.name}/TL`
     : entry.name;
+  const name = entry.tl !== undefined ? base.replace(/\/TL$/i, `/TL${entry.tl}`) : base;
   const specialty = entry.specialty ? ` (${entry.specialty})` : "";
   const level = `(${attribute}/${difficulty.toUpperCase()})-${score + relative}`;
   return {
@@ -309,7 +330,7 @@ export function buildSheet(entries: BuildEntry[], index: TraitIndex | null = nul
   for (const entry of ordered) {
     if (entry.kind === "attribute" && entry.score !== undefined) scores[entry.name] = entry.score;
     const result = render(entry, scores, index);
-    if (!wasPriced(result)) { sheet.declined.push(result); continue; }
+    if (!wasPriced(result)) { sheet.declined.push({ ...result, entry }); continue; }
     const target = bucket[entry.kind];
     if (target) (sheet[target] as string[]).push(result.line);
     sheet.pointTotal += result.points;

@@ -17,6 +17,8 @@ const index = buildIndex([
   { book_id: 1, kind: "skill", name: "Guns/TL", attr: "DX", difficulty: "E", specialised: true },
   { book_id: 1, kind: "skill", name: "Stealth", attr: "DX", difficulty: "A" },
   { book_id: 1, kind: "skill", name: "Diplomacy", attr: "IQ", difficulty: "H" },
+  { book_id: 1, kind: "skill", name: "Observation", attr: "Per", difficulty: "A" },
+  { book_id: 1, kind: "skill", name: "Scuba/TL", attr: "IQ", difficulty: "A" },
   { book_id: 1, kind: "advantage", name: "Combat Reflexes", cost_text: "15",
     cost_kind: "flat", cost_value: 15 },
   { book_id: 1, kind: "advantage", name: "Damage Resistance", cost_text: "5/level",
@@ -70,6 +72,24 @@ describe("writing the line the campaign already stores", () => {
     // Diplomacy is IQ/Hard (B187). At Hard, IQ+0 costs 4.
     expect(line({ kind: "skill", name: "Diplomacy", level: "IQ" }).line)
       .toBe("Diplomacy (IQ/H)-11 [4]");
+  });
+
+  it("bases a skill on the book's attribute, keeping the level chosen above it", () => {
+    // Found in a live generation: Gemini asked for Scuba at HT+1. Scuba is
+    // IQ/A (B219), so one level of skill is IQ+1, and the line says so.
+    expect(line({ kind: "skill", name: "Scuba/TL", tl: 8, level: "HT+1" }).line)
+      .toBe("Scuba/TL8 (IQ/A)-12 [4]");
+  });
+
+  it("writes the tech level when the model drops /TL from the name", () => {
+    // Also live: "Guns" with tl 8 came out as "Guns (Pistol)", losing the TL.
+    expect(line({ kind: "skill", name: "Guns", specialty: "Pistol", tl: 8, level: "DX+2" }).line)
+      .toBe("Guns/TL8 (Pistol) (DX/E)-14 [4]");
+  });
+
+  it("does not invent a tech level that was not given", () => {
+    expect(line({ kind: "skill", name: "Guns", specialty: "Pistol", level: "DX+2" }).line)
+      .toBe("Guns (Pistol) (DX/E)-14 [4]");
   });
 
   it("prices a levelled trait by its level", () => {
@@ -131,7 +151,7 @@ describe("what it declines, and why", () => {
   });
 
   it("declines a skill measured against an attribute that is not there", () => {
-    expect(why({ kind: "skill", name: "Stealth", level: "Per+1" })).toContain("not on the sheet");
+    expect(why({ kind: "skill", name: "Observation", level: "Per+1" })).toContain("not on the sheet");
   });
 
   it("declines a skill with no level at all", () => {

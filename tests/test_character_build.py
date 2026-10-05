@@ -94,6 +94,21 @@ class TestTheHonestEscapeHatch:
         assert "rather than guessing" in described
 
 
+class TestTheWizardAsksForTheSameThing:
+    """The wizard sends an inlined copy of this schema, because Gemini takes no
+    `$ref`. `wizards.test.ts` pins the same names, so neither side can drift
+    alone: change a field here and that test must change with it."""
+
+    ENTRY_FIELDS = {"kind", "name", "score", "level", "levels", "specialty", "tl",
+                    "self_control", "modifiers", "notes"}
+
+    def test_entry_fields_match_the_wizard(self):
+        assert field_names(BuildEntry) == self.ENTRY_FIELDS
+
+    def test_modifier_fields_match_the_wizard(self):
+        assert field_names(Modifier) == {"name", "percent"}
+
+
 class TestTheSchemaSurvivesTheRoundTrip:
     def test_a_build_serialises_to_json_and_back(self):
         build = CharacterBuild(
