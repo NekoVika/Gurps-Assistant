@@ -39,8 +39,6 @@ export type ProviderSettings = {
   default_chat_model: string;
   default_wizard_provider: string;
   default_wizard_model: string;
-  default_mending_provider: string;
-  default_mending_model: string;
 };
 
 export type ProviderSettingsUpdate = {
@@ -54,8 +52,6 @@ export type ProviderSettingsUpdate = {
   default_chat_model: string;
   default_wizard_provider: string;
   default_wizard_model: string;
-  default_mending_provider: string;
-  default_mending_model: string;
 };
 
 export type CampaignSettings = {
@@ -749,75 +745,6 @@ export async function getActivityEvents(): Promise<ActivityEventSchema[]> {
   }
 }
 
-export type MendRequest = {
-  provider: string;
-  model: string | null;
-  target_type: string;
-  raw_string: string;
-};
-
-export type MendResponse = {
-  mended_string: string;
-};
-
-export async function mendString(request: MendRequest): Promise<MendResponse> {
-  const response = await fetch(`${apiBaseUrl()}/campaign/mend`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(request)
-  });
-
-  if (!response.ok) {
-    let detail = `Mend request failed with ${response.status}`;
-    try {
-      const body = await response.json();
-      if (typeof body.detail === "string" && body.detail.trim()) {
-        detail = body.detail;
-      }
-    } catch {
-      // Ignore JSON parsing errors.
-    }
-    throw new Error(detail);
-  }
-
-  return await response.json() as MendResponse;
-}
-
-export type MendFileRequest = {
-  provider?: string | null;
-  model?: string | null;
-  target_type: string;
-  raw_content: string;
-};
-
-export type MendFileResponse = {
-  mended_content: string;
-};
-
-export async function mendFileString(request: MendFileRequest): Promise<MendFileResponse> {
-  const response = await fetch(`${apiBaseUrl()}/campaign/mend-file`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(request)
-  });
-
-  if (!response.ok) {
-    let detail = `File mend request failed with ${response.status}`;
-    try {
-      const body = await response.json();
-      if (typeof body.detail === "string" && body.detail.trim()) {
-        detail = body.detail;
-      }
-    } catch { }
-    throw new Error(detail);
-  }
-
-  return await response.json() as MendFileResponse;
-}
 
 
 export type TrashItem = {

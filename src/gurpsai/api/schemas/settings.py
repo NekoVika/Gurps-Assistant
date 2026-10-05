@@ -13,8 +13,6 @@ class ProviderSettingsResponse(BaseModel):
     default_chat_model: str
     default_wizard_provider: str
     default_wizard_model: str
-    default_mending_provider: str
-    default_mending_model: str
 
 
 class ProviderSettingsUpdateRequest(BaseModel):
@@ -28,5 +26,3 @@ class ProviderSettingsUpdateRequest(BaseModel):
     default_chat_model: str | None = None
     default_wizard_provider: str | None = None
     default_wizard_model: str | None = None
-    default_mending_provider: str | None = None
-    default_mending_model: str | None = None

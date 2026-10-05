@@ -25,8 +25,6 @@ def get_provider_settings() -> ProviderSettingsResponse:
         default_chat_model=view.default_chat_model,
         default_wizard_provider=view.default_wizard_provider,
         default_wizard_model=view.default_wizard_model,
-        default_mending_provider=view.default_mending_provider,
-        default_mending_model=view.default_mending_model,
     )
 
 
@@ -45,8 +43,6 @@ def update_provider_settings(request: ProviderSettingsUpdateRequest) -> Provider
                 default_chat_model=request.default_chat_model,
                 default_wizard_provider=request.default_wizard_provider,
                 default_wizard_model=request.default_wizard_model,
-                default_mending_provider=request.default_mending_provider,
-                default_mending_model=request.default_mending_model,
             )
         )
     except OSError as exc:
@@ -65,6 +61,4 @@ def update_provider_settings(request: ProviderSettingsUpdateRequest) -> Provider
         default_chat_model=view.default_chat_model,
         default_wizard_provider=view.default_wizard_provider,
         default_wizard_model=view.default_wizard_model,
-        default_mending_provider=view.default_mending_provider,
-        default_mending_model=view.default_mending_model,
     )

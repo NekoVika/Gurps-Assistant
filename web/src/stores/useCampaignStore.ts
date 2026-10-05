@@ -22,8 +22,7 @@ import {
   browseCampaignFolder,
   deleteCampaignFile,
   renameCampaignEntity,
-  writeFileContent,
-  mendFileString
+  writeFileContent
 } from '../lib/api';
 
 interface CampaignState {
@@ -60,7 +59,6 @@ interface CampaignState {
   isEditing: boolean;
   editedContent: string;
   isSaving: boolean;
-  isMendingFile: boolean;
   fileUndoStack: string[];
   isDeleteModalOpen: boolean;
 
@@ -86,7 +84,6 @@ interface CampaignState {
   executeCreateStub: (open?: boolean) => Promise<void>;
   handleSaveEdit: () => Promise<void>;
   handleSaveParsedData: (newData: any) => Promise<void>;
-  handleMendFile: (targetType: string, provider: string, model: string) => Promise<void>;
   handleUndoFileAction: () => Promise<void>;
   executeDeleteFile: () => Promise<void>;
   handleNavigateTo: (targetName: string, suggestedType?: string) => Promise<void>;
@@ -121,7 +118,6 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
   isEditing: false,
   editedContent: "",
   isSaving: false,
-  isMendingFile: false,
   fileUndoStack: [],
   isDeleteModalOpen: false,
 
@@ -343,35 +339,7 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
         get().refreshEntityRegistry();
       }
     } catch (err: any) {
-      set({ fileContentError: err.message || "Failed to save mended file." });
-    }
-  },
-
-  handleMendFile: async (targetType: string, provider: string, model: string) => {
-    const state = get();
-    if (!state.selectedFile) return;
-    set({ isMendingFile: true });
-    try {
-      set({ fileUndoStack: [...state.fileUndoStack, state.selectedFile.content] });
-      const res = await mendFileString({
-        provider: provider,
-        model: model,
-        target_type: targetType,
-        raw_content: state.selectedFile.content
-      });
-      const writeResponse = await writeFileContent(state.selectedFile.path, res.mended_content);
-      if (writeResponse.success) {
-        set({ 
-          selectedFile: { ...state.selectedFile, content: res.mended_content },
-          editedContent: res.mended_content
-        });
-      } else {
-        alert("Mend completed, but failed to write to file system.");
-      }
-    } catch (err: any) {
-      alert("File mending failed: " + err);
-    } finally {
-      set({ isMendingFile: false });
+      set({ fileContentError: err.message || "Failed to save the file." });
     }
   },
 

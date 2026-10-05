@@ -2,66 +2,63 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import type { CharacterJSON } from "../lib/types";
 import { PointBudget } from "./PointBudget";
-import { getMediaUrl, mendString, resolvePlacement, type ResolvedPlacement } from "../lib/api";
+import { getMediaUrl, resolvePlacement, type ResolvedPlacement } from "../lib/api";
 import { InternalLink } from "./InternalLink";
-import { parseAttribute, parseTrait, parseSkill, parseGear, parseHitLocation } from "../lib/TraitFormatters";
+import { parseGear, parseHitLocation } from "../lib/TraitFormatters";
+import { parseEntry, type Entry, type EntryKind } from "../lib/pointBuild";
+import { qualifiedName } from "../lib/traitResolver";
 import { TraitNote } from './TraitNote';
 import { plainName } from '../lib/noteMarkup';
 
 
-function MendableString({ 
-   rawString, targetType, field, idx, data, onUpdate 
-}: { 
-   rawString: string; targetType: string; field: keyof CharacterJSON; idx: number; data: CharacterJSON; onUpdate?: (newData: CharacterJSON) => void 
-}) {
-   const [loading, setLoading] = useState(false);
-   const [history, setHistory] = useState<string[]>([]);
-
-   const handleSave = (newVal: string) => {
-      if (!onUpdate) return;
-      setHistory(prev => [...prev, rawString]);
-      const arr = [...(data[field] as string[])];
-      arr[idx] = newVal;
-      onUpdate({ ...data, [field]: arr });
-   };
-
-   const handleRollback = () => {
-      if (!onUpdate || history.length === 0) return;
-      const last = history[history.length - 1];
-      setHistory(prev => prev.slice(0, -1));
-      const arr = [...(data[field] as string[])];
-      arr[idx] = last;
-      onUpdate({ ...data, [field]: arr });
-   };
-
-   const handleMend = async () => {
-      setLoading(true);
-      try {
-         const res = await mendString({ provider: "", model: "", target_type: targetType, raw_string: rawString });
-         handleSave(res.mended_string);
-      } catch (err) {
-         console.error(err);
-         alert("Mend failed. " + String(err));
-      } finally {
-         setLoading(false);
-      }
-   };
-
+/**
+ * A line the sheet cannot read, shown as written with the reason.
+ *
+ * There used to be an "AI Mend" button here, which asked a model to rewrite
+ * the line as `Name [Points]` — so on a line the app had deliberately left
+ * unpriced, it invented exactly the cost the app had declined to guess. A
+ * line the app cannot read is now the GM's to settle, in the editor that
+ * prices from the catalogue.
+ */
+function UnreadLine({ raw, reason, onEdit }: { raw: string; reason?: string; onEdit?: () => void }) {
    return (
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "4px 8px", background: "rgba(245, 158, 11, 0.1)", borderLeft: "3px solid #f59e0b", margin: "4px 0", borderRadius: "0 4px 4px 0" }}>
-         <span style={{ fontFamily: "monospace", opacity: 0.9, wordBreak: "break-word", fontSize: "0.85em", color: "#fcd34d" }}>{rawString}</span>
-         <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-            {history.length > 0 && onUpdate && (
-               <button onClick={handleRollback} disabled={loading} style={{ background: "transparent", border: "1px solid #f59e0b", color: "#f59e0b", padding: "2px 8px", fontSize: "0.75rem", borderRadius: "4px", cursor: "pointer" }}>
-                  ⎌ Undo
-               </button>
-            )}
-            {onUpdate && <button onClick={handleMend} disabled={loading} style={{ background: "#1f6feb", border: "none", color: "white", padding: "2px 8px", fontSize: "0.75rem", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", boxShadow: "0 2px 4px rgba(0,0,0,0.2)" }}>
-               {loading ? "..." : "AI Mend"}
-            </button>}
-         </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", width: "100%", padding: "4px 8px", background: "rgba(245, 158, 11, 0.1)", borderLeft: "3px solid #f59e0b", margin: "4px 0", borderRadius: "0 4px 4px 0" }}>
+         <span style={{ wordBreak: "break-word" }}>
+            <span style={{ fontFamily: "monospace", opacity: 0.9, fontSize: "0.85em", color: "#fcd34d" }}>{raw}</span>
+            {reason && <span style={{ display: "block", fontSize: "0.75em", opacity: 0.6 }}>{reason}</span>}
+         </span>
+         {onEdit && (
+            <button onClick={onEdit} title="Open the editor to settle this line" style={{ background: "transparent", border: "1px solid #f59e0b", color: "#f59e0b", padding: "2px 8px", fontSize: "0.75rem", borderRadius: "4px", cursor: "pointer", flexShrink: 0 }}>
+               Edit
+            </button>
+         )}
       </div>
    );
+}
+
+/**
+ * Read a mechanical line with the parser the point total uses.
+ *
+ * The sheet used to read traits with a stricter parser that wanted the cost
+ * last, so `Chronic Pain [-10] (Result of EOD accident)` — which the total
+ * counts correctly — was shown as broken. One parser, one answer.
+ */
+function readLine(raw: unknown, kind: EntryKind): Entry | string {
+  if (typeof raw !== "string") return String(raw);
+  const entry = parseEntry(raw, kind);
+  return entry.points === null ? raw : entry;
+}
+
+/** Why a line could not be read, in the GM's words. */
+function unreadReason(raw: string, kind: EntryKind): string {
+  if (/not priced:/.test(raw)) return "";  // it already says why
+  return parseEntry(raw, kind).problem;
+}
+
+/** `(DX/E)-14` into its base and its level. */
+function splitSkillLevel(level: string): { base: string; level: string } {
+  const m = /^\(([^)]*)\)-(-?\d+)$/.exec(level);
+  return m ? { base: m[1], level: m[2] } : { base: "", level };
 }
 
 type Props = {
@@ -69,9 +66,11 @@ type Props = {
   documentPath: string;
   onUpdate?: (newData: CharacterJSON) => void;
   onNavigate?: (target: string) => void;
+  /** Opens the structured editor, where an unreadable line is settled. */
+  onEdit?: () => void;
 };
 
-export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: Props) {
+export function CharacterPassport({ data, documentPath, onNavigate, onEdit }: Props) {
 
   // Placement is resolved rather than stored -- a companion's location is
   // wherever the person they travel with is -- so it has to be asked for.
@@ -88,10 +87,10 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
   const images = data.images || [];
   const safeImageIdx = images.length > 0 && activeImageIdx < images.length ? activeImageIdx : 0;
 
-  const parsedAttributes = (data.attributes || []).map(parseAttribute);
-  const parsedAdvantages = (data.advantages || []).map(parseTrait);
-  const parsedDisadvantages = (data.disadvantages || []).map(parseTrait);
-  const parsedSkills = (data.skills || []).map(parseSkill);
+  const parsedAttributes = (data.attributes || []).map(a => readLine(a, "attribute"));
+  const parsedAdvantages = (data.advantages || []).map(a => readLine(a, "advantage"));
+  const parsedDisadvantages = (data.disadvantages || []).map(d => readLine(d, "disadvantage"));
+  const parsedSkills = (data.skills || []).map(s => readLine(s, "skill"));
   const parsedGear = (data.gear || []).map(parseGear);
   const parsedHitLocations = (typeof data.hitLocations === 'string') 
       ? data.hitLocations 
@@ -292,8 +291,8 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
               <div className="mechanics-section">
                 <span className="eyebrow">Attributes</span>
                 <ul className="stats-list" style={{ display: "flex", gap: "12px", flexWrap: "wrap", listStyle: "none", padding: 0 }}>
-                  {parsedAttributes.map((attr: any, idx: number) => {
-                     if (typeof attr === 'string') return <li key={idx} style={{ width: "100%" }}><MendableString rawString={attr} targetType="Attribute" field="attributes" idx={idx} data={data} onUpdate={onUpdate} /></li>;
+                  {parsedAttributes.map((attr, idx) => {
+                     if (typeof attr === 'string') return <li key={idx} style={{ width: "100%" }}><UnreadLine raw={attr} reason={unreadReason(attr, "attribute")} onEdit={onEdit} /></li>;
                      return <li key={idx} style={{ background: "rgba(255,255,255,0.05)", padding: "4px 8px", borderRadius: "4px" }}><strong>{attr.name}</strong> {attr.level} <span style={{ opacity: 0.6, fontSize: "0.85em" }}>[{attr.points}]</span></li>;
                   })}
                 </ul>
@@ -305,12 +304,12 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
                 <div className="mechanics-section">
                   <span className="eyebrow">Advantages</span>
                    <ul className="traits-list" style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {parsedAdvantages.map((adv: any, idx: number) => {
-                       if (typeof adv === 'string') return <li key={idx} style={{ width: "100%" }}><MendableString rawString={adv} targetType="Trait" field="advantages" idx={idx} data={data} onUpdate={onUpdate} /></li>;
+                    {parsedAdvantages.map((adv, idx) => {
+                       if (typeof adv === 'string') return <li key={idx} style={{ width: "100%" }}><UnreadLine raw={adv} reason={unreadReason(adv, "advantage")} onEdit={onEdit} /></li>;
                        return (
                          <li key={idx}>
                            <div style={{ display: "flex", justifyContent: "space-between" }}>
-                             <span>{plainName(adv.name)}</span>
+                             <span>{plainName(qualifiedName(adv.name, adv.specialty))}</span>
                              <span style={{ opacity: 0.6 }}>[{adv.points}]</span>
                            </div>
                            {adv.notes && <div style={{ fontSize: "0.85em", opacity: 0.7 }}><TraitNote note={adv.notes} /></div>}
@@ -325,12 +324,12 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
                 <div className="mechanics-section">
                   <span className="eyebrow">Disadvantages</span>
                   <ul className="traits-list flaws" style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {parsedDisadvantages.map((dis: any, idx: number) => {
-                       if (typeof dis === 'string') return <li key={idx} style={{ width: "100%" }}><MendableString rawString={dis} targetType="Trait" field="disadvantages" idx={idx} data={data} onUpdate={onUpdate} /></li>;
+                    {parsedDisadvantages.map((dis, idx) => {
+                       if (typeof dis === 'string') return <li key={idx} style={{ width: "100%" }}><UnreadLine raw={dis} reason={unreadReason(dis, "disadvantage")} onEdit={onEdit} /></li>;
                        return (
                          <li key={idx}>
                            <div style={{ display: "flex", justifyContent: "space-between" }}>
-                             <span>{plainName(dis.name)}</span>
+                             <span>{plainName(qualifiedName(dis.name, dis.specialty))}</span>
                              <span style={{ opacity: 0.6 }}>[{dis.points}]</span>
                            </div>
                            {dis.notes && <div style={{ fontSize: "0.85em", opacity: 0.7 }}><TraitNote note={dis.notes} /></div>}
@@ -350,13 +349,14 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
                     <tr><th style={{ paddingBottom: "4px" }}>Name</th><th>Base</th><th>Level</th><th style={{ textAlign: "right" }}>Pts</th></tr>
                   </thead>
                   <tbody>
-                  {parsedSkills.map((skill: any, idx: number) => {
-                    if (typeof skill === 'string') return <tr key={idx}><td colSpan={4}><MendableString rawString={skill} targetType="Skill" field="skills" idx={idx} data={data} onUpdate={onUpdate} /></td></tr>;
+                  {parsedSkills.map((skill, idx) => {
+                    if (typeof skill === 'string') return <tr key={idx}><td colSpan={4}><UnreadLine raw={skill} reason={unreadReason(skill, "skill")} onEdit={onEdit} /></td></tr>;
+                    const { base, level } = splitSkillLevel(skill.level);
                     return (
                       <tr key={idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                        <td style={{ padding: "6px 0" }}>{skill.name} {skill.notes && <span style={{ opacity: 0.6 }}>({skill.notes})</span>}</td>
-                        <td>{skill.base}</td>
-                        <td>{skill.level}</td>
+                        <td style={{ padding: "6px 0" }}>{qualifiedName(skill.name, skill.specialty)} {skill.notes && <span style={{ opacity: 0.6 }}>({skill.notes})</span>}</td>
+                        <td>{base}</td>
+                        <td>{level}</td>
                         <td style={{ textAlign: "right", opacity: 0.6 }}>[{skill.points}]</td>
                       </tr>
                     );
@@ -375,7 +375,7 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
                   </thead>
                   <tbody>
                   {parsedGear.map((g: any, idx: number) => {
-                    if (typeof g === 'string') return <tr key={idx}><td colSpan={4}><MendableString rawString={g} targetType="Gear" field="gear" idx={idx} data={data} onUpdate={onUpdate} /></td></tr>;
+                    if (typeof g === 'string') return <tr key={idx}><td colSpan={4}><UnreadLine raw={g} reason="not in the form Name [Qty] (Weight, Cost) - Notes" onEdit={onEdit} /></td></tr>;
                     return (
                       <tr key={idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                         <td style={{ padding: "6px 0" }}>{g.name} {g.notes && <span style={{ opacity: 0.6 }}>({g.notes})</span>}</td>
@@ -431,7 +431,7 @@ export function CharacterPassport({ data, documentPath, onUpdate, onNavigate }: 
                          return getNum(a.roll) - getNum(b.roll);
                      });
                      return locs.map((loc: any, idx: number) => {
-                       if (typeof loc === 'string') return <tr key={idx}><td colSpan={4}><MendableString rawString={loc} targetType="HitLocation" field="hitLocations" idx={idx} data={data} onUpdate={onUpdate} /></td></tr>;
+                       if (typeof loc === 'string') return <tr key={idx}><td colSpan={4}><UnreadLine raw={loc} reason="not in the form Location (Roll): DR X - Notes" onEdit={onEdit} /></td></tr>;
                        return (
                          <tr key={idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
                            <td style={{ padding: "6px 0", fontWeight: "bold" }}>{loc.roll}</td>

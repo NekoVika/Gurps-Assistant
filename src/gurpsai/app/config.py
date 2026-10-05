@@ -44,8 +44,6 @@ class ModelDefaultsConfig:
     chat_model: str = "gemini-1.5-flash"
     wizard_provider: str = "gemini"
     wizard_model: str = "gemini-1.5-flash"
-    mending_provider: str = "gemini"
-    mending_model: str = "gemini-1.5-flash"
 
 
 @dataclass(frozen=True)
@@ -67,8 +65,6 @@ class ProviderSettingsView:
     default_chat_model: str
     default_wizard_provider: str
     default_wizard_model: str
-    default_mending_provider: str
-    default_mending_model: str
 
 
 @dataclass(frozen=True)
@@ -83,8 +79,6 @@ class ProviderSettingsUpdate:
     default_chat_model: str | None = None
     default_wizard_provider: str | None = None
     default_wizard_model: str | None = None
-    default_mending_provider: str | None = None
-    default_mending_model: str | None = None
 
 
 @dataclass(frozen=True)
@@ -142,8 +136,6 @@ def load_app_config() -> AppConfig:
     default_chat_model = _pick_value("DEFAULT_CHAT_MODEL", file_values, default="gemini-1.5-flash")
     default_wizard_provider = _pick_value("DEFAULT_WIZARD_PROVIDER", file_values, default="gemini")
     default_wizard_model = _pick_value("DEFAULT_WIZARD_MODEL", file_values, default="gemini-1.5-flash")
-    default_mending_provider = _pick_value("DEFAULT_MENDING_PROVIDER", file_values, default="gemini")
-    default_mending_model = _pick_value("DEFAULT_MENDING_MODEL", file_values, default="gemini-1.5-flash")
 
     return AppConfig(
         gemini=GeminiProviderConfig(
@@ -160,8 +152,6 @@ def load_app_config() -> AppConfig:
             chat_model=default_chat_model,
             wizard_provider=default_wizard_provider,
             wizard_model=default_wizard_model,
-            mending_provider=default_mending_provider,
-            mending_model=default_mending_model,
         ),
         campaign=CampaignConfig(
             active_path=campaign_active_path,
@@ -181,8 +171,6 @@ def load_provider_settings_view() -> ProviderSettingsView:
         default_chat_model=config.defaults.chat_model,
         default_wizard_provider=config.defaults.wizard_provider,
         default_wizard_model=config.defaults.wizard_model,
-        default_mending_provider=config.defaults.mending_provider,
-        default_mending_model=config.defaults.mending_model,
     )
 
 
@@ -213,10 +201,6 @@ def save_provider_settings(update: ProviderSettingsUpdate) -> ProviderSettingsVi
         file_values["DEFAULT_WIZARD_PROVIDER"] = update.default_wizard_provider.strip()
     if update.default_wizard_model is not None:
         file_values["DEFAULT_WIZARD_MODEL"] = update.default_wizard_model.strip()
-    if update.default_mending_provider is not None:
-        file_values["DEFAULT_MENDING_PROVIDER"] = update.default_mending_provider.strip()
-    if update.default_mending_model is not None:
-        file_values["DEFAULT_MENDING_MODEL"] = update.default_mending_model.strip()
 
     _write_env_file(ENV_PATH, file_values)
     return load_provider_settings_view()

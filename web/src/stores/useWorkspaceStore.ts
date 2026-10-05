@@ -42,8 +42,6 @@ interface WorkspaceState {
   chatModelDraft: string;
   wizardProviderDraft: string;
   wizardModelDraft: string;
-  mendingProviderDraft: string;
-  mendingModelDraft: string;
   
   selectedProvider: string;
   selectedModel: string;
@@ -87,8 +85,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   chatModelDraft: "",
   wizardProviderDraft: "",
   wizardModelDraft: "",
-  mendingProviderDraft: "",
-  mendingModelDraft: "",
 
   selectedProvider: localStorage.getItem("gurpsai.defaults.provider") || "ollama",
   selectedModel: localStorage.getItem("gurpsai.defaults.model") || "",
@@ -153,8 +149,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         updates.chatModelDraft = settings.default_chat_model || "";
         updates.wizardProviderDraft = settings.default_wizard_provider || "gemini";
         updates.wizardModelDraft = settings.default_wizard_model || "";
-        updates.mendingProviderDraft = settings.default_mending_provider || "gemini";
-        updates.mendingModelDraft = settings.default_mending_model || "";
 
         if (settings.default_chat_model && !localStorage.getItem("gurpsai.defaults.model_override")) {
           updates.selectedModel = settings.default_chat_model;
@@ -189,9 +183,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         default_chat_provider: state.chatProviderDraft,
         default_chat_model: state.chatModelDraft,
         default_wizard_provider: state.wizardProviderDraft,
-        default_wizard_model: state.wizardModelDraft,
-        default_mending_provider: state.mendingProviderDraft,
-        default_mending_model: state.mendingModelDraft
+        default_wizard_model: state.wizardModelDraft
       });
 
       set({

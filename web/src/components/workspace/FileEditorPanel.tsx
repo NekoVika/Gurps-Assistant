@@ -1,5 +1,4 @@
 import { useCampaignStore } from '../../stores/useCampaignStore';
-import { useWorkspaceStore } from '../../stores/useWorkspaceStore';
 import { useChatStore } from '../../stores/useChatStore';
 
 import { DiffEditorPanel } from '../DiffEditorPanel';
@@ -41,15 +40,12 @@ export function FileEditorPanel() {
     setEditedContent,
     handleSaveEdit,
     isSaving,
-    isMendingFile,
     fileUndoStack,
     handleUndoFileAction,
-    handleMendFile,
     handleNavigateTo,
     handleSaveParsedData
   } = useCampaignStore();
 
-  const { providerSettings } = useWorkspaceStore();
   const { pendingDraft, setPendingDraft, addConsumedDraft } = useChatStore();
 
   if (fileContentError) {
@@ -120,10 +116,10 @@ export function FileEditorPanel() {
     }
   }
 
-  const showDeepMend = selectedFile.path.includes("02_Characters") || selectedFile.path.includes("Locations") || selectedFile.path.includes("03_Story") || selectedFile.path.includes("Episode") || selectedFile.path.includes("sessions");
-  const mendTargetType = selectedFile.path.includes("02_Characters") ? "Character" : (selectedFile.path.includes("Locations") ? "Location" : "Story");
-  const mendProvider = providerSettings?.default_mending_provider || "gemini";
-  const mendModel = providerSettings?.default_mending_model || "";
+  // Entity files the app has its own sheet for. When one will not read, the
+  // GM is told so and sent to the editor; no model rewrites it for them.
+  const isEntityFile = selectedFile.path.includes("02_Characters") || selectedFile.path.includes("Locations") || selectedFile.path.includes("03_Story") || selectedFile.path.includes("Episode") || selectedFile.path.includes("sessions");
+  const entityLabel = selectedFile.path.includes("02_Characters") ? "character" : (selectedFile.path.includes("Locations") ? "location" : "story");
 
   return (
     <main className="panel main-panel" style={{ overflowY: "auto", display: "flex", flexDirection: "column" }}>
@@ -137,12 +133,6 @@ export function FileEditorPanel() {
               <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
                 {selectedFile.truncated ? <span className="status-pill pending">Preview truncated</span> : null}
                 
-                {showDeepMend && (selectedFile.path.endsWith('.json') || selectedFile.path.endsWith('.md')) && (
-                  <button type="button" className="chip-button" style={{ borderColor: "rgba(255, 183, 0, 0.4)", color: "#ffb700" }} onClick={() => handleMendFile(mendTargetType, mendProvider, mendModel)} disabled={isMendingFile}>
-                    {isMendingFile ? "Mending..." : "🪄 Deep Mend File"}
-                  </button>
-                )}
-
                 {fileUndoStack.length > 0 && (
                   <button type="button" className="chip-button" style={{ borderColor: "rgba(255, 183, 0, 0.4)", color: "#ffb700" }} onClick={handleUndoFileAction}>
                     ⎌ Undo Last Action
@@ -207,7 +197,7 @@ export function FileEditorPanel() {
                   }
                   if (selectedFile.path.includes("02_Characters")) {
                     const parsed = parseCharacter(selectedFile.content);
-                    if (parsed && parsed.name && parsed.name !== "Unknown Character") return <CharacterPassport data={parsed} documentPath={selectedFile.path} onUpdate={handleSaveParsedData} onNavigate={handleNavigateTo} />;
+                    if (parsed && parsed.name && parsed.name !== "Unknown Character") return <CharacterPassport data={parsed} documentPath={selectedFile.path} onUpdate={handleSaveParsedData} onNavigate={handleNavigateTo} onEdit={() => setIsEditing(true)} />;
                   }
                   if (selectedFile.path.includes("Factions")) {
                     const parsed = parseFaction(selectedFile.content);
@@ -230,14 +220,14 @@ export function FileEditorPanel() {
                   if (selectedFile.path.endsWith('.json')) {
                     return (
                       <div className="json-content" style={{ whiteSpace: "pre-wrap", fontFamily: "monospace", padding: "20px" }}>
-                        {showDeepMend && (
+                        {isEntityFile && (
                           <div style={{ padding: "16px", background: "rgba(255, 100, 100, 0.1)", border: "1px solid #ff4444", borderRadius: "8px", marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div>
-                              <strong style={{ color: "#ff4444" }}>Malformed JSON Detected</strong>
-                              <p style={{ margin: "4px 0 0 0", fontSize: "0.9em", opacity: 0.8 }}>This {mendTargetType} file failed to parse into the rich passport view.</p>
+                              <strong style={{ color: "#ff4444" }}>This file could not be read</strong>
+                              <p style={{ margin: "4px 0 0 0", fontSize: "0.9em", opacity: 0.8 }}>This {entityLabel} file is not valid JSON in the shape the app expects, so it is shown as written below.</p>
                             </div>
-                            <button className="primary-button" onClick={() => handleMendFile(mendTargetType, mendProvider, mendModel)} disabled={isMendingFile}>
-                              {isMendingFile ? "Mending..." : "🪄 AI Mend File"}
+                            <button className="primary-button" onClick={() => setIsEditing(true)}>
+                              📝 Edit
                             </button>
                           </div>
                         )}

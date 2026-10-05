@@ -15,8 +15,6 @@ export function ConfigPanel() {
     chatModelDraft,
     wizardProviderDraft,
     wizardModelDraft,
-    mendingProviderDraft,
-    mendingModelDraft,
     setDraftSetting,
     saveSettings,
     settingsLoading,
@@ -192,25 +190,6 @@ export function ConfigPanel() {
                   </label>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "12px", alignItems: "end" }}>
-                  <label className="chat-control">
-                    <span className="section-label">Default Mending Provider (Fixes/Validation)</span>
-                    <select className="chat-select" value={mendingProviderDraft} onChange={(e) => setDraftSetting('mendingProviderDraft', e.target.value)}>
-                      <option value="">-- Select --</option>
-                      {providers.map(p => <option key={p.name} value={p.name}>{p.display_name}</option>)}
-                    </select>
-                  </label>
-                  <label className="chat-control">
-                    <span className="section-label">Model</span>
-                    <select className="chat-select" value={mendingModelDraft} onChange={(e) => setDraftSetting('mendingModelDraft', e.target.value)}>
-                      <option value="">-- Select Model --</option>
-                      {providers.find(p => p.name === mendingProviderDraft)?.models.map(m => (
-                        <option key={m.id} value={m.id}>{m.display_name}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
              </div>
           </div>
 
@@ -227,7 +206,7 @@ export function ConfigPanel() {
       <section className="preview-card" style={{ padding: "32px", width: "100%" }}>
         <div className="preview-header">
           <p className="section-label">Maintenance</p>
-          <h3>Deep Campaign Mender & Validator</h3>
+          <h3>Campaign Validator</h3>
           <p className="lede">Recursively scan all Campaign JSON files through the structural Pydantic schemas to expose data fractures.</p>
         </div>
         <div style={{ marginTop: "24px" }}>

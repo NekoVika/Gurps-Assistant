@@ -97,6 +97,19 @@ is the correct answer, and it now says why rather than falling silent.
   its tech level when the model leaves `/TL` off the name: Scuba asked for at
   HT+1 is written `Scuba/TL8 (IQ/A)-12`, as B219 has it.
 
+### Correct when written, not repaired afterwards
+
+- **AI Mend and Deep Mend File are gone**, with the Mending provider setting.
+  Asked to fix a line, they asked a model for `Name [Points]` — so on a line
+  the app had deliberately left unpriced, they invented the very cost it had
+  declined to guess. A line the sheet cannot read now shows why, with an
+  **Edit** button that opens the editor.
+- The sheet reads traits and skills with the same parser as the point total,
+  so a valid line such as `Chronic Pain [-10] (Result of EOD accident)` is no
+  longer shown as broken.
+- The assistant's personas are no longer told to put point costs in brackets
+  when building a character.
+
 
 ## 0.4.0 — Everything In Its Place
 
