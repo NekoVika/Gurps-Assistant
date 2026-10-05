@@ -74,6 +74,15 @@ export function entryFromModel(raw: unknown): BuildEntry | null {
   if (!KINDS.has(kind) || !name) return null;
 
   const entry: BuildEntry = { kind, name };
+  // Live, Gemini sent `"name": "Guns (Pistol)"` with no specialty, and the
+  // chat draft then added a second Guns line beside the one it was raising.
+  // A trailing parenthesis is the specialty when none is given: the book is
+  // looked up as "Name (Specialty)" either way, so only the matching changes.
+  const split = kind !== "attribute" && !text(r.specialty) ? /^(.+?)\s*\(([^()]+)\)$/.exec(name) : null;
+  if (split) {
+    entry.name = split[1].trim();
+    entry.specialty = split[2].trim();
+  }
   const score = number(r.score);
   if (score !== undefined) entry.score = score;
   const level = text(r.level);

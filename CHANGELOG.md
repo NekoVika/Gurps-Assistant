@@ -121,6 +121,15 @@ is the correct answer, and it now says why rather than falling silent.
   cannot read are listed as malformed. Every raw-text row now says what form
   it expected.
 - The second, stricter trait parser is gone; nothing used it any more.
+- **Characters drafted in chat are priced before you review them.** The
+  assistant copies the sheet as it is and puts what it adds or changes under
+  `build`, as the wizard does; the review panel prices those choices against
+  the sheet's own scores and shows you the lines the app wrote. A choice
+  replaces the line of the same name, so raising a skill raises it rather than
+  adding a second one. Your stated point total is never changed by a draft.
+- A banner over the diff says how many lines the app priced, and lists any
+  line the model wrote and priced itself, or that the sheet cannot read — so
+  you can reject that hunk rather than discover it later.
 
 
 ## 0.4.0 — Everything In Its Place

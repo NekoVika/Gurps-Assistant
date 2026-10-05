@@ -16,6 +16,26 @@ from gurpsai.app.services.rules import RulesQaService
 logger = logging.getLogger(__name__)
 
 
+# A character drafted in chat is priced by the app before the GM reviews it,
+# the same way the Create Entity wizard's are (web/src/lib/characterDraft.ts).
+# The shape is spelled out here rather than enforced as a schema because a
+# tool's schema is sent with every turn, and most GMs are on free tiers; the
+# review panel reports any line the model priced itself anyway.
+DRAFT_FILE_DESCRIPTION = (
+    "Propose the complete content for a new or updated campaign file. It must be a "
+    "valid JSON object for a JSON file. For a character, never write or change an "
+    "attribute, advantage, disadvantage or skill line yourself, and give no point costs: "
+    "copy the existing lines unchanged, and put what you are adding or changing in a "
+    "\"build\" object -- {\"entries\": [{\"kind\": \"attribute|advantage|disadvantage|skill\", "
+    "\"name\": as the Basic Set names it, plus whichever apply: \"score\" (attributes), "
+    "\"level\" relative to the attribute like \"DX+2\" (skills), \"levels\", \"specialty\", "
+    "\"tl\", \"self_control\" (6, 9, 12 or 15), \"modifiers\" [{\"name\", \"percent\"}], "
+    "\"notes\"}], \"unpriceable\": [what the book does not price with one figure, in plain "
+    "words]}. Give gear as items: {\"name\", \"quantity\", \"weight\", \"cost\", \"notes\"}. "
+    "The app prices every choice and writes the lines."
+)
+
+
 def prune_orphaned_tool_calls(messages: list[ChatMessage]) -> list[ChatMessage]:
     """Drop tool calls that never got a response, and responses with no call.
 
@@ -151,7 +171,7 @@ class ChatService:
                 ),
                 Tool(
                     name="draft_file",
-                    description="Propose the complete content for a new or updated campaign file.",
+                    description=DRAFT_FILE_DESCRIPTION,
                     parameters={
                         "path": ToolParameter(type="string", description="The path where the file should be saved."),
                         "content": ToolParameter(type="string", description="The complete file content. Must be a valid JSON object if updating a JSON file.")

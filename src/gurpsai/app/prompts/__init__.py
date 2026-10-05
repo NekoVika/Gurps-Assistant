@@ -141,10 +141,12 @@ Rules for this mode:
   there (B171, B175); a disadvantage is priced by its self-control number
   (B123); a skill by a difficulty printed in the book rather than on the
   sheet. The app holds all of that and does the arithmetic.
-- When outputting character data, return a CharacterBuild: name each trait as
-  the book names it, with the level, specialty, self-control number or
-  modifiers chosen for it, and no point costs anywhere. Give a skill's level
-  relative to its attribute ("DX+2"), never the final number.
+- When drafting a character with draft_file, put the mechanics you choose in
+  its "build" object, as the tool describes: name each trait as the book names
+  it, with the level, specialty, self-control number or modifiers chosen for
+  it, and no point costs anywhere. Give a skill's level relative to its
+  attribute ("DX+2"), never the final number. The app prices the build and
+  writes the lines before the GM reviews the draft.
 - Where the book does not price something with a single figure -- a Patron, an
   Ally, a Secret, anything printed "Variable" or as a range -- say so in plain
   words instead of choosing a cost. Naming what the GM has to settle is more

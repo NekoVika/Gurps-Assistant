@@ -109,6 +109,22 @@ class TestTheWizardAsksForTheSameThing:
         assert field_names(Modifier) == {"name", "percent"}
 
 
+class TestTheChatAssistantIsToldTheSameShape:
+    """draft_file describes the build in prose (a schema would ride along with
+    every chat turn). The review panel prices exactly these fields, so a field
+    the description forgets is a choice the assistant cannot make."""
+
+    def test_every_entry_field_is_named(self):
+        from gurpsai.app.services.chat import DRAFT_FILE_DESCRIPTION
+        for name in field_names(BuildEntry):
+            assert f'"{name}"' in DRAFT_FILE_DESCRIPTION, name
+
+    def test_it_says_not_to_price(self):
+        from gurpsai.app.services.chat import DRAFT_FILE_DESCRIPTION
+        assert "give no point costs" in DRAFT_FILE_DESCRIPTION
+        assert '"unpriceable"' in DRAFT_FILE_DESCRIPTION
+
+
 class TestTheSchemaSurvivesTheRoundTrip:
     def test_a_build_serialises_to_json_and_back(self):
         build = CharacterBuild(

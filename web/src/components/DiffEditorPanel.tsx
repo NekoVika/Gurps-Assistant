@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { diffLines, type Change } from 'diff';
 import { getFileContent, writeFileContent } from '../lib/api';
+import { prepareCharacterDraft, describeDraft } from '../lib/characterDraft';
+import { useCampaignStore } from '../stores/useCampaignStore';
 
 export type Draft = {
   path: string;
@@ -41,9 +43,19 @@ export function DiffEditorPanel({ draft, onClose, onRefreshTree }: Props) {
   // We use state to store it so we can iterate its indices
   const [changes, setChanges] = useState<Change[]>([]);
 
+  // A character draft is priced before it is shown: the GM reviews the lines
+  // the app wrote, not the ones the model asserted. See characterDraft.ts.
+  const traitIndex = useCampaignStore(s => s.traitIndex);
+  const prepared = useMemo(() => {
+    if (originalContent === null || !draft.isComplete || !draft.path.includes("02_Characters")) return null;
+    return prepareCharacterDraft(draft.content, originalContent, traitIndex);
+  }, [originalContent, draft.content, draft.isComplete, draft.path, traitIndex]);
+  const proposed = prepared ? prepared.content : draft.content;
+  const notice = prepared ? describeDraft(prepared.report) : "";
+
   useEffect(() => {
     if (originalContent !== null && draft.isComplete) {
-      const computed = diffLines(originalContent, draft.content);
+      const computed = diffLines(originalContent, proposed);
       setChanges(computed);
       
       // Initialize all modifications to "accepted" (true)
@@ -55,7 +67,7 @@ export function DiffEditorPanel({ draft, onClose, onRefreshTree }: Props) {
       });
       setHunkStates(initialStates);
     }
-  }, [originalContent, draft.content, draft.isComplete]);
+  }, [originalContent, proposed, draft.isComplete]);
 
   const toggleHunk = (index: number) => {
     setHunkStates(prev => ({
@@ -135,6 +147,15 @@ export function DiffEditorPanel({ draft, onClose, onRefreshTree }: Props) {
           </button>
         </div>
       </header>
+
+      {notice && (
+        <div role="status" style={{ padding: "10px 24px", fontSize: "0.85rem", background: prepared?.report.modelWritten.length || prepared?.report.unreadable.length || prepared?.report.invalid ? "rgba(245, 158, 11, 0.12)" : "rgba(63, 185, 80, 0.10)", borderBottom: "1px solid rgba(149, 181, 255, 0.12)", flexShrink: 0 }}>
+          <div>{notice}</div>
+          {[...(prepared?.report.modelWritten ?? []), ...(prepared?.report.unreadable ?? [])].slice(0, 6).map(line => (
+            <div key={line} style={{ fontFamily: "monospace", fontSize: "0.8rem", opacity: 0.75, marginTop: "2px" }}>{line}</div>
+          ))}
+        </div>
+      )}
 
       <div style={{ flexGrow: 1, overflowY: "auto", padding: "24px", background: "rgba(8, 15, 30, 0.95)" }}>
          <div style={{ 
