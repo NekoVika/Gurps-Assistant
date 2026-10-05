@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { WIZARDS, expandArmorCoverage, CHARACTER_BUILD_SCHEMA, APPEND_TO_GM_SUMMARY } from './wizards';
+import { WIZARDS, expandArmorCoverage, CHARACTER_BUILD_SCHEMA, GEAR_SCHEMA, APPEND_TO_GM_SUMMARY } from './wizards';
 
 const storyWizard = WIZARDS.find(w => w.id === 'story_wizard')!;
 
@@ -129,6 +129,15 @@ describe('create_npc fills everything it should in one pass', () => {
     // every character look unfinished forever.
     expect(npc.fills).not.toContain('build');
     expect(npc.fills).toEqual(expect.arrayContaining(['attributes', 'skills', 'pointTotal', 'hitLocations']));
+  });
+
+  it('asks for gear as items and writes the lines itself', () => {
+    expect(schema.properties.gear).toBe(GEAR_SCHEMA);
+    const out = npc.postProcess!({
+      kind: 'individual', significance: 'core',
+      gear: [{ name: 'Commlink (Handheld)', quantity: 1, weight: '0.5 lbs', cost: '$500', notes: 'TL8' }],
+    });
+    expect(out.gear).toEqual(['Commlink (Handheld) (0.5 lbs, $500) - TL8']);
   });
 
   it('tells the model not to invent a place or a person', () => {

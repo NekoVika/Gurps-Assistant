@@ -20,6 +20,7 @@ import { mergeGenerated, describeMerge, nothingLeftToFill } from "../lib/mergeGe
 import { instantiateTemplate } from "../lib/instantiateTemplate";
 import { WIZARDS, APPEND_TO_GM_SUMMARY, type WizardDef } from "../lib/wizards";
 import { pointBuild } from "../lib/pointBuild";
+import { parseGear } from "../lib/TraitFormatters";
 import { getFileContent, writeFileContent, runStructuredChat } from '../lib/api';
 import { updateParentChildLinks } from '../lib/parentLinks';
 import { useToast } from '../context/ToastContext';
@@ -291,9 +292,11 @@ export function MainWorkspace() {
                   toWrite = { ...toWrite, gmSummary: summary ? `${summary}\n\n${appendix}` : appendix };
                }
                const unread = tempWizard?.pydanticModel === "CharacterData"
-                 ? pointBuild(toWrite).unreadable.length : 0;
+                 ? pointBuild(toWrite).unreadable.length
+                   + (Array.isArray(toWrite.gear) ? toWrite.gear : []).filter(g => typeof parseGear(g) === "string").length
+                 : 0;
                const unreadNote = unread
-                 ? ` ${unread} line${unread === 1 ? "" : "s"} left for you to price.`
+                 ? ` ${unread} line${unread === 1 ? "" : "s"} left for you to settle.`
                  : "";
 
                const jsonStr = JSON.stringify(toWrite, null, 2);

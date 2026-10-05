@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { entryFromModel, sheetFromBuild, statedScores, leftToGMBlock } from "./generatedSheet";
+import { entryFromModel, sheetFromBuild, statedScores, leftToGMBlock, gearLines } from "./generatedSheet";
+import { parseGear } from "./TraitFormatters";
 import { buildIndex } from "./traitAudit";
 import { pointBuild } from "./pointBuild";
 import { checkMechanics } from "./mechanicsCheck";
@@ -159,6 +160,42 @@ describe("a build Gemini 2.5 Flash actually sent", () => {
   it("leaves the checker nothing to say about any of it", () => {
     const out = checkMechanics(sheet as unknown as Record<string, unknown>, live);
     expect(out.findings).toEqual([]);
+  });
+});
+
+describe("gear, written by the app", () => {
+  it("writes every item Gemini sent for Test Rook as a line the sheet reads back", () => {
+    // The same items, as fields. As strings, two of these came back with the
+    // weight read as "9mm) [20] (0.5 lbs".
+    const items = [
+      { name: "Light Pistol", quantity: 1, weight: "1.5 lbs", cost: "$200", notes: "TL8, 2d-1 pi, Acc 3, RoF 3, Rcl 1" },
+      { name: "Ammo, Pistol (9mm)", quantity: 20, weight: "0.5 lbs", cost: "$20", notes: "For light pistol" },
+      { name: "Speargun", quantity: 1, weight: "3 lbs", cost: "$100", notes: "TL8, 1d+1 imp, Acc 2, RoF 1, underwater only" },
+      { name: "Air Tank (Scuba)", quantity: 1, weight: "30 lbs", cost: "$500", notes: "TL8, 1 hour duration" },
+      { name: "Utility Knife", quantity: 1, weight: "0.5 lbs", cost: "$20", notes: "TL8, 1d-3 cut, 1d-4 imp" },
+    ];
+    const lines = gearLines(items);
+    expect(lines).toHaveLength(items.length);
+    lines.forEach((line, i) => {
+      const read = parseGear(line);
+      expect(read).toEqual({ ...items[i], notes: items[i].notes });
+    });
+  });
+
+  it("takes out what would break the line, from the part it would break", () => {
+    const [line] = gearLines([{ name: "Rope [heavy]", quantity: 2, weight: "1,500 (approx) lbs", cost: "$5 (each)", notes: "x" }]);
+    expect(parseGear(line)).toEqual({ name: "Rope heavy", quantity: 2, weight: "1500 approx lbs", cost: "$5 each", notes: "x" });
+  });
+
+  it("writes an unknown weight or cost as ?, never as 0", () => {
+    const [line] = gearLines([{ name: "Relic", quantity: 0 }]);
+    expect(line).toBe("Relic (?, ?)");
+    expect(parseGear(line)).toMatchObject({ name: "Relic", quantity: 1, weight: "?", cost: "?" });
+  });
+
+  it("keeps a string the model sent instead of an item, and drops nothing else", () => {
+    expect(gearLines(["Medkit (2 lbs, $100)", { name: "" }, null, 7])).toEqual(["Medkit (2 lbs, $100)"]);
+    expect(gearLines(undefined)).toEqual([]);
   });
 });
 

@@ -1,6 +1,8 @@
 export function parseAttribute(attr: any) {
   if (typeof attr !== 'string') return attr;
-  const match = attr.match(/^([a-zA-Z\s]+?)\s+([-\d][\d\w\(\)\s\.\-]*?)\s+\[(-?\d+)\]$/);
+  // `Parry N/A [0]` is how a sheet says it has no parry; 28 lines across the
+  // campaign are written that way, and the editor called every one malformed.
+  const match = attr.match(/^([a-zA-Z\s]+?)\s+(N\/A|[-\d][\d\w\(\)\s\.\-]*?)\s+\[(-?\d+)\]$/);
   if (match) return { name: match[1].trim(), level: match[2].trim(), points: match[3] };
   return attr;
 }
@@ -8,21 +10,6 @@ export function parseAttribute(attr: any) {
 export function serializeAttribute(attr: any): string {
    if (typeof attr === 'string') return attr;
    return `${attr.name} ${attr.level} [${attr.points}]`;
-}
-
-export function parseTrait(trait: any) {
-  if (typeof trait !== 'string') return trait;
-  const match = trait.match(/^(.*?)\s*\[(-?\d+)\](?:\s*-\s*(.*?))?(?:\s*\((B\d+)\))?$/);
-  if (match) return { name: match[1].trim(), points: match[2], notes: match[3] ? match[3].trim() : '', reference: match[4] || '' };
-  return trait;
-}
-
-export function serializeTrait(trait: any): string {
-   if (typeof trait === 'string') return trait;
-   let s = `${trait.name} [${trait.points}]`;
-   if (trait.notes) s += ` - ${trait.notes}`;
-   if (trait.reference) s += ` (${trait.reference})`;
-   return s;
 }
 
 export function parseSkill(skill: any) {
@@ -41,7 +28,11 @@ export function serializeSkill(skill: any): string {
 
 export function parseGear(gear: any) {
   if (typeof gear !== 'string') return gear;
-  const match = gear.match(/^(.*?)(?:\s+\[(\d+)\])?\s*\((.*?),\s*(.*?)\)(?:\s*-\s*(.*))?$/);
+  // The weight-and-cost group holds no parentheses of its own. Without that,
+  // a name that carries one -- `Commlink (Handheld)`, `Ammo, Pistol (9mm)` --
+  // was read as the start of the group, and the weight came out as
+  // `9mm) [20] (0.5 lbs`: wrong, and quietly so, which is worse than failing.
+  const match = gear.match(/^(.*?)(?:\s+\[(\d+)\])?\s*\(([^()]*?),\s*([^()]*)\)(?:\s*-\s*(.*))?$/);
   if (match) return { name: match[1].trim(), quantity: match[2] ? parseInt(match[2]) : 1, weight: match[3].trim(), cost: match[4].trim(), notes: match[5] ? match[5].trim() : '' };
   return gear;
 }

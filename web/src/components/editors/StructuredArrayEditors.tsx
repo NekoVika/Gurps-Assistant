@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { WorkspaceSelect } from './WorkspaceSelect';
-import { parseAttribute, serializeAttribute, parseTrait, serializeTrait, parseSkill, serializeSkill, parseGear, serializeGear, parseHitLocation, serializeHitLocation } from '../../lib/TraitFormatters';
+import { parseAttribute, serializeAttribute, parseSkill, serializeSkill, parseGear, serializeGear, parseHitLocation, serializeHitLocation } from '../../lib/TraitFormatters';
 
 
 type ListProps = { title: string; items: string[]; onChange: (items: string[]) => void; };
@@ -52,6 +52,23 @@ function useEditableRows<T>(
     return [rows, write] as const;
 }
 
+/**
+ * Why a stored line is shown as raw text rather than as fields.
+ *
+ * The box used to say only "Raw String (Unparsed)", which left the GM to
+ * guess what the app wanted. A line that explains itself -- one the app wrote
+ * as "not priced: ..." -- is left to do so.
+ */
+function UnreadHint({ raw, why }: { raw: string; why: string }) {
+    if (/not priced:/.test(raw)) return null;
+    return <div style={{ fontSize: "0.75rem", opacity: 0.6, marginTop: "4px" }}>{why}</div>;
+}
+
+const ATTRIBUTE_FORM = "not read as an attribute: expected Name Level [Points], e.g. Dodge 9 [0]";
+const SKILL_FORM ="not read as a skill: expected Name (Attribute/Difficulty)-Level [Points]";
+const GEAR_FORM = "not read as gear: expected Name [Qty] (Weight, Cost) - Notes";
+const LOCATION_FORM = "not read as a hit location: expected Location (Roll): DR X - Notes";
+
 export function AttributeEditorList({ title, items = [], onChange }: ListProps) {
     const coreAttributes = ["ST", "DX", "IQ", "HT", "HP", "Will", "Per", "FP", "Basic Speed", "Basic Move"];
     const [parsed, writeRows] = useEditableRows(items, parseAttribute, serializeAttribute, onChange);
@@ -90,6 +107,21 @@ export function AttributeEditorList({ title, items = [], onChange }: ListProps) 
         triggerChange(coreData, newExtras);
     };
 
+    const updateExtraField = (idx: number, field: string, val: string) => {
+        const newExtras = [...extras];
+        const row = newExtras[idx];
+        if (typeof row === 'string') return;
+        newExtras[idx] = { ...row, [field]: val };
+        triggerChange(coreData, newExtras);
+    };
+
+    // Dodge, Parry and Block are not among the ten every sheet carries, but a
+    // line like "Parry N/A [0]" is perfectly good. They used to be listed under
+    // "Malformed" with everything the parser could not read, which told the GM
+    // their sheet was broken when it was not.
+    const otherRows = extras.map((ex, idx) => ({ ex, idx })).filter(({ ex }) => typeof ex !== 'string');
+    const unreadRows = extras.map((ex, idx) => ({ ex, idx })).filter(({ ex }) => typeof ex === 'string');
+
     const deleteExtra = (idx: number) => {
         const newExtras = [...extras];
         newExtras.splice(idx, 1);
@@ -108,97 +140,32 @@ export function AttributeEditorList({ title, items = [], onChange }: ListProps) 
                     </div>
                 ))}
             </div>
-            {extras.length > 0 && (
+            {otherRows.length > 0 && (
+                <div style={{ marginTop: "16px", borderTop: "1px dashed rgba(255,255,255,0.1)", paddingTop: "16px" }}>
+                    <h5 className="editor-label" style={{ margin: "0 0 12px 0", color: "#a8c7fa" }}>Defences & Other</h5>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px" }}>
+                        {otherRows.map(({ ex, idx }) => typeof ex !== 'string' && (
+                            <div key={`other-${idx}`} style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.03)", padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)", gap: "8px" }}>
+                                <input className="editor-input" style={{ padding: "6px 8px", width: "85px" }} value={ex.name} onChange={e => updateExtraField(idx, 'name', e.target.value)} title="Name" placeholder="Name" />
+                                <input className="editor-input" style={{ padding: "6px 8px", flex: 1, minWidth: 0 }} value={ex.level} onChange={e => updateExtraField(idx, 'level', e.target.value)} title="Level" placeholder="Level" />
+                                <input className="editor-input" style={{ padding: "6px 8px", width: "60px" }} value={ex.points} onChange={e => updateExtraField(idx, 'points', e.target.value)} type="number" title="Points" placeholder="Pts" />
+                                <button type="button" onClick={() => deleteExtra(idx)} className="editor-action-btn danger">✕</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            {unreadRows.length > 0 && (
                 <div style={{ marginTop: "16px", borderTop: "1px dashed rgba(255,255,255,0.1)", paddingTop: "16px" }}>
                     <h5 className="editor-label" style={{ margin: "0 0 12px 0", color: "#ff7b72" }}>Unrecognized / Malformed Attributes</h5>
-                    {extras.map((ex, idx) => (
+                    {unreadRows.map(({ ex, idx }, row) => (
                         <div key={`extra-${idx}`} className="editor-array-item" style={{ alignItems: "flex-start" }}>
-                            <Field label="Raw String" hideLabel={idx > 0}><input className="editor-input" value={typeof ex === 'string' ? ex : serializeAttribute(ex)} onChange={e => updateExtra(idx, e.target.value)} /></Field>
-                            <button type="button" onClick={() => deleteExtra(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
+                            <Field label="Raw String" hideLabel={row > 0}><input className="editor-input" value={typeof ex === 'string' ? ex : serializeAttribute(ex)} onChange={e => updateExtra(idx, e.target.value)} /><UnreadHint raw={String(ex)} why={ATTRIBUTE_FORM} /></Field>
+                            <button type="button" onClick={() => deleteExtra(idx)} className="editor-action-btn danger" style={{ marginTop: row > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
                     ))}
                 </div>
             )}
-        </div>
-    );
-}
-
-export function TraitEditorList({ title, items = [], onChange }: ListProps) {
-    const [parsed, write] = useEditableRows(items, parseTrait, serializeTrait, onChange);
-
-    const updateItem = (idx: number, field: string, val: any) => {
-        const newParsed = [...parsed];
-        if (typeof newParsed[idx] === 'string') return;
-        newParsed[idx] = { ...(newParsed[idx] as any), [field]: val };
-        write(newParsed);
-    };
-
-    const updateRaw = (idx: number, val: string) => {
-        const newParsed = [...parsed];
-        newParsed[idx] = val;
-        write(newParsed);
-    };
-
-    const deleteItem = (idx: number) => {
-        const newParsed = [...parsed];
-        newParsed.splice(idx, 1);
-        write(newParsed);
-    };
-
-    const moveItem = (idx: number, direction: -1 | 1) => {
-        if (idx + direction < 0 || idx + direction >= parsed.length) return;
-        const newParsed = [...parsed];
-        const temp = newParsed[idx];
-        newParsed[idx] = newParsed[idx + direction];
-        newParsed[idx + direction] = temp;
-        write(newParsed);
-    };
-
-    const addItem = () => {
-        write([...parsed, " [0]"]);
-    };
-
-    return (
-        <div className="editor-array-container">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span className="editor-label" style={{ color: "#a8c7fa" }}>{title}</span>
-                <button type="button" className="editor-add-btn" onClick={addItem}>+ Add Trait</button>
-            </div>
-            {parsed.map((trait, idx) => {
-                if (typeof trait === 'string') {
-                    return (
-                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start", display: "flex", gap: "8px" }}>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: idx > 0 ? "4px" : "26px" }}>
-                                <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
-                                <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={trait} onChange={e => updateRaw(idx, e.target.value)} /></Field>
-                            </div>
-                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
-                        </div>
-                    );
-                }
-                return (
-                    <div key={idx} className="editor-array-item" style={{ display: "flex", alignItems: "flex-start", padding: "8px", gap: "8px" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "2px", paddingTop: "4px" }}>
-                            <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
-                            <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
-                        </div>
-                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
-                        <div style={{ display: "flex", gap: "8px", width: "100%", alignItems: "center" }}>
-                            <input className="editor-input" style={{ flex: 3 }} placeholder="Trait Name" value={trait.name} onChange={e => updateItem(idx, 'name', e.target.value)} />
-                            <input className="editor-input" style={{ width: "80px" }} placeholder="Pts" value={trait.points} onChange={e => updateItem(idx, 'points', e.target.value)} type="number" />
-                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger">✕</button>
-                        </div>
-                        <div style={{ display: "flex", gap: "8px", width: "100%", paddingRight: "36px" }}>
-                            <input className="editor-input" style={{ flex: 3 }} placeholder="Notes" value={trait.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} />
-                            <input className="editor-input" style={{ flex: 1 }} placeholder="Ref (e.g., B42)" value={trait.reference} onChange={e => updateItem(idx, 'reference', e.target.value)} />
-                        </div>
-                        </div>
-                    </div>
-                );
-            })}
         </div>
     );
 }
@@ -253,7 +220,7 @@ export function SkillEditorList({ title, items = [], onChange }: ListProps) {
                                 <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
                             </div>
                             <div style={{ flex: 1 }}>
-                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={skill} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={skill} onChange={e => updateRaw(idx, e.target.value)} /><UnreadHint raw={skill} why={SKILL_FORM} /></Field>
                             </div>
                             <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
@@ -334,7 +301,7 @@ export function GearEditorList({ title, items = [], onChange }: ListProps) {
                                 <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
                             </div>
                             <div style={{ flex: 1 }}>
-                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={gear} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={gear} onChange={e => updateRaw(idx, e.target.value)} /><UnreadHint raw={gear} why={GEAR_FORM} /></Field>
                             </div>
                             <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>
@@ -415,7 +382,7 @@ export function HitLocationEditorList({ title, items = [], onChange }: ListProps
                                 <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
                             </div>
                             <div style={{ flex: 1 }}>
-                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={loc} onChange={e => updateRaw(idx, e.target.value)} /></Field>
+                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={loc} onChange={e => updateRaw(idx, e.target.value)} /><UnreadHint raw={loc} why={LOCATION_FORM} /></Field>
                             </div>
                             <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
                         </div>

@@ -1,4 +1,4 @@
-import { sheetFromBuild, leftToGMBlock } from "./generatedSheet";
+import { sheetFromBuild, leftToGMBlock, gearLines } from "./generatedSheet";
 import type { TraitIndex } from "./traitResolver";
 
 export type WizardField = {
@@ -146,6 +146,22 @@ export const CHARACTER_BUILD_SCHEMA = {
     },
   },
   required: ["entries", "unpriceable"],
+};
+
+/** A character's equipment as items. The app writes the stored line. */
+export const GEAR_SCHEMA = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      name: { type: "string", description: "The item, e.g. 'Light Pistol', 'Commlink (Handheld)'." },
+      quantity: { type: "integer", description: "How many. 1 for a single item." },
+      weight: { type: "string", description: "As the book lists it: '1.5 lbs'. 'neg.' for negligible." },
+      cost: { type: "string", description: "As the book lists it: '$200'." },
+      notes: { type: "string", description: "Tech level, damage, Acc, RoF and anything else." },
+    },
+    required: ["name", "quantity", "weight", "cost"],
+  },
 };
 
 export const WIZARDS: WizardDef[] = [
@@ -417,13 +433,12 @@ export const WIZARDS: WizardDef[] = [
           : null,
         `  build.unpriceable: anything the book does not price with one figure — a Patron, Ally,`,
         `  Contact, Secret, anything "Variable" or a range — in plain words, rather than a guessed entry.`,
-        // The parenthetical is parsed as exactly (weight, cost). A model left to
-        // itself puts the tech level there and the weight in the notes, and the
-        // entry then cannot be decomposed by the editor at all.
-        `- gear: array of strings formatted EXACTLY as "Name [Qty] (Weight, Cost) - Notes".`,
-        `  The parentheses hold ONLY weight and cost, comma-separated. Everything else — tech level,`,
-        `  damage, RoF, Acc — goes after the dash. Correct: "Assault Rifle [1] (9 lbs, $2000) - TL8, 7d pi, Acc 6, RoF 9".`,
-        `  Wrong: "Assault Rifle (TL8) - 7d pi, Wt 9 lbs, $2000".`,
+        // Asked for "Name [Qty] (Weight, Cost) - Notes" as a string, a model put
+        // the tech level in the parentheses and the weight in the notes, and
+        // the app then could not read the line. Each part is its own field now
+        // and the app writes the line.
+        `- gear: one item per entry, each part in its own field. weight and cost are as the book`,
+        `  lists them ("1.5 lbs", "$200"); everything else — tech level, damage, Acc, RoF — goes in notes.`,
         `- concept: a short archetype phrase of 2-5 words — "Ex-military smuggling pilot", "Sewer-dwelling scavenger".`,
         `  NOT a sentence and NOT a summary of their situation; the GM reads it as a label beside the name.`,
         `- role: the exact value provided above, unchanged. Do not expand it into a sentence.`,
@@ -461,11 +476,9 @@ export const WIZARDS: WizardDef[] = [
         // Attributes, traits, skills and the total are not asked for: postProcess
         // writes them from this, priced by the app.
         build: CHARACTER_BUILD_SCHEMA,
-        gear: {
-          type: "array",
-          items: { type: "string" },
-          description: "e.g. ['Medkit (2 lbs, $100) - First Aid kit', 'Light Pistol [1] (1.5 lbs, $200) - 2d-1 pi']"
-        },
+        // Items rather than lines, for the same reason as `build`: postProcess
+        // writes each one in the notation the sheet stores.
+        gear: GEAR_SCHEMA,
         armorCoverage: {
           type: "object",
           description: "Sparse map of only the locations with DR > 0. Omit locations with DR 0.",
@@ -561,6 +574,7 @@ export const WIZARDS: WizardDef[] = [
         disadvantages: sheet.disadvantages,
         skills: sheet.skills,
         pointTotal: sheet.pointTotal,
+        gear: gearLines(rest.gear),
         hitLocations: expandArmorCoverage(
           armorCoverage as Record<string, { dr: number; source?: string }> | undefined
         ),

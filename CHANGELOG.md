@@ -109,6 +109,18 @@ is the correct answer, and it now says why rather than falling silent.
   longer shown as broken.
 - The assistant's personas are no longer told to put point costs in brackets
   when building a character.
+- **Generated gear is written by the app.** The model sends each item's name,
+  quantity, weight, cost and notes, and the app writes the line. A weight or
+  cost the model did not give is written `?`, never 0. The success message
+  counts any line, mechanical or gear, left for you to settle.
+- Gear whose name has parentheses — `Commlink (Handheld)`, `Tactical Vest
+  (Light)` — is read correctly. Six lines across the campaign had their weight
+  shown as `Handheld) [1] (0.5 lbs`.
+- The attribute editor no longer files `Dodge 10 [0]` or `Parry N/A [0]` under
+  "Malformed": they appear under **Defences & Other**, and only lines it truly
+  cannot read are listed as malformed. Every raw-text row now says what form
+  it expected.
+- The second, stricter trait parser is gone; nothing used it any more.
 
 
 ## 0.4.0 — Everything In Its Place

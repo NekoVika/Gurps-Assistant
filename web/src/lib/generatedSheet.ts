@@ -22,6 +22,7 @@ import { buildSheet, type BuildEntry, type Declined } from "./characterBuild";
 import { derive, ATTRIBUTE_COST } from "./gurpsRules";
 import type { Modifier } from "./modifiers";
 import { parseEntry } from "./pointBuild";
+import { serializeGear } from "./TraitFormatters";
 import type { TraitIndex } from "./traitResolver";
 
 const KINDS = new Set<BuildEntry["kind"]>(["attribute", "advantage", "disadvantage", "skill"]);
@@ -237,6 +238,36 @@ export function sheetFromBuild(
     unpriced: declined.length,
     leftToGM,
   };
+}
+
+/**
+ * A model's gear items, written as the lines the sheet stores.
+ *
+ * Each part arrives in its own field, so the only way to write an unreadable
+ * line is for a field to carry the notation's own punctuation: a bracket in a
+ * name reads as a quantity, a parenthesis or comma in a weight splits the
+ * weight-and-cost group. Those are taken out of the parts they would break.
+ * A weight or cost the model did not give is written "?", never 0 — a
+ * nought here would read as a fact.
+ *
+ * A string where an item was expected is kept as sent: it is the model's
+ * choice, and the sheet will say if it cannot read it.
+ */
+export function gearLines(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap(item => {
+    if (typeof item === "string") return item.trim() ? [item.trim()] : [];
+    if (!item || typeof item !== "object") return [];
+    const r = item as Record<string, unknown>;
+    const name = text(r.name)?.replace(/[[\]]/g, "").trim();
+    if (!name) return [];
+    const count = number(r.quantity);
+    const quantity = count !== undefined && count >= 1 ? Math.floor(count) : 1;
+    const weight = text(r.weight)?.replace(/[(),]/g, "").trim() || "?";
+    const cost = text(r.cost)?.replace(/[()]/g, "").trim() || "?";
+    const notes = text(r.notes);
+    return [serializeGear({ name, quantity, weight, cost, notes: notes ?? "" })];
+  });
 }
 
 /** The GM Summary block for what the model handed back unpriced. */
