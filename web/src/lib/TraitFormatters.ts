@@ -12,20 +12,6 @@ export function serializeAttribute(attr: any): string {
    return `${attr.name} ${attr.level} [${attr.points}]`;
 }
 
-export function parseSkill(skill: any) {
-  if (typeof skill !== 'string') return skill;
-  const match = skill.match(/^(.*?)\s*\(([^()]*)\)-(\d+)\s*\[(-?\d+)\](?:\s*-\s*(.*))?$/);
-  if (match) return { name: match[1].trim(), base: match[2].trim(), level: parseInt(match[3]), points: parseInt(match[4]), notes: match[5] ? match[5].trim() : '' };
-  return skill;
-}
-
-export function serializeSkill(skill: any): string {
-   if (typeof skill === 'string') return skill;
-   let s = `${skill.name} (${skill.base})-${skill.level} [${skill.points}]`;
-   if (skill.notes) s += ` - ${skill.notes}`;
-   return s;
-}
-
 export function parseGear(gear: any) {
   if (typeof gear !== 'string') return gear;
   // The weight-and-cost group holds no parentheses of its own. Without that,

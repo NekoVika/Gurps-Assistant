@@ -6,8 +6,9 @@ import { ImageArrayEditor } from './ImageArrayEditor';
 import { KindField, WhereField, StoryPlacementField } from './PlacementFields';
 import { CollapsibleSection, hasAnyValue } from './CollapsibleSection';
 import { PointBudgetBar } from './PointBudgetBar';
-import { AttributeEditorList, SkillEditorList, GearEditorList, HitLocationEditorList, EntityRelationEditorList } from './StructuredArrayEditors';
+import { AttributeEditorList, GearEditorList, HitLocationEditorList, EntityRelationEditorList } from './StructuredArrayEditors';
 import { TraitCostEditor } from './TraitCostEditor';
+import { SkillCostEditor } from './SkillCostEditor';
 
 type Props = {
     value: string;
@@ -114,10 +115,11 @@ export function CharacterEditor({ value, onChange, documentPath = "" }: Props) {
                     items={(data.attributes || []).map(a => typeof a === 'string' ? a : JSON.stringify(a))} 
                     onChange={(val) => handleUpdate('attributes', val)} 
                 />
-                <SkillEditorList 
-                    title="Skills" 
-                    items={(data.skills || []).map(s => typeof s === 'string' ? s : JSON.stringify(s))} 
-                    onChange={(val) => handleUpdate('skills', val)} 
+                <SkillCostEditor
+                    title="Skills"
+                    items={(data.skills || []).map(s => typeof s === 'string' ? s : JSON.stringify(s))}
+                    attributes={(data.attributes || []).map(a => typeof a === 'string' ? a : JSON.stringify(a))}
+                    onChange={(val) => handleUpdate('skills', val)}
                 />
                 <div className="editor-grid-2">
                     <TraitCostEditor

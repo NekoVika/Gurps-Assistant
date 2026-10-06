@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
-import { SkillEditorList, AttributeEditorList, GearEditorList } from "./StructuredArrayEditors";
+import { AttributeEditorList, GearEditorList } from "./StructuredArrayEditors";
 
 /**
  * Typing into a list editor.
@@ -33,6 +33,56 @@ function typeInto(get: () => HTMLInputElement, text: string) {
   }
 }
 
+describe("attributes, priced by the app", () => {
+  const score = (name: string) => screen.getByLabelText(`${name} score`) as HTMLInputElement;
+  const points = (name: string) => screen.getByLabelText(`${name} points`) as HTMLInputElement;
+
+  it("takes the book's cost with the score while it was the book's (B16)", () => {
+    render(<Holder Editor={AttributeEditorList} initial={["DX 12 [40]"]} />);
+    fireEvent.change(score("DX"), { target: { value: "13" } });
+    expect(stored()).toContain("DX 13 [60]");
+  });
+
+  it("keeps a figure the GM set, and shows the book's beside it", () => {
+    render(<Holder Editor={AttributeEditorList} initial={["DX 12 [35]"]} />);
+    fireEvent.change(score("DX"), { target: { value: "13" } });
+    expect(stored()).toContain("DX 13 [35]");
+    expect(screen.getByText("the book gives 60 for DX 13")).toBeTruthy();
+    fireEvent.click(screen.getByText("Use 60"));
+    expect(stored()).toContain("DX 13 [60]");
+  });
+
+  it("prices a stub's first attribute, which had no line at all", () => {
+    // Step 7 of the manual check: a stub, then DX 14 set by hand.
+    render(<Holder Editor={AttributeEditorList} initial={[]} />);
+    fireEvent.change(score("DX"), { target: { value: "14" } });
+    expect(stored()).toEqual(["DX 14 [80]"]);
+  });
+
+  it("shows a missing secondary at its real default, not 10", () => {
+    // HP is ST, Per is IQ (B18).
+    render(<Holder Editor={AttributeEditorList} initial={["ST 13 [30]", "IQ 12 [40]"]} />);
+    expect(score("HP").value).toBe("13");
+    expect(score("Per").value).toBe("12");
+  });
+
+  it("prices a secondary against the attribute it comes from", () => {
+    render(<Holder Editor={AttributeEditorList} initial={["ST 11 [10]", "HP 11 [0]"]} />);
+    fireEvent.change(score("HP"), { target: { value: "13" } });
+    expect(stored()).toContain("HP 13 [4]");
+  });
+
+  it("never rewrites another attribute's line, and says what it now costs", () => {
+    // Raising ST changes what HP 13 costs. The HP line is the GM's; the book's
+    // figure is shown with a button instead.
+    render(<Holder Editor={AttributeEditorList} initial={["ST 11 [10]", "HP 13 [4]"]} />);
+    fireEvent.change(score("ST"), { target: { value: "12" } });
+    expect(stored()).toEqual(["ST 12 [20]", "HP 13 [4]"]);
+    expect(screen.getByText("the book gives 2 for HP 13")).toBeTruthy();
+    expect(points("HP").value).toBe("4");
+  });
+});
+
 describe("what the editor calls malformed", () => {
   it("does not call a defence malformed because it is not one of the ten", () => {
     // Blue Lizard: "Dodge 10 [0]", "Parry N/A [0]", "Block N/A [0]" were all
@@ -49,16 +99,8 @@ describe("what the editor calls malformed", () => {
     expect(screen.getByText(/expected Name Level \[Points\]/)).toBeTruthy();
   });
 
-  it("explains a skill line it cannot read", () => {
-    render(<Holder Editor={SkillEditorList} initial={["B ()- [0] - rawling (DX/E)-16 [[4]]"]} />);
-    expect(screen.getByText(/not read as a skill/)).toBeTruthy();
-  });
-
-  it("leaves a line that already says why to say it", () => {
-    render(<Holder Editor={SkillEditorList} initial={["Diving - at HT+2; not priced: no catalogue entry"]} />);
-    expect(screen.queryByText(/not read as a skill/)).toBeNull();
-  });
-
+  
+  
   it("reads gear whose name has parentheses", () => {
     render(<Holder Editor={GearEditorList} initial={["Commlink (Handheld) [1] (0.5 lbs, $500) - TL8"]} />);
     expect(screen.getByDisplayValue("Commlink (Handheld)")).toBeTruthy();
@@ -67,21 +109,8 @@ describe("what the editor calls malformed", () => {
 });
 
 describe("spaces survive being typed", () => {
-  it("in a skill's notes", () => {
-    render(<Harness Editor={SkillEditorList} initial={["Stealth (DX/A)-14 [4]"]} />);
-    const get = () => screen.getByPlaceholderText("Notes") as HTMLInputElement;
-    typeInto(get, "moves in shadow");
-    expect(get().value).toBe("moves in shadow");
-  });
-
-  it("in a skill's name", () => {
-    render(<Harness Editor={SkillEditorList} initial={["Stealth (DX/A)-14 [4]"]} />);
-    const get = () => screen.getAllByRole("textbox")[0] as HTMLInputElement;
-    fireEvent.change(get(), { target: { value: "" } });
-    typeInto(get, "Fast Talk");
-    expect(get().value).toBe("Fast Talk");
-  });
-
+  
+  
   it("in an attribute that is not one of the ten", () => {
     render(<Holder Editor={AttributeEditorList} initial={["Parry N/A [0]"]} />);
     const get = () => screen.getByDisplayValue("N/A") as HTMLInputElement;

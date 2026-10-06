@@ -49,6 +49,34 @@ Built from your own PDFs, so nothing is shipped that you did not buy.
   book, the book's figure appears beside it with a button, and the choice stays
   yours.
 
+### Skills and attributes are priced too
+
+- **You type a skill's level; the app works out its cost.** Pick the skill
+  from the catalogue and type the level you roll against. The book supplies
+  what it is based on and how hard it is, and the editor shows what that
+  means: `DX/E · DX+2 · 4 pts`.
+- **Skills of your own.** A name the book doesn't list is yours: choose its
+  attribute and difficulty, and the same Skill Cost Table (B172) prices it.
+  The line records its difficulty, `Rumour-Mongering (IQ/A)-12 [4]`, so the
+  sheet explains itself.
+- A cost that was the book's follows the level as you change it. One you
+  typed yourself is kept, with the book's beside it and a button.
+- Where a line uses a different attribute than the book — Abella's Armoury
+  says DX, the book says IQ — the editor shows the book's, with a button.
+- An edited line is written as `(DX/A)-12`, which states its difficulty and
+  cannot contradict itself. Lines you don't touch keep their own notation.
+- **When an attribute changes, the editor asks before moving skills.** Raise
+  DX and it offers: "DX changed 12 → 13. 2 skills based on DX would rise by 1
+  for the same points", with *Raise their levels* and *Not now*.
+- **Attributes price themselves.** Type DX 13 and it costs 60 (B16); HP, Will,
+  Per and FP are priced against what they come from. Changing one attribute
+  never rewrites another's line — raise ST and HP shows what it now costs,
+  with a button.
+- An attribute a sheet doesn't list now shows its real default: a character
+  with ST 13 and no HP line has 13 HP, not 10.
+- A skill line nothing can read is shown as written with the reason, and is
+  never taken apart. Correct the text and it becomes an ordinary row.
+
 ### Traits you invented
 
 - Declare a trait in **Custom Traits** and the app stops calling it

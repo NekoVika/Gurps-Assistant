@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { render as renderEntry, wasPriced } from '../../lib/characterBuild';
+import { ATTRIBUTE_COST, derive } from '../../lib/gurpsRules';
 import { WorkspaceSelect } from './WorkspaceSelect';
-import { parseAttribute, serializeAttribute, parseSkill, serializeSkill, parseGear, serializeGear, parseHitLocation, serializeHitLocation } from '../../lib/TraitFormatters';
+import { parseAttribute, serializeAttribute, parseGear, serializeGear, parseHitLocation, serializeHitLocation } from '../../lib/TraitFormatters';
 
 
 type ListProps = { title: string; items: string[]; onChange: (items: string[]) => void; };
@@ -65,21 +67,56 @@ function UnreadHint({ raw, why }: { raw: string; why: string }) {
 }
 
 const ATTRIBUTE_FORM = "not read as an attribute: expected Name Level [Points], e.g. Dodge 9 [0]";
-const SKILL_FORM ="not read as a skill: expected Name (Attribute/Difficulty)-Level [Points]";
 const GEAR_FORM = "not read as gear: expected Name [Qty] (Weight, Cost) - Notes";
 const LOCATION_FORM = "not read as a hit location: expected Location (Roll): DR X - Notes";
+
+/**
+ * What an attribute's score costs on this sheet, or null where the book does
+ * not say (a score that is not a number, `N/A`). Secondaries are priced
+ * against the attribute they come from (B18-19), so the primaries the editor
+ * is showing are passed in.
+ */
+function attributePrice(name: string, level: string, core: Array<{ name: string; level: string }>): number | null {
+    const score = Number(level);
+    if (level.trim() === "" || !Number.isFinite(score)) return null;
+    const scores: Record<string, number> = {};
+    for (const c of core) {
+        const n = Number(c.level);
+        if (c.name in ATTRIBUTE_COST && Number.isFinite(n)) scores[c.name] = n;
+    }
+    const out = renderEntry({ kind: "attribute", name, score }, scores, null);
+    return wasPriced(out) ? out.points : null;
+}
+
+/**
+ * The score an attribute has when the sheet does not list it. Not 10 for all
+ * of them: HP is ST, Will and Per are IQ, FP is HT, and Basic Speed and Move
+ * come from DX and HT (B18-19). A sheet with ST 13 and no HP line has 13 HP.
+ */
+function defaultLevel(name: string, core: Array<{ name: string; level: string }>): string {
+    const of = (n: string) => Number(core.find(c => c.name === n)?.level ?? 10);
+    const d = derive({ ST: of("ST"), DX: of("DX"), IQ: of("IQ"), HT: of("HT") });
+    const value: Record<string, number | null> = {
+        HP: d.hp, Will: d.will, Per: d.per, FP: d.fp, "Basic Speed": d.basicSpeed, "Basic Move": d.basicMove,
+    };
+    const v = value[name];
+    if (v === undefined || v === null) return "10";
+    return name === "Basic Speed" ? v.toFixed(2) : String(v);
+}
 
 export function AttributeEditorList({ title, items = [], onChange }: ListProps) {
     const coreAttributes = ["ST", "DX", "IQ", "HT", "HP", "Will", "Per", "FP", "Basic Speed", "Basic Move"];
     const [parsed, writeRows] = useEditableRows(items, parseAttribute, serializeAttribute, onChange);
-    
-    const coreData = coreAttributes.map(ca => {
+
+    const coreData: Array<{ name: string; level: string; points: string | number }> = [];
+    for (const ca of coreAttributes) {
         const found = parsed.find(p => typeof p !== 'string' && p.name.toUpperCase() === ca.toUpperCase());
-        if (found && typeof found !== 'string') {
-            return { name: ca, level: found.level, points: found.points };
-        }
-        return { name: ca, level: "10", points: 0 };
-    });
+        coreData.push(found && typeof found !== 'string'
+            ? { name: ca, level: found.level, points: found.points }
+            // Primaries come first in the list, so a secondary's default is
+            // worked out from the primaries already read.
+            : { name: ca, level: defaultLevel(ca, coreData), points: 0 });
+    }
 
     const extras = parsed.filter(p => {
         if (typeof p === 'string') return true;
@@ -87,17 +124,35 @@ export function AttributeEditorList({ title, items = [], onChange }: ListProps) 
     });
 
     const triggerChange = (newCore: any[], newExtras: any[]) => {
-        const activeCore = newCore.filter(ca => {
-            const wasPresent = parsed.some(p => typeof p !== 'string' && p.name.toUpperCase() === ca.name.toUpperCase());
-            const isChangedFromDefault = ca.level !== "10" || (ca.points !== 0 && ca.points !== "0");
-            return wasPresent || isChangedFromDefault;
+        const listed = (name: string) => parsed.some(p => typeof p !== 'string' && p.name.toUpperCase() === name.toUpperCase());
+        // A secondary the sheet does not list is still at its derived value,
+        // so it moves with the primaries -- raising DX on a blank stub must not
+        // write Basic Speed and Move lines that nobody touched.
+        const settled = newCore.map((ca, i) => !listed(ca.name)
+            && String(ca.level) === defaultLevel(ca.name, coreData) && String(coreData[i].level) === String(ca.level)
+            ? { ...ca, level: defaultLevel(ca.name, newCore) } : ca);
+        const activeCore = settled.filter(ca => {
+            const isChangedFromDefault = ca.level !== defaultLevel(ca.name, settled) || (ca.points !== 0 && ca.points !== "0");
+            return listed(ca.name) || isChangedFromDefault;
         });
         writeRows([...activeCore, ...newExtras]);
     };
 
+    // The score the GM changes takes the book's cost with it, while its cost
+    // was the book's: DX 12 [40] typed to 13 becomes DX 13 [60]. A figure the
+    // GM set is kept, and the book's is shown beside it. Other attributes are
+    // never changed for them -- raising ST shows what HP now costs, with a
+    // button, rather than rewriting the HP line.
     const updateCore = (idx: number, field: string, val: any) => {
+        const before = coreData[idx];
         const newCore = [...coreData];
-        newCore[idx] = { ...newCore[idx], [field]: val };
+        newCore[idx] = { ...before, [field]: val };
+        if (field === "level") {
+            const was = attributePrice(before.name, String(before.level), coreData);
+            const followed = String(before.points).trim() === "" || (was !== null && Number(before.points) === was);
+            const now = attributePrice(before.name, String(val), newCore);
+            if (followed && now !== null) newCore[idx] = { ...newCore[idx], points: now };
+        }
         triggerChange(newCore, extras);
     };
 
@@ -132,13 +187,27 @@ export function AttributeEditorList({ title, items = [], onChange }: ListProps) 
         <div className="editor-array-container">
             <h4 className="editor-label" style={{ margin: "0", color: "#a8c7fa" }}>{title}</h4>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "10px", marginTop: "12px" }}>
-                {coreData.map((attr, idx) => (
-                    <div key={`core-${idx}`} style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.03)", padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)", gap: "8px", transition: "transform 0.2s ease, background 0.2s ease" }}>
-                        <div style={{ fontSize: "0.85rem", color: "#c9dfff", width: "85px", fontWeight: "600", textTransform: "uppercase" }}>{attr.name}</div>
-                        <input className="editor-input" style={{ padding: "6px 8px", flex: 1, minWidth: 0 }} value={attr.level} onChange={e => updateCore(idx, 'level', e.target.value)} title="Level" placeholder="Level" />
-                        <input className="editor-input" style={{ padding: "6px 8px", width: "60px" }} value={attr.points} onChange={e => updateCore(idx, 'points', e.target.value)} type="number" title="Points" placeholder="Pts" />
+                {coreData.map((attr, idx) => {
+                    const book = attributePrice(attr.name, String(attr.level), coreData);
+                    const stated = String(attr.points).trim() === "" ? null : Number(attr.points);
+                    const agrees = book !== null && stated === book;
+                    return (
+                    <div key={`core-${idx}`} style={{ display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.03)", padding: "6px 10px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)", gap: "4px", transition: "transform 0.2s ease, background 0.2s ease" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ fontSize: "0.85rem", color: "#c9dfff", width: "85px", fontWeight: "600", textTransform: "uppercase" }}>{attr.name}</div>
+                            <input className="editor-input" style={{ padding: "6px 8px", flex: 1, minWidth: 0 }} value={attr.level} onChange={e => updateCore(idx, 'level', e.target.value)} title="Level" aria-label={`${attr.name} score`} placeholder="Level" />
+                            <input className="editor-input" style={{ padding: "6px 8px", width: "60px", color: agrees ? "#52d5ae" : undefined }} value={attr.points} onChange={e => updateCore(idx, 'points', e.target.value)} type="number" title={agrees ? "Worked out from the book" : "Points"} aria-label={`${attr.name} points`} placeholder="Pts" />
+                        </div>
+                        {book !== null && stated !== book && (
+                            <div style={{ fontSize: "0.72rem", color: "#e3a952", display: "flex", gap: "8px", alignItems: "center" }}>
+                                <span>the book gives {book} for {attr.name} {attr.level}</span>
+                                <button type="button" className="editor-action-btn" style={{ fontSize: "0.7rem", padding: "1px 8px" }}
+                                    onClick={() => updateCore(idx, 'points', book)}>Use {book}</button>
+                            </div>
+                        )}
                     </div>
-                ))}
+                    );
+                })}
             </div>
             {otherRows.length > 0 && (
                 <div style={{ marginTop: "16px", borderTop: "1px dashed rgba(255,255,255,0.1)", paddingTop: "16px" }}>
@@ -166,87 +235,6 @@ export function AttributeEditorList({ title, items = [], onChange }: ListProps) 
                     ))}
                 </div>
             )}
-        </div>
-    );
-}
-
-export function SkillEditorList({ title, items = [], onChange }: ListProps) {
-    const [parsed, write] = useEditableRows(items, parseSkill, serializeSkill, onChange);
-
-    const updateItem = (idx: number, field: string, val: any) => {
-        const newParsed = [...parsed];
-        if (typeof newParsed[idx] === 'string') return;
-        newParsed[idx] = { ...(newParsed[idx] as any), [field]: val };
-        write(newParsed);
-    };
-
-    const updateRaw = (idx: number, val: string) => {
-        const newParsed = [...parsed];
-        newParsed[idx] = val;
-        write(newParsed);
-    };
-
-    const deleteItem = (idx: number) => {
-        const newParsed = [...parsed];
-        newParsed.splice(idx, 1);
-        write(newParsed);
-    };
-
-    const moveItem = (idx: number, direction: -1 | 1) => {
-        if (idx + direction < 0 || idx + direction >= parsed.length) return;
-        const newParsed = [...parsed];
-        const temp = newParsed[idx];
-        newParsed[idx] = newParsed[idx + direction];
-        newParsed[idx + direction] = temp;
-        write(newParsed);
-    };
-
-    const addItem = () => {
-        write([...parsed, " ()-0 [0]"]);
-    };
-
-    return (
-        <div className="editor-array-container">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span className="editor-label" style={{ color: "#a8c7fa" }}>{title}</span>
-                <button type="button" className="editor-add-btn" onClick={addItem}>+ Add Skill</button>
-            </div>
-            {parsed.map((skill, idx) => {
-                if (typeof skill === 'string') {
-                    return (
-                        <div key={idx} className="editor-array-item" style={{ alignItems: "flex-start", display: "flex", gap: "8px" }}>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginTop: idx > 0 ? "4px" : "26px" }}>
-                                <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
-                                <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <Field label="Raw String (Unparsed)" hideLabel={idx > 0}><input className="editor-input" value={skill} onChange={e => updateRaw(idx, e.target.value)} /><UnreadHint raw={skill} why={SKILL_FORM} /></Field>
-                            </div>
-                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger" style={{ marginTop: idx > 0 ? "4px" : "26px" }}>✕</button>
-                        </div>
-                    );
-                }
-                return (
-                    <div key={idx} className="editor-array-item" style={{ display: "flex", alignItems: "flex-start", padding: "8px", gap: "8px" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "2px", paddingTop: "4px" }}>
-                            <button type="button" onClick={() => moveItem(idx, -1)} style={{ background: "none", border: "none", color: "white", cursor: idx === 0 ? "default" : "pointer", opacity: idx === 0 ? 0.2 : 0.7, padding: "0 4px" }}>▲</button>
-                            <button type="button" onClick={() => moveItem(idx, 1)} style={{ background: "none", border: "none", color: "white", cursor: idx === parsed.length - 1 ? "default" : "pointer", opacity: idx === parsed.length - 1 ? 0.2 : 0.7, padding: "0 4px" }}>▼</button>
-                        </div>
-                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
-                        <div style={{ display: "flex", gap: "8px", width: "100%", alignItems: "center" }}>
-                            <input className="editor-input" style={{ flex: 3 }} placeholder="Skill Name" value={skill.name} onChange={e => updateItem(idx, 'name', e.target.value)} />
-                            <input className="editor-input" style={{ width: "60px" }} placeholder="Base" value={skill.base} onChange={e => updateItem(idx, 'base', e.target.value)} />
-                            <input className="editor-input" style={{ width: "60px" }} placeholder="Lvl" value={skill.level} onChange={e => updateItem(idx, 'level', e.target.value)} type="number" />
-                            <input className="editor-input" style={{ width: "60px" }} placeholder="Pts" value={skill.points} onChange={e => updateItem(idx, 'points', e.target.value)} type="number" />
-                            <button type="button" onClick={() => deleteItem(idx)} className="editor-action-btn danger">✕</button>
-                        </div>
-                        <div style={{ display: "flex", gap: "8px", width: "100%", paddingRight: "36px" }}>
-                            <input className="editor-input" style={{ flex: 1 }} placeholder="Notes" value={skill.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} />
-                        </div>
-                        </div>
-                    </div>
-                );
-            })}
         </div>
     );
 }
