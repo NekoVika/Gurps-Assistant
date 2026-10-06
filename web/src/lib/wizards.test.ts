@@ -90,12 +90,22 @@ describe('create_npc fills everything it should in one pass', () => {
 
   it('asks for the same fields as the Python contract', () => {
     // Pinned in tests/test_character_build.py too; change both together.
-    const entry = CHARACTER_BUILD_SCHEMA.properties.entries.items;
-    expect(Object.keys(entry.properties).sort()).toEqual(
-      ['kind', 'name', 'score', 'level', 'levels', 'specialty', 'tl',
-       'self_control', 'modifiers', 'notes'].sort());
-    expect(Object.keys(entry.properties.modifiers.items.properties).sort())
-      .toEqual(['name', 'percent']);
+    const p = CHARACTER_BUILD_SCHEMA.properties;
+    const keys = (o: { properties: object }) => Object.keys(o.properties).sort();
+    expect(Object.keys(p).sort()).toEqual(['advantages', 'attributes', 'disadvantages', 'skills', 'unpriceable']);
+    expect(keys(p.attributes.items)).toEqual(['name', 'notes', 'score']);
+    expect(keys(p.advantages.items)).toEqual(['levels', 'modifiers', 'name', 'notes', 'self_control', 'specialty']);
+    expect(p.disadvantages.items).toBe(p.advantages.items);
+    expect(keys(p.skills.items)).toEqual(['level', 'name', 'notes', 'specialty', 'tl']);
+    expect(keys(p.advantages.items.properties.modifiers.items)).toEqual(['name', 'percent']);
+    expect(keys(GEAR_SCHEMA.items)).toEqual(['cost', 'name', 'notes', 'quantity', 'weight']);
+  });
+
+  it('will not take a skill without its level', () => {
+    // The 0.5 manual check: with level optional, every skill with a specialty
+    // came back without one, and none of them could be priced.
+    expect(CHARACTER_BUILD_SCHEMA.properties.skills.items.required).toContain('level');
+    expect(CHARACTER_BUILD_SCHEMA.properties.attributes.items.required).toContain('score');
   });
 
   it('sends nothing a Gemini response schema refuses', () => {

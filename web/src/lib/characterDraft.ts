@@ -27,7 +27,7 @@
 
 import { render, wasPriced, type BuildEntry, type Declined } from "./characterBuild";
 import { derive, ATTRIBUTE_COST } from "./gurpsRules";
-import { entryFromModel, gearLines, leftToGMBlock, statedScores, unpricedLine } from "./generatedSheet";
+import { entriesFromBuild, gearLines, leftToGMBlock, statedScores, unpricedLine } from "./generatedSheet";
 import { parseEntry, pointBuild, type EntryKind } from "./pointBuild";
 import { parseGear } from "./TraitFormatters";
 import type { TraitIndex } from "./traitResolver";
@@ -141,9 +141,7 @@ export function prepareCharacterDraft(
 
   // --- choices, priced and merged -------------------------------------------
   const raw = (build && typeof build === "object" ? build : {}) as Record<string, unknown>;
-  const choices = (Array.isArray(raw.entries) ? raw.entries : [])
-    .map(entryFromModel)
-    .filter((e): e is BuildEntry => e !== null);
+  const choices = entriesFromBuild(build);
   if (build !== undefined) report.applied = true;
 
   const section = (kind: EntryKind) => lines(result[SECTIONS[kind]]);

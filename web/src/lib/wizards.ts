@@ -99,43 +99,69 @@ export function expandArmorCoverage(
  * sides — `wizards.test.ts` and `tests/test_character_build.py` — so neither
  * can drift alone. Like the model, it has nowhere to put a cost.
  */
+const TRAIT_SCHEMA = {
+  type: "object",
+  properties: {
+    name: { type: "string",
+      description: "As the Basic Set names it, with no level, specialty or cost: 'Combat Reflexes', 'Bad Temper'." },
+    levels: { type: "integer", description: "Traits priced per level: how many levels." },
+    specialty: { type: "string", description: "The parenthesised qualifier or variety: 'Spiders' for Phobia." },
+    self_control: { type: "integer",
+      description: "Disadvantages with a self-control roll only: 6, 9, 12 or 15. 12 leaves the printed cost." },
+    modifiers: {
+      type: "array",
+      description: "Enhancements and limitations, each with the book's percentage. All of them or none.",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          percent: { type: "integer", description: "+100 for +100%, -50 for -50%." },
+        },
+        required: ["name", "percent"],
+      },
+    },
+    notes: { type: "string", description: "One short line on what it does at the table. Never a point cost." },
+  },
+  required: ["name"],
+};
+
 export const CHARACTER_BUILD_SCHEMA = {
   type: "object",
   description: "The character's mechanics as choices. The app prices them.",
   properties: {
-    entries: {
+    attributes: {
       type: "array",
-      description: "Every mechanical line of the sheet. Primary attributes first.",
+      description: "The four primary attributes, and any secondary one you change.",
       items: {
         type: "object",
         properties: {
-          kind: { type: "string", enum: ["attribute", "advantage", "disadvantage", "skill"] },
-          name: { type: "string",
-            description: "As the Basic Set names it, with no level, specialty or cost: 'Guns/TL', "
-              + "'Combat Reflexes', 'DX', 'Basic Speed'." },
-          score: { type: "number", description: "Attributes only: the final score. Basic Speed may carry a quarter." },
-          level: { type: "string",
-            description: "Skills only: level relative to its attribute, e.g. 'DX+2', 'IQ-1', 'Per'. Never the final number." },
-          levels: { type: "integer", description: "Traits priced per level: how many levels." },
-          specialty: { type: "string", description: "The parenthesised qualifier or variety: 'Rifle', 'Arctic'." },
-          tl: { type: "integer", description: "For a '/TL' skill: the tech level it is learned at." },
-          self_control: { type: "integer",
-            description: "Disadvantages with a self-control roll only: 6, 9, 12 or 15. 12 leaves the printed cost." },
-          modifiers: {
-            type: "array",
-            description: "Enhancements and limitations, each with the book's percentage. All of them or none.",
-            items: {
-              type: "object",
-              properties: {
-                name: { type: "string" },
-                percent: { type: "integer", description: "+100 for +100%, -50 for -50%." },
-              },
-              required: ["name", "percent"],
-            },
-          },
-          notes: { type: "string", description: "One short line on what it does at the table. Never a point cost." },
+          name: { type: "string", description: "'ST', 'DX', 'IQ', 'HT', 'HP', 'Will', 'Per', 'FP', 'Basic Speed' or 'Basic Move'." },
+          score: { type: "number", description: "The final score. Basic Speed may carry a quarter." },
+          notes: { type: "string" },
         },
-        required: ["kind", "name"],
+        required: ["name", "score"],
+      },
+    },
+    advantages: { type: "array", items: TRAIT_SCHEMA },
+    disadvantages: { type: "array", items: TRAIT_SCHEMA },
+    // A skill's level is required. On one shared entry it was optional, and
+    // Gemini 2.5 Flash left it out of every skill that had a specialty --
+    // reproduced on request. A required field cannot be skipped, and
+    // propertyOrdering has the model settle name and specialty first.
+    skills: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "As the Basic Set names it, with no level or specialty: 'Guns/TL', 'Driving/TL', 'Stealth'." },
+          specialty: { type: "string", description: "Where the skill takes one: 'Pistol' for Guns, 'Automobile' for Driving." },
+          level: { type: "string",
+            description: "Level relative to its attribute: 'DX+2', 'IQ-1', 'Per'. Required, for a skill with a specialty too. Never the final number." },
+          tl: { type: "integer", description: "For a '/TL' skill: the tech level it is learned at." },
+          notes: { type: "string", description: "One short line. Never a point cost." },
+        },
+        required: ["name", "level"],
+        propertyOrdering: ["name", "specialty", "level", "tl", "notes"],
       },
     },
     unpriceable: {
@@ -145,7 +171,7 @@ export const CHARACTER_BUILD_SCHEMA = {
         + "'Variable' or a range — in plain words, rather than guessing a cost.",
     },
   },
-  required: ["entries", "unpriceable"],
+  required: ["attributes", "advantages", "disadvantages", "skills", "unpriceable"],
 };
 
 /** A character's equipment as items. The app writes the stored line. */
@@ -422,10 +448,11 @@ export const WIZARDS: WizardDef[] = [
         // not one sheet in the campaign added up to its own brackets.
         `- build: the character's mechanics as CHOICES. You choose; the app prices every line and`,
         `  states the total. Give no point costs anywhere — not in names, not in notes.`,
-        `  Each entry names a trait exactly as the GURPS Basic Set names it, with no level or cost`,
+        `  Name every trait and skill exactly as the GURPS Basic Set names it, with no level or cost`,
         `  attached: "Guns/TL" with specialty "Rifle" and tl 8, never "Guns/TL8 (Rifle)-14 [8]".`,
-        `  Attributes: give the final score. Leave out any attribute at its default.`,
-        `  Skills: give level relative to the attribute ("DX+2", "IQ-1", "Per"), never the final number.`,
+        `  attributes: give the final score. Leave out any attribute at its default.`,
+        `  skills: every skill needs a level relative to its attribute ("DX+2", "IQ-1", "Per"),`,
+        `  a skill with a specialty included. Never the final number.`,
         `  Disadvantages with a self-control roll: self_control is 6, 9, 12 or 15.`,
         `  Levelled traits: levels (e.g. 3 for Damage Resistance 3).`,
         answers.Points && answers.Points.trim()

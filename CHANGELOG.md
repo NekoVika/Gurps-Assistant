@@ -127,6 +127,18 @@ is the correct answer, and it now says why rather than falling silent.
   the sheet's own scores and shows you the lines the app wrote. A choice
   replaces the line of the same name, so raising a skill raises it rather than
   adding a second one. Your stated point total is never changed by a draft.
+- **A skill always arrives with its level.** The build lists attributes,
+  advantages, disadvantages and skills separately, and a skill's level is
+  required. With it optional, Gemini left the level off every skill that had
+  a specialty — Guns (Pistol), Driving (Automobile) — and none of them could be
+  priced.
+- The advantage and disadvantage editor no longer writes `[0]` on a line the
+  app left unpriced. A line you didn't touch is saved exactly as it was read;
+  an unpriced line opens as a name and a note, and once you settle it the app
+  prices it and drops the stale "not priced" note.
+- The check that a generated character is a valid sheet runs again. Gear
+  arriving as items made it fail on every generation, and the reply went
+  through unchecked.
 - A banner over the diff says how many lines the app priced, and lists any
   line the model wrote and priced itself, or that the sheet cannot read — so
   you can reject that hunk rather than discover it later.

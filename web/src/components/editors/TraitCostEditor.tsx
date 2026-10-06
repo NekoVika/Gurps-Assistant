@@ -51,6 +51,13 @@ type Row = {
   notes: string;
   /** Whether the campaign wrote this trait's name in bold, as most of them are. */
   emphasised: boolean;
+  /**
+   * The stored line, while the row is untouched. A row nobody edited is
+   * written back exactly as it was read: saving Walter White turned
+   * `Strong Will 2 - …; not priced: …` into `… [0]`, a guessed nought that
+   * reads as a real cost, without anyone touching that line.
+   */
+  raw?: string;
 };
 
 const CONTROL_NUMBERS = Object.keys(SELF_CONTROL).map(Number).sort((a, b) => a - b);
@@ -73,7 +80,13 @@ function rawNote(raw: string): string {
 
 /** The stored string, read into the fields a GM edits. */
 function toRow(raw: string, kind: Props["kind"]): Row {
-  const entry = parseEntry(raw, kind);
+  // A line with no cost -- one the app left unpriced, `Name (Spec) - reason`
+  // -- is read as a name and a note, rather than as one long name with the
+  // reason in it. Its head is parsed as though it carried a cost.
+  const priced = /\[+\s*-?\d+\s*\]+/.test(raw || "");
+  const dash = priced ? -1 : (raw || "").indexOf(" - ");
+  const head = dash >= 0 ? raw.slice(0, dash) : raw;
+  const entry = priced ? parseEntry(raw, kind) : parseEntry(`${head} [0]`, kind);
   const control = /\((\d{1,2})\)/.exec(entry.specialty || "");
   const levels = /\s(\d+)\s*$/.exec(entry.name.trim());
   return {
@@ -82,8 +95,9 @@ function toRow(raw: string, kind: Props["kind"]): Row {
     levels: levels ? levels[1] : "",
     selfControl: entry.specialty && /^\d{1,2}$/.test(entry.specialty.trim())
       ? entry.specialty.trim() : "",
-    points: entry.points === null ? "" : String(entry.points),
-    notes: rawNote(raw),
+    points: priced && entry.points !== null ? String(entry.points) : "",
+    notes: priced ? rawNote(raw) : dash >= 0 ? raw.slice(dash + 3) : "",
+    raw,
     // The name is edited without its asterisks, which are noise in a box that
     // holds nothing but names, and they go back on when the line is written.
     emphasised: /^\s*\*\*/.test(raw || ""),
@@ -104,17 +118,20 @@ function toBuildEntry(row: Row, kind: Props["kind"]): BuildEntry {
 
 /** The row, written back as the campaign stores it. */
 function toStored(row: Row): string {
+  if (row.raw !== undefined) return row.raw;
   const level = row.levels ? ` ${row.levels}` : "";
   const qualifier = row.selfControl
     ? ` (${row.selfControl})`
     : row.specialty ? ` (${row.specialty})` : "";
-  const points = row.points === "" ? "0" : row.points;
+  // No figure is no bracket. `[0]` is a real cost on this sheet (B23, B51),
+  // so it is never written for one nobody gave.
+  const points = row.points === "" ? "" : ` [${row.points}]`;
   const notes = row.notes ? ` - ${row.notes}` : "";
   const bare = row.name.replace(/\s+\d+\s*$/, "").replace(/\*\*/g, "");
   // Reordering a row used to rewrite every line in the list without its
   // emphasis, which is an edit to the GM's own text that nobody asked for.
   const name = row.emphasised && bare ? `**${bare}**` : bare;
-  return `${name}${level}${qualifier} [${points}]${notes}`;
+  return `${name}${level}${qualifier}${points}${notes}`;
 }
 
 export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
@@ -154,7 +171,7 @@ export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
 
   const update = (index: number, field: keyof Row, value: string) => {
     const next = [...rows];
-    next[index] = { ...next[index], [field]: value };
+    next[index] = { ...next[index], [field]: value, raw: undefined };
 
     // Choosing a trait, a level or a self-control number is the moment the
     // cost becomes knowable, so it is filled in then -- except that a saved
@@ -162,7 +179,9 @@ export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
     if (field !== "points" && field !== "notes") {
       const priced = render(toBuildEntry(next[index], kind), {}, traitIndex);
       if (wasPriced(priced) && (rows[index].points === "" || rows[index].points === "0")) {
-        next[index] = { ...next[index], points: String(priced.points) };
+        // The app's own "not priced: ..." note is stale the moment it is.
+        const notes = next[index].notes.replace(/(^|;\s*)not priced:.*$/, "").replace(/;\s*$/, "").trim();
+        next[index] = { ...next[index], points: String(priced.points), notes };
       }
     }
     write(next);
@@ -198,6 +217,7 @@ export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
     next[target] = {
       ...parent,
       notes: [parent.notes.trim(), detail].filter(Boolean).join(" "),
+      raw: undefined,
     };
     write(next);
   };
@@ -289,6 +309,7 @@ export function TraitCostEditor({ title, items = [], onChange, kind }: Props) {
                   <select
                     className="editor-select" style={{ width: 92 }}
                     title="Self-control number (B123)"
+                    aria-label="Self-control number"
                     value={row.selfControl}
                     onChange={e => update(index, "selfControl", e.target.value)}
                   >

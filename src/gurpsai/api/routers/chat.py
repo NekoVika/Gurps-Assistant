@@ -15,7 +15,7 @@ from gurpsai.api.schemas.chat import (
 from gurpsai.app.services.chat import ChatService
 from gurpsai.providers.base import ChatMessage
 import gurpsai.domain.campaign as campaign_models
-from gurpsai.domain.character_build import CharacterBuild
+from gurpsai.domain.character_build import CharacterBuild, GearItem
 from pydantic import ValidationError
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -50,6 +50,25 @@ def _validated_build(build: object, name: str) -> object:
     except ValidationError as e:
         logging.warning("Generated build did not validate; passing it through as sent: %s", e)
         return build
+
+
+def _validated_gear(gear: list) -> list:
+    """Generated gear items, each normalised where it validates.
+
+    A string (a model ignoring the item shape) or an item that does not
+    validate is kept as sent: the app writes what it can read and reports the
+    rest, rather than losing a character's kit to one bad field.
+    """
+    out = []
+    for item in gear:
+        if isinstance(item, dict):
+            try:
+                out.append(GearItem.model_validate(item).model_dump())
+                continue
+            except ValidationError as e:
+                logging.warning("Generated gear item did not validate; kept as sent: %s", e)
+        out.append(item)
+    return out
 
 
 def _resolve_scope_hint(request: ChatRequest) -> str | None:
@@ -149,14 +168,23 @@ def chat_structured(request: StructuredChatRequest) -> StructuredChatResponse:
                 # A character arrives as choices under `build`, which the stored
                 # model has no field for and would drop. Set it aside, and put it
                 # back once it has been checked against its own contract.
-                build = result_dict.get("build") if model_cls is campaign_models.CharacterData else None
+                is_character = model_cls is campaign_models.CharacterData
+                build = result_dict.get("build") if is_character else None
+                # Gear arrives as items for the same reason, and CharacterData
+                # stores it as lines -- so validating the whole reply against it
+                # failed on every generation and passed the reply on unchecked.
+                gear = result_dict.get("gear") if is_character else None
+                items = isinstance(gear, list) and any(isinstance(g, dict) for g in gear)
+                to_check = {k: v for k, v in result_dict.items() if not (items and k == "gear")}
                 try:
-                    validated = model_cls.model_validate(result_dict)
+                    validated = model_cls.model_validate(to_check)
                     result_dict = validated.model_dump()
                 except Exception as e:
                     logging.warning("Pydantic validation failed for %s: %s", request.pydantic_model, e)
                 if build is not None:
                     result_dict["build"] = _validated_build(build, result_dict.get("name", ""))
+                if items:
+                    result_dict["gear"] = _validated_gear(gear)
 
         # Resolve the model that was actually used — structured_chat() auto-selects
         # models[0] when model=None and multiple are available, so we mirror that here.

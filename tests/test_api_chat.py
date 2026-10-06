@@ -277,16 +277,16 @@ class StructuredCharacterBuildTests(unittest.TestCase):
         result = self._post(mock_svc_cls, {
             "name": "Rick",
             "build": {
-                "entries": [
-                    {"kind": "attribute", "name": "DX", "score": 12},
-                    {"kind": "disadvantage", "name": "Bad Temper", "self_control": 9},
-                ],
+                "attributes": [{"name": "DX", "score": 12}],
+                "disadvantages": [{"name": "Bad Temper", "self_control": 9}],
+                "skills": [{"name": "Guns/TL", "specialty": "Pistol", "level": "DX+1", "tl": 8}],
                 "unpriceable": ["An Ally: his dog"],
             },
         })
         build = result["build"]
         self.assertEqual(build["name"], "Rick")
-        self.assertEqual(build["entries"][1]["self_control"], 9)
+        self.assertEqual(build["disadvantages"][0]["self_control"], 9)
+        self.assertEqual(build["skills"][0]["level"], "DX+1")
         self.assertEqual(build["unpriceable"], ["An Ally: his dog"])
         # Validated against CharacterData too: its defaults are filled in.
         self.assertEqual(result["pointTotal"], "???")
@@ -295,25 +295,46 @@ class StructuredCharacterBuildTests(unittest.TestCase):
     def test_a_cost_offered_anyway_does_not_survive(self, mock_svc_cls):
         result = self._post(mock_svc_cls, {
             "name": "Rick",
-            "build": {"entries": [{"kind": "advantage", "name": "Combat Reflexes", "points": 15}]},
+            "build": {"advantages": [{"name": "Combat Reflexes", "points": 15}]},
         })
-        self.assertNotIn("points", result["build"]["entries"][0])
+        self.assertNotIn("points", result["build"]["advantages"][0])
 
     @patch("gurpsai.api.routers.chat.ChatService")
     def test_an_invalid_build_is_passed_through_rather_than_lost(self, mock_svc_cls):
         # 10 is not a self-control number (B123). The app writes that line
         # unpriced with the reason; the other choices still reach the sheet.
-        sent = {"entries": [
-            {"kind": "attribute", "name": "DX", "score": 12},
-            {"kind": "disadvantage", "name": "Bad Temper", "self_control": 10},
-        ]}
+        sent = {
+            "attributes": [{"name": "DX", "score": 12}],
+            "disadvantages": [{"name": "Bad Temper", "self_control": 10}],
+        }
         result = self._post(mock_svc_cls, {"name": "Rick", "build": sent})
         self.assertEqual(result["build"], sent)
 
     @patch("gurpsai.api.routers.chat.ChatService")
+    def test_gear_items_no_longer_skip_validation_of_the_sheet(self, mock_svc_cls):
+        # Found in the 0.5 manual check's api.err.log: gear arrives as items,
+        # CharacterData stores lines, so every generation failed validation and
+        # the whole reply went through unchecked.
+        with self.assertNoLogs(level="WARNING"):
+            result = self._post(mock_svc_cls, {
+                "name": "Rick",
+                "gear": [
+                    {"name": "Heavy Pistol", "quantity": 1, "weight": "3 lbs", "cost": "$750", "notes": "TL8"},
+                    {"name": "Cash", "quantity": "200"},
+                    "Medkit (2 lbs, $100)",
+                ],
+            })
+        # CharacterData did run: its defaults are filled in.
+        self.assertEqual(result["pointTotal"], "???")
+        self.assertEqual(result["gear"][0], {"name": "Heavy Pistol", "quantity": 1, "weight": "3 lbs",
+                                             "cost": "$750", "notes": "TL8"})
+        self.assertEqual(result["gear"][1]["quantity"], 200)
+        self.assertEqual(result["gear"][2], "Medkit (2 lbs, $100)")
+
+    @patch("gurpsai.api.routers.chat.ChatService")
     def test_other_models_are_untouched(self, mock_svc_cls):
         mock_svc = MagicMock()
-        mock_svc.structured_chat.return_value = {"name": "Dockside", "build": {"entries": []}}
+        mock_svc.structured_chat.return_value = {"name": "Dockside", "build": {"skills": []}}
         mock_svc._provider_service.get_status.return_value = MagicMock(models=[])
         mock_svc_cls.return_value = mock_svc
         response = client.post("/chat/structured", json={

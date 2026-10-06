@@ -104,6 +104,38 @@ export function entryFromModel(raw: unknown): BuildEntry | null {
   return entry;
 }
 
+/** The build's sections, each the sheet section it fills. */
+const SECTION_KINDS: Array<[string, BuildEntry["kind"]]> = [
+  ["attributes", "attribute"], ["advantages", "advantage"],
+  ["disadvantages", "disadvantage"], ["skills", "skill"],
+];
+
+/**
+ * Every choice in a `CharacterBuild`, as the renderer's entries.
+ *
+ * A build lists attributes, advantages, disadvantages and skills separately,
+ * so each can require what it needs — a skill its level. The older shape, one
+ * `entries` list with a `kind` on each, is still read: a chat model working
+ * from an older description, or a reply already in flight, should not lose
+ * its choices to a schema change.
+ */
+export function entriesFromBuild(build: unknown): BuildEntry[] {
+  const raw = (build && typeof build === "object" ? build : {}) as Record<string, unknown>;
+  const out: BuildEntry[] = [];
+  if (Array.isArray(raw.entries)) {
+    for (const e of raw.entries) { const entry = entryFromModel(e); if (entry) out.push(entry); }
+  }
+  for (const [section, kind] of SECTION_KINDS) {
+    const list = raw[section];
+    if (!Array.isArray(list)) continue;
+    for (const e of list) {
+      const entry = entryFromModel(e && typeof e === "object" ? { ...(e as object), kind } : e);
+      if (entry) out.push(entry);
+    }
+  }
+  return out;
+}
+
 /** The scores a sheet already states, read from its own attribute lines. */
 export function statedScores(lines: unknown): Record<string, number> {
   const scores: Record<string, number> = {};
@@ -210,9 +242,7 @@ export function sheetFromBuild(
   existing?: Record<string, unknown> | null,
 ): GeneratedSheet {
   const raw = (build && typeof build === "object" ? build : {}) as Record<string, unknown>;
-  const chosen = (Array.isArray(raw.entries) ? raw.entries : [])
-    .map(entryFromModel)
-    .filter((e): e is BuildEntry => e !== null);
+  const chosen = entriesFromBuild(build);
 
   const entries = completeAttributes(chosen, statedScores(existing?.attributes));
   const sheet = buildSheet(entries, index);

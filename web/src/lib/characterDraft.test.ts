@@ -27,6 +27,19 @@ const prepare = (draft: Record<string, unknown>, from = original) =>
   prepareCharacterDraft(JSON.stringify(draft), from, index);
 const read = (content: string) => JSON.parse(content) as Record<string, any>;
 
+describe("a draft in the sectioned shape the assistant is now told to use", () => {
+  it("raises a skill and adds a trait, priced against the sheet", () => {
+    const { content, report } = prepare({ ...killian, build: {
+      advantages: [{ name: "Combat Reflexes" }],
+      skills: [{ name: "Guns/TL", specialty: "Rifle", level: "DX+3", tl: 8 }],
+    } });
+    const out = read(content);
+    expect(out.skills).toEqual(["Guns/TL8 (Rifle) (DX/E)-17 [8]"]);
+    expect(out.advantages).toContain("Combat Reflexes [15]");
+    expect(report.priced).toBe(2);
+  });
+});
+
 describe("a draft that changes a sheet that already exists", () => {
   it("adds a chosen skill, priced against the sheet's own DX", () => {
     const { content, report } = prepare({ ...killian, build: { entries: [

@@ -163,10 +163,11 @@ describe("where the rules decline", () => {
 });
 
 describe("the list itself", () => {
-  it("adds an empty row", () => {
+  it("adds an empty row, with no cost nobody gave", () => {
+    // It used to be stored as " [0]" -- a real cost on this sheet (B23, B51).
     const onChange = editor(["Combat Reflexes [15]"]);
     fireEvent.click(screen.getByRole("button", { name: "+ Add Trait" }));
-    expect(onChange).toHaveBeenCalledWith(["Combat Reflexes [15]", " [0]"]);
+    expect(onChange).toHaveBeenCalledWith(["Combat Reflexes [15]", ""]);
   });
 
   it("removes the row the GM pressed", () => {
@@ -328,6 +329,39 @@ describe("what it preserves when it writes a line back", () => {
       items={[note, "Combat Reflexes [15]"]} onChange={onChange} />);
     fireEvent.click(screen.getAllByRole("button", { name: "▼" })[0]);
     expect(onChange).toHaveBeenLastCalledWith(["Combat Reflexes [15]", note]);
+  });
+
+  it("never stamps [0] on a line the app left unpriced", () => {
+    // Walter White's sheet, saved during the 0.5 manual check: every unpriced
+    // advantage came back ending in " [0]" though nobody touched it.
+    const line = "Strong Will 2 - Adds 2 to Will rolls.; not priced: this name is in no catalogue";
+    const onChange = vi.fn();
+    render(<TraitCostEditor title="Advantages" kind="advantage"
+      items={[line, "Combat Reflexes [15]"]} onChange={onChange} />);
+    fireEvent.click(screen.getAllByRole("button", { name: "▼" })[0]);
+    expect(onChange).toHaveBeenLastCalledWith(["Combat Reflexes [15]", line]);
+  });
+
+  it("reads an unpriced line as a name and a note", () => {
+    editor(["Allies (Old unit) - not priced: the book prices this \"Variable\""]);
+    expect((nameBox() as HTMLInputElement).value).toBe("Allies");
+    expect((screen.getByPlaceholderText(/^Notes/) as HTMLTextAreaElement).value)
+      .toBe("not priced: the book prices this \"Variable\"");
+    expect((pointsBox() as HTMLInputElement).value).toBe("");
+  });
+
+  it("prices it once the GM settles it, and drops the stale reason", () => {
+    render(<Harness initial={["Bad Temperament - Snaps at people.; not priced: this name is in no catalogue"]} kind="disadvantage" />);
+    fireEvent.change(nameBox(), { target: { value: "Bad Temper" } });
+    fireEvent.change(screen.getByLabelText(/self-control/i), { target: { value: "12" } });
+    expect((pointsBox() as HTMLInputElement).value).toBe("-10");
+    expect((screen.getByPlaceholderText(/^Notes/) as HTMLTextAreaElement).value).toBe("Snaps at people.");
+  });
+
+  it("writes no bracket when the GM clears a cost", () => {
+    const onChange = editor(["Combat Reflexes [15]"]);
+    fireEvent.change(pointsBox(), { target: { value: "" } });
+    expect(onChange).toHaveBeenLastCalledWith(["Combat Reflexes"]);
   });
 
   it("leaves a line alone that is only reordered", () => {

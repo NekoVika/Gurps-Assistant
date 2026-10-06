@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { entryFromModel, sheetFromBuild, statedScores, leftToGMBlock, gearLines } from "./generatedSheet";
+import { entryFromModel, entriesFromBuild, sheetFromBuild, statedScores, leftToGMBlock, gearLines } from "./generatedSheet";
 import { parseGear } from "./TraitFormatters";
 import { buildIndex } from "./traitAudit";
 import { pointBuild } from "./pointBuild";
@@ -160,6 +160,32 @@ describe("a build Gemini 2.5 Flash actually sent", () => {
   it("leaves the checker nothing to say about any of it", () => {
     const out = checkMechanics(sheet as unknown as Record<string, unknown>, live);
     expect(out.findings).toEqual([]);
+  });
+});
+
+describe("a build in sections", () => {
+  // The shape the wizard asks for since the 0.5 manual check: each section
+  // its own list, so a skill's level can be required.
+  it("prices a specialty skill now that it arrives with its level", () => {
+    const sheet = sheetFromBuild({
+      attributes: [{ name: "DX", score: 12 }],
+      skills: [{ name: "Guns/TL", specialty: "Pistol", level: "DX+1", tl: 8 }],
+      disadvantages: [{ name: "Bad Temper", self_control: 9 }],
+      unpriceable: [],
+    }, index);
+    expect(sheet.skills).toEqual(["Guns/TL8 (Pistol) (DX/E)-13 [2]"]);
+    expect(sheet.disadvantages).toEqual(["Bad Temper (9) [-15]"]);
+    expect(sheet.attributes).toContain("DX 12 [40]");
+  });
+
+  it("reads the older single list too, so nothing in flight is lost", () => {
+    expect(entriesFromBuild({ entries: [dumped({ kind: "skill", name: "Stealth", level: "DX" })] }))
+      .toEqual([{ kind: "skill", name: "Stealth", level: "DX" }]);
+  });
+
+  it("takes each choice's section from the list it is in, not from a kind it carries", () => {
+    expect(entriesFromBuild({ skills: [{ kind: "advantage", name: "Stealth", level: "DX" }] })[0].kind)
+      .toBe("skill");
   });
 });
 

@@ -38,53 +38,84 @@ class Modifier(BaseModel):
         "half-priced list is worse than none, because it cannot be totalled.")
 
 
-class BuildEntry(BaseModel):
-    """One line of a character sheet, as a choice rather than as arithmetic."""
+_NAME = ("exactly as the Basic Set names it, with no level, specialty or cost attached")
 
-    kind: Literal["attribute", "advantage", "disadvantage", "skill"] = Field(
-        ..., title="Kind", description="Which section of the sheet this belongs to.")
+
+class Attribute(BaseModel):
+    """A primary or secondary attribute, at the score chosen for it."""
+
     name: str = Field(..., title="Name",
-        description="The trait exactly as the Basic Set names it, with no level, "
-        "specialty or cost attached: 'Guns/TL', not 'Guns/TL8 (Rifle) (DX/E)-14 [8]'. "
-        "An attribute is 'ST', 'DX', 'IQ', 'HT', or a secondary characteristic such as "
-        "'HP', 'Will', 'Per', 'FP', 'Basic Speed', 'Basic Move'.")
+        description="'ST', 'DX', 'IQ', 'HT', or a secondary characteristic: 'HP', 'Will', "
+        "'Per', 'FP', 'Basic Speed', 'Basic Move'. Leave out any at its default.")
+    score: float = Field(..., title="Score",
+        description="The final score, e.g. 13 for DX 13. Basic Speed may carry a quarter, e.g. 6.25.")
+    notes: str = Field("", title="Notes", description="Optional. Never a point cost.")
 
-    score: Optional[float] = Field(None, title="Score",
-        description="Attributes only: the final score, e.g. 13 for DX 13. For Basic "
-        "Speed this may carry a quarter, e.g. 6.25.")
 
-    level: Optional[str] = Field(None, title="Level",
-        description="Skills only: the level relative to the attribute it is based on, "
-        "e.g. 'DX+2', 'IQ-1', or plain 'IQ' for no difference. Give the relative level, "
-        "never the final number -- the app works that out from the character's own "
-        "attributes, which is a step you cannot be expected to get right while writing.")
+class Trait(BaseModel):
+    """An advantage or disadvantage, as a choice rather than as arithmetic."""
 
+    name: str = Field(..., title="Name", description=f"The trait {_NAME}: 'Combat Reflexes', "
+        "'Bad Temper', 'Damage Resistance'.")
     levels: Optional[int] = Field(None, title="Levels",
         description="Traits the book prices per level: how many levels. 50 for "
         "'Damage Resistance 50'. Leave empty for a trait with a flat cost.")
-
     specialty: Optional[str] = Field(None, title="Specialty",
-        description="The parenthesised qualifier where the trait takes one: 'Rifle' for "
-        "Guns, 'Arctic' for Survival. Also the variety, where the book prices several "
-        "under one name.")
-
-    tl: Optional[int] = Field(None, title="Tech Level",
-        description="For a skill the book prints as '/TL': the tech level it is learned "
-        "at, e.g. 8. The campaign's own tech level is the default.")
-
+        description="The parenthesised qualifier or variety, where the book prices several "
+        "under one name: 'Spiders' for Phobia.")
     self_control: Optional[Literal[6, 9, 12, 15]] = Field(None, title="Self-Control Number",
         description="Required for any disadvantage whose printed cost carries an "
         "asterisk, meaning it offers a chance to resist (B123). 12 is the default and "
         "leaves the cost as printed; 9 raises it by half, 6 doubles it, 15 halves it. "
         "Choose the number that fits the character; the app applies the multiplier.")
-
     modifiers: List[Modifier] = Field(default_factory=list, title="Modifiers",
         description="Enhancements and limitations applied to this trait, each with its "
         "percentage. Give all of them or none.")
-
     notes: str = Field("", title="Notes",
         description="One short line the GM should read: what the trait does at the "
         "table, or a page citation. Never a point cost.")
+
+
+class Skill(BaseModel):
+    """A skill, at a level chosen relative to the attribute it is based on.
+
+    Its level is required. With it optional, on a shared entry that attributes
+    and traits used too, Gemini 2.5 Flash left it out of every skill that had a
+    specialty -- Guns (Pistol), Driving (Automobile) -- and reproduced it on
+    request: the schema let it, so it did. A required field cannot be skipped.
+    """
+
+    name: str = Field(..., title="Name", description=f"The skill {_NAME}: 'Guns/TL', not "
+        "'Guns/TL8 (Rifle) (DX/E)-14 [8]'.")
+    specialty: Optional[str] = Field(None, title="Specialty",
+        description="The parenthesised specialty where the skill takes one: 'Rifle' for Guns, "
+        "'Automobile' for Driving, 'Arctic' for Survival.")
+    level: str = Field(..., title="Level",
+        description="The level relative to the attribute it is based on, e.g. 'DX+2', "
+        "'IQ-1', or plain 'IQ' for no difference -- for a skill with a specialty too. Give "
+        "the relative level, never the final number: the app works that out from the "
+        "character's own attributes.")
+    tl: Optional[int] = Field(None, title="Tech Level",
+        description="For a skill the book prints as '/TL': the tech level it is learned "
+        "at, e.g. 8. The campaign's own tech level is the default.")
+    notes: str = Field("", title="Notes",
+        description="One short line the GM should read. Never a point cost.")
+
+
+class GearItem(BaseModel):
+    """One piece of equipment, as a model is asked for it.
+
+    The app writes the stored line, "Name [Qty] (Weight, Cost) - Notes", from
+    these; asked for that string directly, a model put the tech level in the
+    parentheses and the weight in the notes.
+    """
+
+    name: str = Field(..., title="Name")
+    quantity: int = Field(1, title="Quantity")
+    weight: str = Field("", title="Weight", description="As the book lists it: '1.5 lbs'.")
+    cost: str = Field("", title="Cost", description="As the book lists it: '$200'.")
+    notes: str = Field("", title="Notes",
+        description="Tech level, damage, Acc, RoF and anything else.")
 
 
 class CharacterBuild(BaseModel):
@@ -99,9 +130,11 @@ class CharacterBuild(BaseModel):
     concept: str = Field("", title="Concept",
         description="A sentence on who this is. Prose, not mechanics.")
 
-    entries: List[BuildEntry] = Field(default_factory=list, title="Entries",
-        description="Every mechanical line of the sheet. Put the four primary "
-        "attributes first; the app handles anything priced against them.")
+    attributes: List[Attribute] = Field(default_factory=list, title="Attributes",
+        description="The four primary attributes and any secondary one you change.")
+    advantages: List[Trait] = Field(default_factory=list, title="Advantages")
+    disadvantages: List[Trait] = Field(default_factory=list, title="Disadvantages")
+    skills: List[Skill] = Field(default_factory=list, title="Skills")
 
     unpriceable: List[str] = Field(default_factory=list, title="Left To The GM",
         description="Anything you wanted on this character that the Basic Set does not "
