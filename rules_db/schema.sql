@@ -1,6 +1,6 @@
 PRAGMA foreign_keys = ON;
 
--- Minimal canonical schema for `TODO-DB.md` M0.
+-- Minimal canonical schema for `docs/archive/TODO-DB.md` M0.
 -- Derived tables (FTS/embeddings) can be rebuilt; verbatim text is always preserved.
 
 CREATE TABLE IF NOT EXISTS meta (

@@ -11,7 +11,7 @@ To systematically investigate a development ticket (new feature or bug fix), pro
 ## Execution Steps
 
 1. **Load Context:**
-   Read `APP_SYSTEM.md` and `APP_PHILOSOPHY.md`. Check `.planning/APP_MAP.md` to understand the relevant area of the codebase.
+   Read `docs/architecture/app-system.md` and `docs/architecture/philosophy.md`, and the current release in `docs/releases/`. Check `docs/decisions/` for anything already settled in this area, and `docs/architecture/codebase-map.md` to understand the relevant area of the codebase.
    - Identify whether this ticket is primarily **frontend** (Shinku's domain), **backend** (Suigintou's domain), or **both**.
    - Read the specific source files that will be affected before proposing anything.
 
@@ -28,7 +28,7 @@ To systematically investigate a development ticket (new feature or bug fix), pro
    Present the plan clearly. **Wait for GM/user approval before writing any code.**
 
 4. **Implement (Shinku / Suigintou):**
-   Once approved, implement the changes following the patterns in `.planning/APP_MAP.md`.
+   Once approved, implement the changes following the patterns in `docs/architecture/codebase-map.md`.
    - Frontend changes: follow `styles.css` tokens, existing Passport/editor conventions, `lib/api.ts` for all backend calls.
    - Backend changes: follow FastAPI router → service → domain layering, Pydantic schemas at the boundary, no hard-coded campaign paths.
    - If both areas are touched: coordinate the API contract first, then implement backend, then frontend.

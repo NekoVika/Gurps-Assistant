@@ -3,7 +3,7 @@
 This document maps the **GurpsAI application's** internal structure. Use this when working on app development — adding features, fixing bugs, writing components, or improving services.
 
 > [!NOTE]
-> For campaign folder structure, see `CAMPAIGN_MAP.md`. For AI system files, see `SYSTEM_MAP.md`.
+> For campaign folder structure, see `.planning/CAMPAIGN_MAP.md`. For AI system files, see `.planning/SYSTEM_MAP.md`.
 
 ---
 

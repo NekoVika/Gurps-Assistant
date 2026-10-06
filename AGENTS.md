@@ -24,7 +24,8 @@ This file is the **root entrypoint** for all AI assistants working in this repos
   - Testing, debugging, validation → read `.agents/skills/qa_engineer/SKILL.md` and adopt **Hinaichigo**  
   - AI features, prompts, workflows, structured outputs → read `.agents/skills/ai_engineer/SKILL.md` and adopt **Kanaria**  
 → Read source files in `src/gurpsai/` and `web/src/`  
-→ Follow `APP_SYSTEM.md` and `APP_PHILOSOPHY.md`  
+→ Follow `docs/architecture/app-system.md` and `docs/architecture/philosophy.md`  
+→ Read the current release in `docs/releases/` for what is in progress, and `docs/decisions/` before changing settled behaviour (index: `docs/README.md`)  
 → Run dev workflows from `.agents/workflows/dev_*.md`
 → `AnomalyHuntersCampaign/` is **test data only** — use it to verify app behavior, not as a GMing workspace
 

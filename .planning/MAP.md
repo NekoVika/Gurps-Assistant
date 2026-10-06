@@ -7,7 +7,7 @@ This file is the **root router** for all structural maps in this project. It poi
 | Task | Map to Load |
 |------|-------------|
 | Creating or finding campaign content (NPCs, Locations, Episodes, Encounters, Factions) | → **[CAMPAIGN_MAP.md](CAMPAIGN_MAP.md)** |
-| Working on the application (backend routes, frontend components, services, scripts) | → **[APP_MAP.md](APP_MAP.md)** |
+| Working on the application (backend routes, frontend components, services, scripts) | → **[codebase-map.md](../docs/architecture/codebase-map.md)** |
 | Finding AI system files (personas, workflows, philosophy docs, templates) | → **[SYSTEM_MAP.md](SYSTEM_MAP.md)** |
 
 ---
@@ -22,7 +22,6 @@ GurpsAI/
 ├── .planning/               # Architectural truth and blueprints
 │   ├── MAP.md               # [THIS FILE] Router to all three maps
 │   ├── CAMPAIGN_MAP.md      # Campaign folder taxonomy (where entities live)
-│   ├── APP_MAP.md           # Application codebase structure
 │   ├── SYSTEM_MAP.md        # AI system file index
 │   └── _templates/          # Blank JSON templates for campaign entities
 ├── src/gurpsai/             # Python FastAPI backend package
@@ -35,6 +34,5 @@ GurpsAI/
 ├── AGENTS.md                # Universal AI entrypoint
 ├── SYSTEM.md                # GMing system instructions
 ├── master_philosophy.md     # GMing + project philosophy
-├── APP_SYSTEM.md            # App features and UI system instructions
-└── APP_PHILOSOPHY.md        # App design philosophy
+└── docs/                    # Project documentation: releases, decisions, architecture (codebase map, app system, philosophy), QA
 ```

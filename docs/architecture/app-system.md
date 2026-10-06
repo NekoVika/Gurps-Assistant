@@ -3,7 +3,7 @@
 This document describes the **GurpsAI application's features, UI structure, and API** for AI assistants. Load this when helping users *use* the app for GMing, or when developing new app features.
 
 > [!NOTE]
-> For GMing instructions (how to run campaigns), see `SYSTEM.md`. For app architecture decisions, see `APP_PHILOSOPHY.md`.
+> For GMing instructions (how to run campaigns), see `SYSTEM.md`. For app architecture decisions, see `philosophy.md` beside this file.
 
 ---
 

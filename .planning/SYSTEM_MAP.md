@@ -11,8 +11,8 @@ This document is the **index of the AI system itself** — all the files that de
 | `AGENTS.md` | Universal entrypoint. Task routing, persona roster, startup order. | Always — this is the root |
 | `SYSTEM.md` | GMing system instructions: state management, world dossier, ignored dirs | GMing tasks |
 | `master_philosophy.md` | Project identity, dual mode concept, GMing prime directives, narrative hierarchy | GMing tasks, philosophy questions |
-| `APP_SYSTEM.md` | App features, UI components, API endpoints, how the app works | Dev tasks, UI work, "how does the app do X?" questions |
-| `APP_PHILOSOPHY.md` | App design philosophy: JSON-first, Passport pattern, local-first, trust/transparency UX | Architecture decisions, new feature design |
+| `docs/architecture/app-system.md` | App features, UI components, API endpoints, how the app works | Dev tasks, UI work, "how does the app do X?" questions |
+| `docs/architecture/philosophy.md` | App design philosophy: JSON-first, Passport pattern, local-first, trust/transparency UX | Architecture decisions, new feature design |
 
 ---
 
@@ -96,5 +96,5 @@ GMing personas are **not** Antigravity skills. They are embedded in the applicat
 |------|-------|
 | `MAP.md` | Router — points to the right map for the task |
 | `CAMPAIGN_MAP.md` | Campaign folder taxonomy: where entities live, template enforcement |
-| `APP_MAP.md` | Application codebase: backend, frontend, scripts, boundary rules |
+| `docs/architecture/codebase-map.md` | Application codebase: backend, frontend, scripts, boundary rules |
 | `SYSTEM_MAP.md` | [This file] AI system file index |

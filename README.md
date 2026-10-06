@@ -71,7 +71,8 @@ The frontend **Config** tab allows configuring default providers, models, timeou
 |-- SYSTEM.md               # Assistant-neutral canonical instructions
 |-- master_philosophy.md    # Core principles
 |-- README.md               # This file
-|-- TODO.md                 # Roadmap and active tickets
+|-- CHANGELOG.md            # What each release shipped
+|-- docs/                   # Releases, backlog, decisions, architecture, QA
 `-- Campaign/               # Active campaign workspace (User Data)
 ```
 

@@ -89,4 +89,4 @@ Goal: a GM can prepare a campaign from zero with no dead ends.
 3. Create the GitHub release on `NekoVika/Gurps-Assistant` with
    `GURPS_Assistant_Setup_v<ver>.exe` attached (updater requires an asset
    whose name ends with `.exe`)
-4. Release notes from BUGS.md / TODO.md deltas
+4. Release notes from `CHANGELOG.md` and the release file in `docs/releases/`
