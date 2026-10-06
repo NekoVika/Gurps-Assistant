@@ -4,6 +4,7 @@ import type { SystemRulesJSON } from '../../lib/types';
 import { StringArrayEditor } from './StringArrayEditor';
 import { CustomTraitEditor } from './CustomTraitEditor';
 import { CustomSkillEditor } from './CustomSkillEditor';
+import { CustomTalentEditor } from './CustomTalentEditor';
 
 type Props = {
     value: string;
@@ -82,6 +83,10 @@ export function SystemRulesEditor({ value, onChange }: Props) {
             <CustomSkillEditor
                 items={data.customSkills || []}
                 onChange={(val) => handleUpdate('customSkills', val)}
+            />
+            <CustomTalentEditor
+                items={data.customTalents || []}
+                onChange={(val) => handleUpdate('customTalents', val)}
             />
 
             <h2 className="editor-section-title">Core Books</h2>

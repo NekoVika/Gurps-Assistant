@@ -6,6 +6,7 @@ import {
   ruleDefault, skillScores, wasSkillPriced, writeSkill, type SkillRow,
 } from "../../lib/skillRow";
 import { useCampaignStore } from "../../stores/useCampaignStore";
+import { talentBonuses, talentsIn } from "../../lib/talents";
 import { MentionTextarea } from "./MentionTextarea";
 
 /**
@@ -31,12 +32,17 @@ type Props = {
   onChange: (items: string[]) => void;
   /** The sheet's attribute lines, as they are in this edit. */
   attributes: string[];
+  /** The sheet's advantage lines, for the Talents among them (B89). */
+  advantages?: string[];
 };
 
-export function SkillCostEditor({ title, items = [], onChange, attributes }: Props) {
+export function SkillCostEditor({ title, items = [], onChange, attributes, advantages = [] }: Props) {
   const traitIndex = useCampaignStore(s => s.traitIndex);
   const names = useMemo(() => catalogueNames(traitIndex, "skill"), [traitIndex]);
   const scores = useMemo(() => skillScores(attributes), [attributes]);
+  // A Talent on the sheet raises its skills for free (B89), so their points
+  // buy the level without it.
+  const bonusFor = useMemo(() => talentBonuses(advantages, talentsIn(traitIndex)), [advantages, traitIndex]);
 
   // The scores the skills were last levelled against. Starts as the sheet
   // was opened; moves when the GM answers the offer below.
@@ -60,7 +66,7 @@ export function SkillCostEditor({ title, items = [], onChange, attributes }: Pro
     onChange(stored);
   };
 
-  const priceOf = (row: SkillRow) => priceSkill(row, scores, bookSkill(row, traitIndex));
+  const priceOf = (row: SkillRow) => priceSkill(row, scores, bookSkill(row, traitIndex), bonusFor);
 
   /** Change one field. Points follow the level while they are the book's. */
   const update = (index: number, field: keyof SkillRow, value: string) => {
@@ -250,6 +256,7 @@ export function SkillCostEditor({ title, items = [], onChange, attributes }: Pro
                   {wasSkillPriced(price) && (
                     <span style={{ color: computed !== null && !disagrees ? "#52d5ae" : undefined }}>
                       {relativeLabel(price.attr, price.relative)}
+                      {price.talent.from.map(t => ` · +${t.levels} ${t.name}`).join("")}
                       {computed === null ? " — below what one point buys" : ` · ${computed} pts`}
                     </span>
                   )}

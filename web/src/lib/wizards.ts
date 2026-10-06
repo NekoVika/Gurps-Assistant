@@ -156,7 +156,7 @@ export const CHARACTER_BUILD_SCHEMA = {
           name: { type: "string", description: "As the Basic Set names it, with no level or specialty: 'Guns/TL', 'Driving/TL', 'Stealth'." },
           specialty: { type: "string", description: "Where the skill takes one: 'Pistol' for Guns, 'Automobile' for Driving." },
           level: { type: "string",
-            description: "Level relative to its attribute: 'DX+2', 'IQ-1', 'Per'. Required, for a skill with a specialty too. Never the final number." },
+            description: "Level relative to its attribute: 'DX+2', 'IQ-1', 'Per'. Required, for a skill with a specialty too. Never the final number, and without any Talent bonus -- the app adds that." },
           tl: { type: "integer", description: "For a '/TL' skill: the tech level it is learned at." },
           notes: { type: "string", description: "One short line. Never a point cost." },
         },
@@ -452,7 +452,8 @@ export const WIZARDS: WizardDef[] = [
         `  attached: "Guns/TL" with specialty "Rifle" and tl 8, never "Guns/TL8 (Rifle)-14 [8]".`,
         `  attributes: give the final score. Leave out any attribute at its default.`,
         `  skills: every skill needs a level relative to its attribute ("DX+2", "IQ-1", "Per"),`,
-        `  a skill with a specialty included. Never the final number.`,
+        `  a skill with a specialty included. Never the final number. Leave out any Talent bonus`,
+        `  (Mathematical Ability, Business Acumen…): give the level bought, and the app adds the Talent.`,
         `  Disadvantages with a self-control roll: self_control is 6, 9, 12 or 15.`,
         `  Levelled traits: levels (e.g. 3 for Damage Resistance 3).`,
         answers.Points && answers.Points.trim()

@@ -20,10 +20,10 @@ beforeEach(() => useCampaignStore.setState({ traitIndex: index }));
 
 const DX12 = ["ST 10 [0]", "DX 12 [40]", "IQ 11 [20]", "HT 11 [10]"];
 
-function Holder({ initial, attributes = DX12 }: { initial: string[]; attributes?: string[] }) {
+function Holder({ initial, attributes = DX12, advantages = [] }: { initial: string[]; attributes?: string[]; advantages?: string[] }) {
   const [items, setItems] = useState(initial);
   return <>
-    <SkillCostEditor title="Skills" items={items} onChange={setItems} attributes={attributes} />
+    <SkillCostEditor title="Skills" items={items} onChange={setItems} attributes={attributes} advantages={advantages} />
     <pre data-testid="stored">{JSON.stringify(items)}</pre>
   </>;
 }
@@ -165,5 +165,27 @@ describe("campaign skills on a sheet", () => {
     expect(declare).toHaveBeenCalledWith({ name: "Rumour-Mongering", attr: "IQ", difficulty: "A",
       tl: false, specialised: false, defaults: "IQ-5" });
     expect(await screen.findByText("Rumour-Mongering is now a campaign skill.")).toBeTruthy();
+  });
+});
+
+describe("a Talent on the sheet (B89)", () => {
+  beforeEach(() => useCampaignStore.setState({ traitIndex: buildIndex([
+    { book_id: 1, kind: "skill", name: "Accounting", attr: "IQ", difficulty: "H", page: 174 },
+  ]) }));
+
+  it("prices Arthur Vance's Accounting without the Talent's bonus, and says so", () => {
+    render(<Holder initial={["Accounting (IQ/H)-16 [4] - Includes +2 from Math Ability"]}
+      attributes={["IQ 14 [80]"]} advantages={["Mathematical Ability 2 [20]"]} />);
+    expect(screen.getByText(/IQ · \+2 Mathematical Ability · 4 pts/)).toBeTruthy();
+    expect(screen.queryByText(/the table gives/)).toBeNull();
+  });
+
+  it("follows the level for the same points as the Talent goes up", () => {
+    const { rerender } = render(<Holder initial={["Accounting (IQ/H)-16 [4]"]}
+      attributes={["IQ 14 [80]"]} advantages={["Mathematical Ability 2 [20]"]} />);
+    rerender(<Holder initial={["Accounting (IQ/H)-16 [4]"]}
+      attributes={["IQ 14 [80]"]} advantages={["Mathematical Ability 3 [30]"]} />);
+    // At 16 with +3 only IQ-1 is bought now: the table gives 2 for that.
+    expect(screen.getByText(/IQ-1 · \+3 Mathematical Ability · 2 pts/)).toBeTruthy();
   });
 });

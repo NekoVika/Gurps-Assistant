@@ -88,6 +88,18 @@ Built from your own PDFs, so nothing is shipped that you did not buy.
   by name, so it uses them instead of inventing near-misses.
 - Custom Traits no longer offers a "skill" kind: a skill has no one cost to
   declare, so skills have their own list.
+- **Talents count.** A Talent adds +1 per level to its skills for free
+  (B89), so their points buy the level without it. Arthur Vance's
+  `Accounting (IQ/H)-16 [4]` with Mathematical Ability 2 is correctly paid —
+  IQ+0 bought, 4 points — and is no longer reported as owing 12. The editor
+  shows it: `IQ · +2 Mathematical Ability · 4 pts`. The wizard, chat drafts
+  and the checker all count Talents the same way, and a Talent bought in the
+  same build raises its skills.
+- **Campaign Talents.** Declare a Talent by naming its skills; its cost
+  follows from how many there are — 6 or fewer 5/level, 7 to 12 10/level,
+  13 or more 15/level (B90) — and is shown, never typed. A campaign may
+  redefine a standard Talent's skill list.
+- Smooth Operator (B91), missing from the extracted catalogue, is known.
 
 ### Traits you invented
 

@@ -94,7 +94,8 @@ class Skill(BaseModel):
         description="The level relative to the attribute it is based on, e.g. 'DX+2', "
         "'IQ-1', or plain 'IQ' for no difference -- for a skill with a specialty too. Give "
         "the relative level, never the final number: the app works that out from the "
-        "character's own attributes.")
+        "character's own attributes. Leave out any Talent bonus (B89): give the level "
+        "bought, and the app adds what a Talent on the sheet gives.")
     tl: Optional[int] = Field(None, title="Tech Level",
         description="For a skill the book prints as '/TL': the tech level it is learned "
         "at, e.g. 8. The campaign's own tech level is the default.")

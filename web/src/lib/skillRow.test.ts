@@ -86,7 +86,7 @@ describe("pricing the level the GM typed", () => {
   it("works the points out from the final level (B172)", () => {
     // DX 12, Guns Easy, 14 is DX+2: 4 points.
     expect(price(edited(blankSkill(), { name: "Guns/TL", specialty: "Pistol", level: "14" })))
-      .toEqual({ attr: "DX", difficulty: "E", relative: 2, points: 4 });
+      .toMatchObject({ attr: "DX", difficulty: "E", relative: 2, points: 4 });
   });
 
   it("prices an Average skill at attribute-1 for one point", () => {
@@ -113,7 +113,7 @@ describe("pricing the level the GM typed", () => {
 
   it("prices a skill of the GM's own from the difficulty they chose", () => {
     expect(price(edited(blankSkill(), { name: "Rumour-Mongering", attr: "IQ", difficulty: "A", level: "12" })))
-      .toEqual({ attr: "IQ", difficulty: "A", relative: 1, points: 4 });
+      .toMatchObject({ attr: "IQ", difficulty: "A", relative: 1, points: 4 });
   });
 
   it("says what is missing rather than guessing", () => {
@@ -183,7 +183,7 @@ describe("a campaign skill", () => {
 
   it("is priced from the table like any skill", () => {
     const row = { ...blankSkill(), name: "Rumour-Mongering", level: "12" };
-    expect(priceSkill(row, scores, bookSkill(row, withOwn))).toEqual({ attr: "IQ", difficulty: "A", relative: 1, points: 4 });
+    expect(priceSkill(row, scores, bookSkill(row, withOwn))).toMatchObject({ attr: "IQ", difficulty: "A", relative: 1, points: 4 });
   });
 
   it("is a technological skill when declared as one, whatever the sheet writes", () => {

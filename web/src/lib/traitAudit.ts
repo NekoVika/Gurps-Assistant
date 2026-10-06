@@ -21,6 +21,7 @@ import {
   buildTraitIndex, qualifiedName, resolveTrait,
   type CatalogueEntry, type TraitIndex,
 } from "./traitResolver";
+import { STANDARD_TALENTS, talentCostPerLevel, talentEntry } from "./talents";
 
 export type CustomTrait = {
   name: string;
@@ -120,10 +121,13 @@ function declaredSkill(s: CustomSkill): CatalogueEntry {
   };
 }
 
+export type CustomTalent = { name: string; skills: string[]; notes?: string };
+
 export function buildIndex(
   catalogue: CatalogueEntry[],
   custom: CustomTrait[] = [],
   skills: CustomSkill[] = [],
+  talents: CustomTalent[] = [],
 ): TraitIndex {
   const declared: CatalogueEntry[] = custom
     .filter(t => t && typeof t.name === "string" && t.name.trim())
@@ -144,9 +148,17 @@ export function buildIndex(
   const declaredSkills = skills
     .filter(s => s && typeof s.name === "string" && s.name.trim())
     .map(declaredSkill);
+  // A campaign Talent is priced by its skill list (B90), like any Talent.
+  const declaredTalents = talents
+    .filter(t => t && typeof t.name === "string" && t.name.trim() && Array.isArray(t.skills))
+    .map(t => talentEntry({ name: t.name.trim(), skills: t.skills.filter(s => typeof s === "string" && s.trim()),
+      perLevel: talentCostPerLevel(t.skills) ?? 0, page: null, campaign: true }));
+  // The book's standard Talents, behind the catalogue: the extraction
+  // dropped Smooth Operator (B91), and a rebuild that finds it wins.
+  const standard = STANDARD_TALENTS.map(talentEntry);
   // The campaign is listed first, so a GM who redefines a printed trait gets
   // their own price. It is their table.
-  return buildTraitIndex([...declared, ...declaredSkills, ...catalogue]);
+  return buildTraitIndex([...declared, ...declaredSkills, ...declaredTalents, ...catalogue, ...standard]);
 }
 
 /**

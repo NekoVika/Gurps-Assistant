@@ -27,6 +27,7 @@
 import { skillCost, ATTRIBUTE_COST, derive } from "./gurpsRules";
 import { parseEntry } from "./pointBuild";
 import { qualifiedName, resolveTrait, type TraitIndex } from "./traitResolver";
+import { noTalents, type BonusFor, type TalentBonus } from "./talents";
 
 export const DIFFICULTIES = ["E", "A", "H", "VH"] as const;
 export const BASES = ["ST", "DX", "IQ", "HT", "Per", "Will"] as const;
@@ -171,15 +172,18 @@ export type SkillPrice = {
   /** The attribute and difficulty the price is worked from. */
   attr: string;
   difficulty: string;
-  /** The level against the attribute: +2 for DX+2. */
+  /** The level bought against the attribute: +2 for DX+2. Talents excluded. */
   relative: number;
   /** What the book's table charges, or null below what a point buys. */
   points: number | null;
+  /** What Talents add to the level for free (B89), and which. */
+  talent: TalentBonus;
 };
 
 /** What the row's level costs on this sheet, or why it cannot be said. */
 export function priceSkill(
   row: SkillRow, scores: Record<string, number>, book: BookSkill | null,
+  bonusFor: BonusFor = noTalents,
 ): SkillPrice | { problem: string } {
   const attr = row.attr || book?.attr || "";
   // The book's difficulty, where it lists the skill: a line labelled Hard for
@@ -192,8 +196,11 @@ export function priceSkill(
   const score = scores[attr];
   if (!Number.isFinite(level)) return { problem: "the level is not a number" };
   if (score === undefined) return { problem: `${attr} is not on the sheet` };
-  const relative = level - score;
-  return { attr, difficulty, relative, points: skillCost(difficulty, relative) };
+  // A Talent raises the level for free, as though the attribute were higher
+  // for this skill only (B89): the points buy the level without it.
+  const talent = bonusFor(row.name, row.specialty);
+  const relative = level - score - talent.bonus;
+  return { attr, difficulty, relative, points: skillCost(difficulty, relative), talent };
 }
 
 export function wasSkillPriced(p: SkillPrice | { problem: string }): p is SkillPrice {

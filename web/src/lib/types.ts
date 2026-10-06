@@ -231,6 +231,17 @@ export interface CustomSkillJSON {
     notes?: string;
 }
 
+/**
+ * A Talent this campaign invented (B90, "Custom Talents"): a name and the
+ * skills it covers. Its cost per level follows from how many skills that is,
+ * so it is never typed.
+ */
+export interface CustomTalentJSON {
+    name: string;
+    skills: string[];
+    notes?: string;
+}
+
 export interface SystemRulesJSON {
     title: string;
     /** Homebrew traits, priced by the GM. The catalogue is what the books say;
@@ -238,6 +249,8 @@ export interface SystemRulesJSON {
     customTraits?: CustomTraitJSON[];
     /** Homebrew skills: an attribute and a difficulty, priced like any skill. */
     customSkills?: CustomSkillJSON[];
+    /** Homebrew Talents: a skill list, priced by its size (B90). */
+    customTalents?: CustomTalentJSON[];
     baseSystem: string;
     coreBooks: string[];
     houseRules: string;

@@ -4,7 +4,7 @@ import { resolveEntity } from '../lib/entityResolution';
 import { buildIndex } from '../lib/traitAudit';
 import { statedTotal } from '../lib/pointBuild';
 import type { TraitIndex } from '../lib/traitResolver';
-import type { CustomSkillJSON, CustomTraitJSON, SystemRulesJSON } from '../lib/types';
+import type { CustomSkillJSON, CustomTalentJSON, CustomTraitJSON, SystemRulesJSON } from '../lib/types';
 import {
   FileTreeNode,
   FileContent,
@@ -145,18 +145,20 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     const catalogue = await getTraitCatalogue();
     let custom: CustomTraitJSON[] = [];
     let skills: CustomSkillJSON[] = [];
+    let talents: CustomTalentJSON[] = [];
     let budget: number | null = null;
     try {
       const file = await getFileContent("Campaign/System_Rules.json");
       const parsed = JSON.parse(file.content) as SystemRulesJSON;
       if (Array.isArray(parsed.customTraits)) custom = parsed.customTraits;
       if (Array.isArray(parsed.customSkills)) skills = parsed.customSkills;
+      if (Array.isArray(parsed.customTalents)) talents = parsed.customTalents;
       budget = statedTotal(parsed.pointBudget);
     } catch {
       // No System Rules file, or it is not JSON. Books alone is a fine answer.
     }
     set({
-      traitIndex: buildIndex(catalogue.traits as never[], custom as never[], skills),
+      traitIndex: buildIndex(catalogue.traits as never[], custom as never[], skills, talents),
       traitCatalogueReason: catalogue.available ? "" : catalogue.reason,
       campaignPointBudget: budget,
     });

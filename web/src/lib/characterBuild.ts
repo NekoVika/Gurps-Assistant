@@ -29,6 +29,7 @@ import {
 import { baseCost, modifiedCost, type Modifier } from "./modifiers";
 import { qualifiedName, resolveTrait, type TraitIndex } from "./traitResolver";
 import { isCustom } from "./traitAudit";
+import { noTalents, talentBonuses, talentsIn, type BonusFor } from "./talents";
 
 /** A level written against the attribute it is based on: `DX+2`, `IQ-1`. */
 const RELATIVE_LEVEL = /^([A-Za-z]+)\s*([+-]\d+)?$/;
@@ -165,7 +166,7 @@ function renderAttribute(entry: BuildEntry, scores: Scores): Priced {
  * the level the skill reaches, which are independent facts, so the form with
  * the difficulty spelled out is the one written here.
  */
-function renderSkill(entry: BuildEntry, scores: Scores, index: TraitIndex | null): Priced {
+function renderSkill(entry: BuildEntry, scores: Scores, index: TraitIndex | null, bonusFor: BonusFor): Priced {
   const written = (entry.level || "").trim();
   const parsed = RELATIVE_LEVEL.exec(written);
   if (!parsed) {
@@ -211,7 +212,10 @@ function renderSkill(entry: BuildEntry, scores: Scores, index: TraitIndex | null
     : entry.name;
   const name = entry.tl !== undefined ? base.replace(/\/TL$/i, `/TL${entry.tl}`) : base;
   const specialty = entry.specialty ? ` (${entry.specialty})` : "";
-  const level = `(${attribute}/${difficulty.toUpperCase()})-${score + relative}`;
+  // The level asked for is the one bought. A Talent on the same sheet adds to
+  // it for free (B89), so the line states the higher level at the same cost.
+  const talent = bonusFor(entry.name, entry.specialty ?? "").bonus;
+  const level = `(${attribute}/${difficulty.toUpperCase()})-${score + relative + talent}`;
   return {
     line: withNotes(`${name}${specialty} ${level} ${bracket(points)}`, entry.notes),
     points,
@@ -279,10 +283,12 @@ function renderTrait(entry: BuildEntry, kind: string, index: TraitIndex | null):
 }
 
 /** Write one chosen entry as the line the campaign stores, or say why not. */
-export function render(entry: BuildEntry, scores: Scores, index: TraitIndex | null = null): Priced {
+export function render(
+  entry: BuildEntry, scores: Scores, index: TraitIndex | null = null, bonusFor: BonusFor = noTalents,
+): Priced {
   switch (entry.kind) {
     case "attribute": return renderAttribute(entry, scores);
-    case "skill": return renderSkill(entry, scores, index);
+    case "skill": return renderSkill(entry, scores, index, bonusFor);
     case "advantage": return renderTrait(entry, "advantage", index);
     case "disadvantage": return renderTrait(entry, "disadvantage", index);
     default: return decline(entry.name, `"${entry.kind}" is not a section of a sheet`);
@@ -320,16 +326,20 @@ export function buildSheet(entries: BuildEntry[], index: TraitIndex | null = nul
     disadvantage: "disadvantages", skill: "skills",
   };
 
-  // Attributes before anything that is measured against them.
+  // Attributes before anything measured against them, and traits before
+  // skills, because a Talent among the traits raises skills (B89).
   const ordered = [
     ...entries.filter(e => e.kind === "attribute" && e.name in ATTRIBUTE_COST),
     ...entries.filter(e => e.kind === "attribute" && !(e.name in ATTRIBUTE_COST)),
-    ...entries.filter(e => e.kind !== "attribute"),
+    ...entries.filter(e => e.kind === "advantage" || e.kind === "disadvantage"),
+    ...entries.filter(e => e.kind === "skill"),
   ];
 
+  const talents = talentsIn(index);
   for (const entry of ordered) {
     if (entry.kind === "attribute" && entry.score !== undefined) scores[entry.name] = entry.score;
-    const result = render(entry, scores, index);
+    const bonusFor = entry.kind === "skill" ? talentBonuses(sheet.advantages, talents) : noTalents;
+    const result = render(entry, scores, index, bonusFor);
     if (!wasPriced(result)) { sheet.declined.push({ ...result, entry }); continue; }
     const target = bucket[entry.kind];
     if (target) (sheet[target] as string[]).push(result.line);

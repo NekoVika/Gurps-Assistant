@@ -30,6 +30,7 @@ import { derive, ATTRIBUTE_COST } from "./gurpsRules";
 import { entriesFromBuild, gearLines, leftToGMBlock, statedScores, unpricedLine } from "./generatedSheet";
 import { parseEntry, pointBuild, type EntryKind } from "./pointBuild";
 import { parseGear } from "./TraitFormatters";
+import { talentBonuses, talentsIn } from "./talents";
 import type { TraitIndex } from "./traitResolver";
 
 const SECTIONS: Record<EntryKind, "attributes" | "advantages" | "disadvantages" | "skills"> = {
@@ -165,9 +166,14 @@ export function prepareCharacterDraft(
 
   // Attributes first, in the sheet's order, because a secondary is priced
   // against a primary.
-  const rank = (e: BuildEntry) => e.kind !== "attribute" ? 99 : (ATTRIBUTE_ORDER.indexOf(e.name) + 1 || 50);
+  // Traits before skills too: a Talent added in this draft raises its skills
+  // for free (B89), so it has to be on the sheet before they are priced.
+  const rank = (e: BuildEntry) => e.kind === "skill" ? 99 : e.kind !== "attribute" ? 98
+    : (ATTRIBUTE_ORDER.indexOf(e.name) + 1 || 50);
+  const talents = talentsIn(index);
   for (const choice of [...choices].sort((a, b) => rank(a) - rank(b))) {
-    const out = render(choice, scores, index);
+    const bonusFor = choice.kind === "skill" ? talentBonuses(section("advantage"), talents) : undefined;
+    const out = render(choice, scores, index, bonusFor);
     if (!wasPriced(out)) { declined.push({ ...out, entry: choice }); continue; }
     const target = section(choice.kind);
     const slot = slotFor(choice, target);

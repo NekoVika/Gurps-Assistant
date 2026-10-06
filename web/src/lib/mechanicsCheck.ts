@@ -24,6 +24,7 @@ import {
   DIFFICULTY_NAMES, selfControlCost, selfControlNumber,
 } from "./gurpsRules";
 import { qualifiedName, resolveTrait, type TraitIndex } from "./traitResolver";
+import { noTalents, talentBonuses, talentsIn, type BonusFor } from "./talents";
 import { isCustom } from "./traitAudit";
 import {
   baseCost, modifiedCost, modifiersArePriced, netModifier, parseModifiers, traitLevel,
@@ -179,6 +180,7 @@ function skillFindings(
   entries: Entry[],
   scores: Record<string, number>,
   index: TraitIndex | null,
+  bonusFor: BonusFor = noTalents,
 ): Part {
   const findings: Finding[] = [];
   const notes: Note[] = [];
@@ -209,8 +211,12 @@ function skillFindings(
 
     // The level the skill reaches, measured against the attribute it is based
     // on, is the authority. The label is only a claim about that number.
+    // A Talent raises the level for free (B89): the points bought it without.
+    // Arthur Vance's Accounting (IQ/H)-16 on IQ 14 with Mathematical Ability 2
+    // is IQ+0 bought, 4 points, and was being reported as underpaid.
+    const talent = bonusFor(baseSkillName(entry.name), entry.specialty).bonus;
     if (score !== undefined && level.absolute !== null && Number.isFinite(level.absolute)) {
-      relative = level.absolute - score;
+      relative = level.absolute - score - talent;
     } else if (labelled !== null) {
       relative = labelled;
       labelled = null;        // nothing to check the label against
@@ -424,7 +430,7 @@ export function checkMechanics(
     attributeFindings(attributes.entries),
     traitCostFindings(advantages.entries, "advantage", index),
     traitCostFindings(disadvantages.entries, "disadvantage", index),
-    skillFindings(skills.entries, scores, index),
+    skillFindings(skills.entries, scores, index, talentBonuses(advantages.entries.map(e => e.raw), talentsIn(index))),
   ];
 
   return {
