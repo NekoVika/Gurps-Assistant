@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   readSkill, writeSkill, bookSkill, priceSkill, wasSkillPriced, skillScores,
-  relativeLabel, blankSkill, type SkillRow,
+  relativeLabel, blankSkill, ruleDefault, type SkillRow,
 } from "./skillRow";
 import { buildIndex } from "./traitAudit";
 
@@ -165,5 +165,40 @@ describe("writing an edited line", () => {
     const line = writeSkill(row, bookSkill(row, index));
     expect(readSkill(line)).toMatchObject({ name: "Guns/TL", specialty: "Rifle", tl: "8", attr: "DX",
       difficulty: "E", level: "13", points: "2", notes: "Hunting" });
+  });
+});
+
+describe("a campaign skill", () => {
+  const withOwn = buildIndex(
+    [{ book_id: 1, kind: "skill", name: "Stealth", attr: "DX", difficulty: "A", page: 222 }],
+    [],
+    [{ name: "Rumour-Mongering", attr: "IQ", difficulty: "A", defaults: "IQ-5" },
+     { name: "Rig Hacking", attr: "IQ", difficulty: "H", tl: true }]);
+
+  it("is found like a book skill, and says where it came from", () => {
+    expect(bookSkill({ name: "Rumour-Mongering", specialty: "" }, withOwn))
+      .toEqual({ name: "Rumour-Mongering", attr: "IQ", difficulty: "A", page: null, campaign: true, defaults: "IQ-5" });
+    expect(bookSkill({ name: "Stealth", specialty: "" }, withOwn)?.campaign).toBe(false);
+  });
+
+  it("is priced from the table like any skill", () => {
+    const row = { ...blankSkill(), name: "Rumour-Mongering", level: "12" };
+    expect(priceSkill(row, scores, bookSkill(row, withOwn))).toEqual({ attr: "IQ", difficulty: "A", relative: 1, points: 4 });
+  });
+
+  it("is a technological skill when declared as one, whatever the sheet writes", () => {
+    const row = { ...blankSkill(), name: "Rig Hacking", tl: "9", level: "11", points: "4" };
+    expect(writeSkill(row, bookSkill(row, withOwn))).toBe("Rig Hacking/TL9 (IQ/H)-11 [4]");
+    expect(bookSkill({ name: "Rig Hacking/TL", specialty: "" }, withOwn)?.difficulty).toBe("H");
+  });
+});
+
+describe("the book's general rule for a default (B173)", () => {
+  it("is attribute-4, -5 or -6 by difficulty, and none for Very Hard", () => {
+    expect(ruleDefault("DX", "E")).toBe("DX-4");
+    expect(ruleDefault("IQ", "A")).toBe("IQ-5");
+    expect(ruleDefault("IQ", "H")).toBe("IQ-6");
+    expect(ruleDefault("IQ", "VH")).toBe("None");
+    expect(ruleDefault("", "A")).toBe("");
   });
 });

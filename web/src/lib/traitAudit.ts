@@ -87,9 +87,43 @@ function declaredCost(text: string | undefined): { kind: string; value: number |
   return { kind: "declared", value: null };
 }
 
+export type CustomSkill = {
+  name: string;
+  attr: string;
+  difficulty: string;
+  tl?: boolean;
+  specialised?: boolean;
+  defaults?: string;
+  notes?: string;
+};
+
+/**
+ * A campaign skill as a catalogue entry: the same shape the book's skills
+ * have, so everything that prices a book skill prices it too.
+ */
+function declaredSkill(s: CustomSkill): CatalogueEntry {
+  const bare = s.name.trim().replace(/\/TL\d*$/i, "");
+  return {
+    book_id: 0,
+    kind: "skill",
+    name: s.tl ? `${bare}/TL` : bare,
+    cost_text: "",
+    cost_kind: "formula",
+    cost_value: null,
+    attr: (s.attr || "").trim(),
+    difficulty: (s.difficulty || "").trim().toUpperCase(),
+    defaults: s.defaults ?? "",
+    specialised: Boolean(s.specialised),
+    page: null,
+    campaign: true,
+    notes: s.notes ?? "",
+  };
+}
+
 export function buildIndex(
   catalogue: CatalogueEntry[],
   custom: CustomTrait[] = [],
+  skills: CustomSkill[] = [],
 ): TraitIndex {
   const declared: CatalogueEntry[] = custom
     .filter(t => t && typeof t.name === "string" && t.name.trim())
@@ -107,9 +141,40 @@ export function buildIndex(
         notes: t.notes ?? "",
       };
     });
+  const declaredSkills = skills
+    .filter(s => s && typeof s.name === "string" && s.name.trim())
+    .map(declaredSkill);
   // The campaign is listed first, so a GM who redefines a printed trait gets
   // their own price. It is their table.
-  return buildTraitIndex([...declared, ...catalogue]);
+  return buildTraitIndex([...declared, ...declaredSkills, ...catalogue]);
+}
+
+/**
+ * What the campaign declared, as lines a model can choose from.
+ *
+ * A model that has never seen this campaign cannot know its own skills and
+ * traits, and a near-miss name ("Rumor Mongering") is a line nothing prices.
+ * The list is short -- a campaign declares a handful -- so it costs little
+ * to send with every character the wizard builds. Empty when nothing is
+ * declared.
+ */
+export function campaignVocabulary(index: TraitIndex | null): string {
+  if (!index) return "";
+  const skills: string[] = [];
+  const traits: string[] = [];
+  const seen = new Set<string>();
+  for (const entries of index.byName.values()) {
+    for (const e of entries) {
+      if (!isCustom(e) || seen.has(e.name)) continue;
+      seen.add(e.name);
+      if (e.kind === "skill") skills.push(`${e.name} (${e.attr}/${e.difficulty})`);
+      else traits.push(`${e.name} (${e.kind}${e.cost_text ? `, ${e.cost_text}` : ""})`);
+    }
+  }
+  const lines: string[] = [];
+  if (skills.length) lines.push(`This campaign's own skills, priced like any skill -- use these exact names: ${skills.join("; ")}.`);
+  if (traits.length) lines.push(`This campaign's own traits -- use these exact names: ${traits.join("; ")}.`);
+  return lines.join("\n");
 }
 
 export function isCustom(entry: CatalogueEntry | null): boolean {

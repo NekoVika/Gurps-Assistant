@@ -20,6 +20,7 @@ import { mergeGenerated, describeMerge, nothingLeftToFill } from "../lib/mergeGe
 import { instantiateTemplate } from "../lib/instantiateTemplate";
 import { WIZARDS, APPEND_TO_GM_SUMMARY, type WizardDef } from "../lib/wizards";
 import { pointBuild } from "../lib/pointBuild";
+import { campaignVocabulary } from "../lib/traitAudit";
 import { parseGear } from "../lib/TraitFormatters";
 import { getFileContent, writeFileContent, runStructuredChat } from '../lib/api';
 import { updateParentChildLinks } from '../lib/parentLinks';
@@ -225,7 +226,11 @@ export function MainWorkspace() {
             if (systemContent) {
                messages.push({ role: "system", content: systemContent });
             }
-            messages.push({ role: "user", content: compiledPrompt });
+            // A character is built from the campaign's vocabulary as well as
+            // the book's: its own skills and traits, by their exact names.
+            const vocabulary = tempWizard?.pydanticModel === "CharacterData"
+              ? campaignVocabulary(useCampaignStore.getState().traitIndex) : "";
+            messages.push({ role: "user", content: vocabulary ? `${compiledPrompt}\n\n${vocabulary}` : compiledPrompt });
 
             // A second pass over a finished entity would generate a whole sheet
             // and then discard it, after ten seconds of spinner that reads as

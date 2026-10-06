@@ -4,7 +4,7 @@ import { resolveEntity } from '../lib/entityResolution';
 import { buildIndex } from '../lib/traitAudit';
 import { statedTotal } from '../lib/pointBuild';
 import type { TraitIndex } from '../lib/traitResolver';
-import type { CustomTraitJSON, SystemRulesJSON } from '../lib/types';
+import type { CustomSkillJSON, CustomTraitJSON, SystemRulesJSON } from '../lib/types';
 import {
   FileTreeNode,
   FileContent,
@@ -72,6 +72,9 @@ interface CampaignState {
   refreshEntityRegistry: () => Promise<void>;
   refreshCampaignArtifacts: () => Promise<void>;
   loadTraitIndex: () => Promise<void>;
+  /** Add a skill to System Rules -> customSkills, from a sheet where the GM
+   *  defined it. Writes System_Rules.json and reloads the catalogue. */
+  declareCampaignSkill: (skill: CustomSkillJSON) => Promise<{ ok: boolean; message: string }>;
   setCampaignPathDraft: (path: string) => void;
   setSelectedPath: (path: string) => void;
   setIsEditing: (isEditing: boolean) => void;
@@ -141,20 +144,44 @@ export const useCampaignStore = create<CampaignState>((set, get) => ({
     // invented. Kept together so no caller can forget to ask the second.
     const catalogue = await getTraitCatalogue();
     let custom: CustomTraitJSON[] = [];
+    let skills: CustomSkillJSON[] = [];
     let budget: number | null = null;
     try {
       const file = await getFileContent("Campaign/System_Rules.json");
       const parsed = JSON.parse(file.content) as SystemRulesJSON;
       if (Array.isArray(parsed.customTraits)) custom = parsed.customTraits;
+      if (Array.isArray(parsed.customSkills)) skills = parsed.customSkills;
       budget = statedTotal(parsed.pointBudget);
     } catch {
       // No System Rules file, or it is not JSON. Books alone is a fine answer.
     }
     set({
-      traitIndex: buildIndex(catalogue.traits as never[], custom as never[]),
+      traitIndex: buildIndex(catalogue.traits as never[], custom as never[], skills),
       traitCatalogueReason: catalogue.available ? "" : catalogue.reason,
       campaignPointBudget: budget,
     });
+  },
+
+  declareCampaignSkill: async (skill: CustomSkillJSON) => {
+    // Read System Rules fresh rather than from the editor: the GM is editing a
+    // character, and this is a separate, explicit write to another file.
+    const path = "Campaign/System_Rules.json";
+    let rules: SystemRulesJSON;
+    try {
+      rules = JSON.parse((await getFileContent(path)).content) as SystemRulesJSON;
+    } catch {
+      return { ok: false, message: "System Rules could not be read, so nothing was declared." };
+    }
+    const existing = Array.isArray(rules.customSkills) ? rules.customSkills : [];
+    const key = (n: string) => n.trim().replace(/\/TL\d*$/i, "").toLowerCase();
+    if (existing.some(s => key(s.name) === key(skill.name))) {
+      return { ok: false, message: `${skill.name} is already a campaign skill.` };
+    }
+    const next = { ...rules, customSkills: [...existing, skill] };
+    const res = await writeFileContent(path, JSON.stringify(next, null, 2));
+    if (!res.success) return { ok: false, message: "System Rules could not be saved." };
+    await get().loadTraitIndex();
+    return { ok: true, message: `${skill.name} is now a campaign skill.` };
   },
 
   refreshCampaignArtifacts: async () => {

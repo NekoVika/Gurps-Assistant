@@ -113,7 +113,25 @@ export function readSkill(raw: string): SkillRow {
   };
 }
 
-export type BookSkill = { name: string; attr: string; difficulty: string; page: number | null };
+export type BookSkill = {
+  name: string; attr: string; difficulty: string; page: number | null;
+  /** Declared in the campaign's System Rules rather than printed in a book. */
+  campaign: boolean;
+  /** As the entry writes them: "IQ-5", "None". */
+  defaults: string;
+};
+
+/**
+ * The default the book's general rule gives a skill of this difficulty
+ * (B173): attribute-4 if Easy, -5 if Average, -6 if Hard. Very Hard skills
+ * usually have none.
+ */
+export function ruleDefault(attr: string, difficulty: string): string {
+  const off: Record<string, number> = { E: 4, A: 5, H: 6 };
+  const d = (difficulty || "").toUpperCase();
+  if (!attr || !d) return "";
+  return off[d] !== undefined ? `${attr}-${off[d]}` : "None";
+}
 
 /** What the book says about this skill, or null for one it does not list. */
 export function bookSkill(row: Pick<SkillRow, "name" | "specialty">, index: TraitIndex | null): BookSkill | null {
@@ -125,6 +143,8 @@ export function bookSkill(row: Pick<SkillRow, "name" | "specialty">, index: Trai
     attr: typeof found.attr === "string" ? canonicalBase(found.attr) : "",
     difficulty: found.difficulty.toUpperCase(),
     page: typeof found.page === "number" ? found.page : null,
+    campaign: Boolean((found as { campaign?: boolean }).campaign),
+    defaults: typeof found.defaults === "string" ? found.defaults : "",
   };
 }
 

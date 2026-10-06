@@ -3,6 +3,7 @@ import MDEditor from '@uiw/react-md-editor';
 import type { SystemRulesJSON } from '../../lib/types';
 import { StringArrayEditor } from './StringArrayEditor';
 import { CustomTraitEditor } from './CustomTraitEditor';
+import { CustomSkillEditor } from './CustomSkillEditor';
 
 type Props = {
     value: string;
@@ -77,6 +78,10 @@ export function SystemRulesEditor({ value, onChange }: Props) {
             <CustomTraitEditor
                 items={data.customTraits || []}
                 onChange={(val) => handleUpdate('customTraits', val)}
+            />
+            <CustomSkillEditor
+                items={data.customSkills || []}
+                onChange={(val) => handleUpdate('customSkills', val)}
             />
 
             <h2 className="editor-section-title">Core Books</h2>

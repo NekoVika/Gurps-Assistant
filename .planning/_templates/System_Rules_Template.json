@@ -6,5 +6,7 @@
   "allowedOptions": "",
   "forbiddenOptions": "",
   "pointBudget": "",
-  "customMechanics": ""
+  "customMechanics": "",
+  "customTraits": [],
+  "customSkills": []
 }

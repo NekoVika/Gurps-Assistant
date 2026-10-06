@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { SkillCostEditor } from "./SkillCostEditor";
 import { useCampaignStore } from "../../stores/useCampaignStore";
 import { buildIndex } from "../../lib/traitAudit";
@@ -137,5 +137,33 @@ describe("when an attribute changes under the skills", () => {
     fireEvent.click(screen.getByText("Not now"));
     expect(stored()).toEqual(skills);
     expect(screen.queryByRole("status")).toBeNull();
+  });
+});
+
+describe("campaign skills on a sheet", () => {
+  it("prices one declared in System Rules, and says it is the campaign's", () => {
+    useCampaignStore.setState({ traitIndex: buildIndex([], [], [{ name: "Rumour-Mongering", attr: "IQ", difficulty: "A" }]) });
+    render(<Holder initial={[]} />);
+    fireEvent.click(screen.getByText("+ Add Skill"));
+    fireEvent.change(field("Skill name"), { target: { value: "Rumour-Mongering" } });
+    fireEvent.change(field("Level"), { target: { value: "12" } });
+    expect(stored()).toEqual(["Rumour-Mongering (IQ/A)-12 [4]"]);
+    expect(screen.getByText(/campaign skill/)).toBeTruthy();
+    expect(screen.queryByText("your own skill")).toBeNull();
+  });
+
+  it("offers to declare a skill of the GM's own, once it has an attribute and a difficulty", async () => {
+    const declare = vi.fn().mockResolvedValue({ ok: true, message: "Rumour-Mongering is now a campaign skill." });
+    useCampaignStore.setState({ declareCampaignSkill: declare });
+    render(<Holder initial={[]} />);
+    fireEvent.click(screen.getByText("+ Add Skill"));
+    fireEvent.change(field("Skill name"), { target: { value: "Rumour-Mongering" } });
+    expect(screen.queryByText("Make it a campaign skill")).toBeNull();
+    fireEvent.change(field("Based on"), { target: { value: "IQ" } });
+    fireEvent.change(field("Difficulty"), { target: { value: "A" } });
+    fireEvent.click(screen.getByText("Make it a campaign skill"));
+    expect(declare).toHaveBeenCalledWith({ name: "Rumour-Mongering", attr: "IQ", difficulty: "A",
+      tl: false, specialised: false, defaults: "IQ-5" });
+    expect(await screen.findByText("Rumour-Mongering is now a campaign skill.")).toBeTruthy();
   });
 });

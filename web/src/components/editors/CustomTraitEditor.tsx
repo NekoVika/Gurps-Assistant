@@ -13,7 +13,9 @@ import type { CustomTraitJSON } from "../../lib/types";
  * to delete someone's homebrew.
  */
 
-const KINDS = ["advantage", "disadvantage", "skill", "perk", "quirk"];
+// No "skill": a skill has no one cost to declare -- its price follows from its
+// level, attribute and difficulty -- so skills have their own list, below.
+const KINDS = ["advantage", "disadvantage", "perk", "quirk"];
 
 type Props = {
   items: CustomTraitJSON[];
@@ -64,6 +66,9 @@ export function CustomTraitEditor({ items = [], onChange }: Props) {
               onChange={e => update(index, "kind", e.target.value)}
             >
               {KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+              {/* An older declaration keeps its kind rather than being
+                  silently changed to the first option on save. */}
+              {item.kind && !KINDS.includes(item.kind) && <option value={item.kind}>{item.kind}</option>}
             </select>
             <input
               type="text"

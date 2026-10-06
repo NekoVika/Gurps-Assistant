@@ -3,7 +3,7 @@ import { catalogueNames } from "../../lib/traitResolver";
 import { DIFFICULTY_NAMES } from "../../lib/gurpsRules";
 import {
   BASES, DIFFICULTIES, blankSkill, bookSkill, priceSkill, readSkill, relativeLabel,
-  skillScores, wasSkillPriced, writeSkill, type SkillRow,
+  ruleDefault, skillScores, wasSkillPriced, writeSkill, type SkillRow,
 } from "../../lib/skillRow";
 import { useCampaignStore } from "../../stores/useCampaignStore";
 import { MentionTextarea } from "./MentionTextarea";
@@ -79,6 +79,21 @@ export function SkillCostEditor({ title, items = [], onChange, attributes }: Pro
     write(next);
   };
 
+  // Declaring writes System Rules, a different file from the sheet being
+  // edited -- so it happens only on the GM's press, and says what it did.
+  const declareCampaignSkill = useCampaignStore(s => s.declareCampaignSkill);
+  const [notice, setNotice] = useState("");
+  const declare = async (row: SkillRow) => {
+    const name = row.name.trim().replace(/\/TL\d*$/i, "");
+    const result = await declareCampaignSkill({
+      name, attr: row.attr, difficulty: row.difficulty,
+      tl: row.tl !== "" || /\/TL\d*$/i.test(row.name.trim()),
+      specialised: row.specialty.trim() !== "",
+      defaults: ruleDefault(row.attr, row.difficulty),
+    });
+    setNotice(result.message);
+  };
+
   const add = () => write([...rows, blankSkill()]);
   const remove = (index: number) => write(rows.filter((_, i) => i !== index));
   const move = (index: number, by: -1 | 1) => {
@@ -112,6 +127,10 @@ export function SkillCostEditor({ title, items = [], onChange, attributes }: Pro
         <span className="editor-label" style={{ color: "#a8c7fa" }}>{title}</span>
         <button type="button" className="editor-add-btn" onClick={add}>+ Add Skill</button>
       </div>
+
+      {notice && (
+        <div role="note" style={{ fontSize: "0.78rem", color: "#52d5ae" }}>{notice}</div>
+      )}
 
       <datalist id="catalogue-skill">
         {names.map(name => <option key={name} value={name} />)}
@@ -222,7 +241,10 @@ export function SkillCostEditor({ title, items = [], onChange, attributes }: Pro
                       {DIFFICULTIES.map(d => <option key={d} value={d}>{DIFFICULTY_NAMES[d]}</option>)}
                     </select>
                   ) : (
-                    <span>{DIFFICULTY_NAMES[book!.difficulty] ?? book!.difficulty}{book!.page ? ` (B${book!.page})` : ""}</span>
+                    <span>
+                      {DIFFICULTY_NAMES[book!.difficulty] ?? book!.difficulty}
+                      {book!.campaign ? " · campaign skill" : book!.page ? ` (B${book!.page})` : ""}
+                    </span>
                   )}
 
                   {wasSkillPriced(price) && (
@@ -233,6 +255,11 @@ export function SkillCostEditor({ title, items = [], onChange, attributes }: Pro
                   )}
                   {!wasSkillPriced(price) && <span>{price.problem}</span>}
                   {own && <span>your own skill</span>}
+                  {own && row.attr && row.difficulty && (
+                    <button type="button" className="editor-action-btn" style={{ fontSize: "0.7rem", padding: "1px 8px" }}
+                      title="Adds it to System Rules, so every sheet and the AI know it by name"
+                      onClick={() => declare(row)}>Make it a campaign skill</button>
+                  )}
 
                   {book && row.attr && row.attr !== book.attr && (
                     <>

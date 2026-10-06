@@ -102,3 +102,39 @@ describe("following a link to an entity that exists", () => {
     expect(useCampaignStore.getState().selectedPath).toBe("");
   });
 });
+
+describe("making a skill on a sheet into a campaign skill", () => {
+  const rules = { title: "Anomaly Hunters", pointBudget: "150",
+    customTraits: [{ name: "Struggling", kind: "disadvantage", cost: "-5" }] };
+  const skill = { name: "Rumour-Mongering", attr: "IQ", difficulty: "A", defaults: "IQ-5" };
+
+  beforeEach(() => {
+    api.getFileContent.mockResolvedValue({ path: "Campaign/System_Rules.json", content: JSON.stringify(rules) });
+    api.writeFileContent.mockResolvedValue({ success: true });
+  });
+
+  it("adds it to System Rules and keeps everything already there", async () => {
+    const result = await useCampaignStore.getState().declareCampaignSkill(skill);
+    expect(result.ok).toBe(true);
+    const [path, content] = api.writeFileContent.mock.calls[0];
+    expect(path).toBe("Campaign/System_Rules.json");
+    const written = JSON.parse(content);
+    expect(written.customSkills).toEqual([skill]);
+    expect(written.customTraits).toEqual(rules.customTraits);
+    expect(written.pointBudget).toBe("150");
+  });
+
+  it("does not declare the same skill twice", async () => {
+    api.getFileContent.mockResolvedValue({ path: "x", content: JSON.stringify({ ...rules, customSkills: [skill] }) });
+    const result = await useCampaignStore.getState().declareCampaignSkill({ ...skill, name: "rumour-mongering" });
+    expect(result.ok).toBe(false);
+    expect(api.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing when System Rules cannot be read", async () => {
+    api.getFileContent.mockResolvedValue({ path: "x", content: "not json" });
+    const result = await useCampaignStore.getState().declareCampaignSkill(skill);
+    expect(result.ok).toBe(false);
+    expect(api.writeFileContent).not.toHaveBeenCalled();
+  });
+});

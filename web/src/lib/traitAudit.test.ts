@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { auditTraits, buildIndex, isCustom, unrecognisedAcross, type CustomTrait } from "./traitAudit";
+import { auditTraits, buildIndex, campaignVocabulary, isCustom, unrecognisedAcross, type CustomTrait } from "./traitAudit";
+import { render, wasPriced } from "./characterBuild";
 import type { CatalogueEntry } from "./traitResolver";
 
 const book = (name: string, kind: string, cost = "15"): CatalogueEntry =>
@@ -97,5 +98,36 @@ describe("what nobody prices, across the campaign", () => {
 
   it("survives a cast with nothing in it", () => {
     expect(unrecognisedAcross([], INDEX)).toEqual([]);
+  });
+});
+
+describe("the campaign's own skills", () => {
+  const index = buildIndex(
+    [{ book_id: 1, kind: "skill", name: "Stealth", attr: "DX", difficulty: "A" } as CatalogueEntry],
+    [{ name: "Struggling", kind: "disadvantage", cost: "-5" }],
+    [{ name: "Rumour-Mongering", attr: "IQ", difficulty: "A" }]);
+
+  it("are priced when the AI chooses one, like a book skill", () => {
+    const out = render({ kind: "skill", name: "Rumour-Mongering", level: "IQ+1" }, { IQ: 11 }, index);
+    if (!wasPriced(out)) throw new Error(out.problem);
+    expect(out.line).toBe("Rumour-Mongering (IQ/A)-12 [4]");
+  });
+
+  it("count as the campaign's, not as unrecognised", () => {
+    const audit = auditTraits({ skills: ["Rumour-Mongering (IQ/A)-12 [4]"] }, index);
+    expect(audit.entries[0].provenance).toBe("custom");
+    expect(audit.unrecognised).toEqual([]);
+  });
+
+  it("are named to the model with their attribute and difficulty", () => {
+    const told = campaignVocabulary(index);
+    expect(told).toContain("Rumour-Mongering (IQ/A)");
+    expect(told).toContain("Struggling (disadvantage, -5)");
+    expect(told).not.toContain("Stealth");
+  });
+
+  it("say nothing to the model when nothing is declared", () => {
+    expect(campaignVocabulary(buildIndex([]))).toBe("");
+    expect(campaignVocabulary(null)).toBe("");
   });
 });

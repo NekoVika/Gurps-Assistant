@@ -210,11 +210,34 @@ export interface CustomTraitJSON {
     notes?: string;
 }
 
+/**
+ * A skill this campaign invented, declared once with what the book's own
+ * entries carry (B174): its controlling attribute and difficulty, which set
+ * its price on every sheet through the Skill Cost Table (B170), and its
+ * default.
+ */
+export interface CustomSkillJSON {
+    name: string;
+    /** ST, DX, IQ, HT, Per or Will. */
+    attr: string;
+    /** E, A, H or VH. */
+    difficulty: string;
+    /** A technological skill, learned at a tech level: written Name/TL8. */
+    tl?: boolean;
+    /** Must be learned with a specialty, as Survival (Arctic). */
+    specialised?: boolean;
+    /** As the book writes defaults: "IQ-5", "None". */
+    defaults?: string;
+    notes?: string;
+}
+
 export interface SystemRulesJSON {
     title: string;
     /** Homebrew traits, priced by the GM. The catalogue is what the books say;
      *  this is what this table says, and it travels with the campaign. */
     customTraits?: CustomTraitJSON[];
+    /** Homebrew skills: an attribute and a difficulty, priced like any skill. */
+    customSkills?: CustomSkillJSON[];
     baseSystem: string;
     coreBooks: string[];
     houseRules: string;

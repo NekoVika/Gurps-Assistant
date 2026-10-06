@@ -76,6 +76,18 @@ Built from your own PDFs, so nothing is shipped that you did not buy.
   with ST 13 and no HP line has 13 HP, not 10.
 - A skill line nothing can read is shown as written with the reason, and is
   never taken apart. Correct the text and it becomes an ordinary row.
+- **Campaign skills.** Declare your own skills once in System Rules, with what
+  the book prints for its own: the attribute it rests on, how hard it is, its
+  default, whether it is learned at a tech level or needs a specialty. Every
+  sheet then prices it like a book skill, in green. The default follows the
+  book's rule (attribute −4, −5 or −6 by difficulty, B173) until you write
+  your own, and each choice is explained in the book's terms as you make it.
+- A skill of your own on a sheet offers **Make it a campaign skill**, which
+  adds it to System Rules so you never declare it twice.
+- The Create Entity wizard tells the AI your campaign's own skills and traits
+  by name, so it uses them instead of inventing near-misses.
+- Custom Traits no longer offers a "skill" kind: a skill has no one cost to
+  declare, so skills have their own list.
 
 ### Traits you invented
 
